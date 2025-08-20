@@ -1,0 +1,208 @@
+/* Header.css */
+
+/* Container principal do header */
+.header {
+  width: 100%;
+  background: #1a1f3a;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+}
+
+/* Inner centralizado até 1440px */
+.header__inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;       /* alinha verticalmente todos os itens */
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+/* Branding (logo + título) */
+.header__branding {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;                   /* deixa o nav e usuário à direita */
+}
+
+.branding__logo {
+  height: 40px;
+  object-fit: contain;
+}
+
+.branding__text {
+  display: flex;
+  align-items: baseline;     /* alinha pela baseline do texto */
+  gap: 4px;
+}
+
+.branding__main {
+  padding-left: 15px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.branding__sub {
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: #C3996B;
+  line-height: 1;
+}
+
+/* Navegação principal */
+.header__nav {
+  margin: 0 24px;
+}
+
+.header__nav ul {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.header__nav a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 4px 0;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.header__nav a:hover {
+  color: #C3996B;
+}
+
+.header__nav a.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #C3996B;
+}
+
+.header__nav li {
+  position: relative;
+}
+
+
+/* Nome do usuário */
+.header__user {
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* Pequeno ajuste para responsividade */
+@media (max-width: 768px) {
+  .header__nav ul {
+    gap: 16px;
+  }
+  .branding__main {
+    font-size: 1rem;
+  }
+  .branding__sub {
+    font-size: 0.75rem;
+  }
+}
+
+/* Submenus flutuantes */
+.header__nav li {
+  position: relative;
+}
+
+.menu__title {
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #fff;
+  padding: 1px 0;
+  transition: color 0.2s;
+}
+
+.menu__title:hover {
+  color: #C3996B;
+}
+
+.submenu {
+position: absolute;
+  /* top: calc(100% + 3px); */
+  top: 100%;
+  left: 0;
+  transform: translateX(-11px); /* ajuste fino opcional */
+  display: block !important;
+  flex-direction: column !important;
+  background: #1f2649;
+  list-style: none;
+  margin-top: 0;
+  padding: 0;
+  min-width: 180px;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  z-index: 999;
+}
+
+.submenu li {
+    display: block !important;
+    margin-top: 5px;
+}
+
+.submenu.usuario {
+  left: auto;
+  right: 0;
+}
+
+
+.submenu li a {
+  display: block;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  text-decoration: none;
+  color: #fff;
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s;
+}
+
+.submenu li a:hover {
+  background-color: #C3996B;
+  color: #fff;
+}
+
+/* Aplica estilo de hover a qualquer item do submenu, mesmo sem <a> */
+.submenu li {
+  display: block !important;
+  margin-top: 5px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.submenu li:hover {
+  background-color: #C3996B;
+  color: #fff;
+}
+
+/* Para itens apenas informativos (sem hover) */
+.submenu li.info {
+  cursor: default;
+  color: #ccc;
+  background: transparent;
+}

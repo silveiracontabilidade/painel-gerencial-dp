@@ -1,0 +1,90 @@
+.servicos-container {
+  padding: 24px;
+  font-family: Arial, sans-serif;
+}
+
+.servicos-header {
+  display: flex;
+  width: 40%;
+  justify-content: space-between;
+  align-items: center;
+  margin: 30px 0 16px 0;
+}
+
+.servicos-header h2 {
+  font-size: 20px;
+  color: #1a1f3a;
+  margin: 0;
+}
+
+.servicos-header button {
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  background-color: #1a1f3a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.servicos-header button:hover {
+  background-color: #C3996B;
+}
+
+.servicos-container table {
+  width: 40%;
+  border-collapse: collapse;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.servicos-container th,
+.servicos-container td {
+  border: 1px solid #ddd;
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+.servicos-container th {
+  background-color: #1a1f3a;
+  color: #ddd;
+  height: 20px;
+}
+
+.servicos-container tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.servicos-container input[type="text"],
+.servicos-container input[type="number"] {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+td.acoes {
+  width: 75px;
+  text-align: center;
+}
+
+td.acoes button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  margin: 0 2px;
+}
+
+td.acoes button:hover svg {
+  stroke: #C3996B;
+}
+
+th.col-nome { width: 40%; }
+th.col-prazo { width: 20%; }
+th.col-tempo { width: 20%;}
+th.col-acoes { width: 15%; }

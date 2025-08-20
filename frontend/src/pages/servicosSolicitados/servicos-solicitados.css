@@ -1,0 +1,184 @@
+/* servicos-solicitados.css */
+
+.servicos-container {
+  padding: 24px;
+  font-family: Arial, sans-serif;
+}
+
+.servicos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.servicos-header h2 {
+  font-size: 20px;
+  color: #1a1f3a;
+}
+
+.servicos-header button {
+  padding: 6px 12px;
+  background-color: #1a1f3a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.servicos-header button:hover {
+  background-color: #2B9FAE;
+}
+
+.servicos-container table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.servicos-container th,
+.servicos-container td {
+  border: 1px solid #ddd;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 13px;
+}
+
+.servicos-container th {
+  background-color: #1a1f3a;
+  color: white;
+}
+
+.servicos-container tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.acoes {
+  text-align: center;
+}
+
+.acoes button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin: 0 2px;
+  padding: 4px;
+}
+
+.acoes button:hover svg {
+  stroke: #2B9FAE;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  padding: 24px;
+  width: 600px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.25);
+}
+
+.formulario label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.formulario input,
+.formulario select,
+.formulario textarea {
+  width: 100%;
+  padding: 6px;
+  font-size: 12px;
+  margin-top: 4px;
+  box-sizing: border-box;
+}
+
+.formulario textarea {
+  height: 100px;
+  resize: vertical;
+}
+
+.botoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.botoes button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.botoes button[type="submit"] {
+  background-color: #1a1f3a;
+  color: white;
+}
+
+.botoes button[type="submit"]:hover {
+  background-color: #C3996B;
+}
+
+.botoes button[type="button"] {
+  background-color: #1a1f3a;
+}
+
+.botoes button[type="button"]:hover {
+  background-color: #C3996B;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-form input{
+  height: 30px;
+}
+
+.linha {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+}
+
+.campo-curto {
+  flex: 1 1 100px;
+  min-width: 80px;
+}
+
+.campo-medio {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
+.campo-longo {
+  flex: 2 1 100%;
+  font-size: 12px;
+}

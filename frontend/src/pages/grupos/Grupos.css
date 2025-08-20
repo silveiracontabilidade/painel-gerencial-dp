@@ -1,0 +1,96 @@
+.grupos-container {
+  padding: 24px;
+  font-family: Arial, sans-serif;
+}
+
+.grupos-header {
+  display: flex;
+  width: 50%;
+  justify-content: space-between;
+  align-items: center;
+  margin: 30px 0 16px 0;
+}
+
+.grupos-header h2 {
+  font-size: 20px;
+  color: #1a1f3a;
+  margin: 0;
+}
+
+.grupos-header button {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  background-color: #1a1f3a;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.grupos-header button:hover {
+  background-color: #2B9FAE;
+}
+
+.grupos-container table {
+  width: 50%;
+  border-collapse: collapse;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.grupos-container th,
+.grupos-container td {
+  border: 1px solid #ddd;
+  padding: 6px 8px;             /* um pouco maior p/ acomodar campos 40px */
+  text-align: left;
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+.grupos-container th {
+  background-color: #1a1f3a;
+  color: #ddd;
+  height: 22px;
+}
+
+.grupos-container tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Inputs e selects com altura unificada (mesmo padrão do modal) */
+.grupos-container input[type="text"],
+.grupos-container select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  height: 40px;                 /* altura unificada */
+  box-sizing: border-box;
+  background-color: #fff;
+}
+
+/* Foco */
+.grupos-container input[type="text"]:focus,
+.grupos-container select:focus {
+  outline: none;
+  border-color: #2B9FAE;
+  box-shadow: 0 0 0 2px rgba(43,159,174,0.15);
+}
+
+td.acoes {
+  width: 75px;
+  text-align: center;
+}
+
+td.acoes button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  margin: 0 2px;
+}
+
+td.acoes button:hover svg {
+  stroke: #2B9FAE;
+}

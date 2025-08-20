@@ -1,0 +1,223 @@
+.empresas-container {
+  padding: 1rem;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.empresas-titulo {
+  display: flex;
+  text-align: center;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.empresas-titulo button {
+  background-color: #1a1f3a;
+  height: 28px;
+  color:#ffffff;
+  cursor: pointer;  
+}
+
+.empresas-titulo button:hover {
+  background-color: #C3996B;
+}
+
+
+.empresas-tabela-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.empresas-table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.empresas-table th,
+.empresas-table td {
+  border: 1px solid #ddd;
+  padding: 0.5rem;
+  text-align: left;
+  font-size: 11px;
+}
+
+.empresas-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #1a1f3a;
+  color: white;
+  z-index: 2;
+}
+
+
+.empresas-table tr.filters-row th {
+  position: sticky;
+  top: 32px; /* deve ser exatamente a altura do header (em px) */
+  background-color: #dedfe6;
+  z-index: 2;
+}
+
+.empresas-table .filters-row input,
+.empresas-table .filters-row select {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 10px;
+}
+
+.col-data {
+  width: 60px;
+  min-width: 40px;
+  max-width: 70px;
+}
+
+.col-texto-curto {
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+}
+
+.col-texto-muito-curto {
+  width: 10px;
+  min-width: 10px;
+  max-width: 10px;
+}
+
+
+.col-texto-longo {
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+}
+
+.col-texto-sim-nao {
+  width: 25px;
+  min-width: 25px;
+  max-width: 25px;
+}
+
+.col-texto-medio {
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+}
+
+.pagination {
+  margin-top: 1rem;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.pagination button {
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination button.active {
+  background: #C3996B;
+  color: white;
+  font-weight: bold;
+}
+
+.pagination .ellipsis {
+  padding: 0 6px;
+  font-size: 14px;
+}
+
+.checkbox-botao {
+  all: unset;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.filtro-ativo {
+  background-color: #C3996B; /* ajuste como preferir */
+  color: #fff;
+  font-weight: bold;
+}
+
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal-conteudo {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 6px;
+  width: 360px;
+  max-width: 90vw;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  font-size: 12px;
+  font-family: Arial, sans-serif;
+}
+
+.modal-conteudo h3 {
+  margin-top: 0;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.modal-conteudo select {
+  width: 100%;
+  padding: 6px;
+  font-size: 12px;
+  margin: 8px 0 16px;
+}
+
+.modal-botoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-botoes button {
+  background-color: #1a1f3a;
+  color: #fff;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.modal-botoes button:hover {
+  background-color: #C3996B;
+}
+
+.delegar-botao {
+  background-color: #1a1f3a;
+  height: 28px;
+  color: #ffffff;
+  margin-left: 6px;
+  border: none;
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.delegar-botao:hover {
+  background-color: #C3996B;
+}
