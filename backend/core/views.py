@@ -5,6 +5,8 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
+from rest_framework import viewsets
+from .serializers import ResponsavelSerializer
 
 from .models import (
     GrupoGerencial,
@@ -79,12 +81,18 @@ class GrupoDeleteView(DeleteView):
 
 
 # ------------------------ RESPONSÁVEL ------------------------
-
+class ResponsavelViewSet(viewsets.ModelViewSet):
+    queryset = Responsavel.objects.select_related('grupo').order_by('nome')
+    serializer_class = ResponsavelSerializer
+    
+    
 @method_decorator(decoradores, name='dispatch')
 class ResponsavelListView(ListView):
     model = Responsavel
     template_name = 'responsavel/listar.html'
     context_object_name = 'responsaveis'
+    ordering = ['nome']
+    
 
 @method_decorator(decoradores, name='dispatch')
 class ResponsavelCreateView(CreateView):
@@ -186,7 +194,7 @@ class AgendaBaseCreateView(CreateView):
 class AgendaBaseUpdateView(UpdateView):
     model = AgendaBase
     fields = ['periodo', 'dia', 'mes', 'nome', 'descricao', 'responsabilidade', 'observacao']
-    template_name = 'agenda_base/form.html'
+    template_name = 'agenda_base/form.html' 
     success_url = reverse_lazy('agenda_base_listar')
 
 @method_decorator(decoradores, name='dispatch')

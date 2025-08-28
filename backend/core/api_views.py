@@ -10,7 +10,7 @@ from .models import (
     PlanilhaGerencial,
     Servico,
     ServicoSolicitado, 
-    AgendaBase
+    AgendaBase, Sistema, PeriodoEntrega
 )
 from .serializers import (
     UserSerializer,
@@ -19,7 +19,9 @@ from .serializers import (
     PlanilhaGerencialSerializer,
     ServicoSerializer,
     ServicoSolicitadoSerializer, 
-    AgendaBaseSerializer
+    AgendaBaseSerializer, 
+    SistemaSerializer, 
+    PeriodoEntregaSerializer
 )
 
 
@@ -33,8 +35,9 @@ class GrupoGerencialViewSet(viewsets.ModelViewSet):
     serializer_class = GrupoGerencialSerializer
 
 
+   
 class ResponsavelViewSet(viewsets.ModelViewSet):
-    queryset = Responsavel.objects.select_related('grupo').all()
+    queryset = Responsavel.objects.select_related('grupo').order_by('nome')
     serializer_class = ResponsavelSerializer
 
 
@@ -100,3 +103,13 @@ class PlanilhaGerencialViewSet(viewsets.ModelViewSet):
 class AgendaBaseViewSet(viewsets.ModelViewSet):
     queryset = AgendaBase.objects.all()
     serializer_class = AgendaBaseSerializer
+
+
+class SistemaViewSet(viewsets.ModelViewSet):
+    queryset = Sistema.objects.all()
+    serializer_class = SistemaSerializer
+
+
+class PeriodoEntregaViewSet(viewsets.ModelViewSet):
+    queryset = PeriodoEntrega.objects.all()
+    serializer_class = PeriodoEntregaSerializer

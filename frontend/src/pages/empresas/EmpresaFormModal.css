@@ -13,9 +13,9 @@
   padding: 24px;
   border-radius: 8px;
   box-sizing: border-box;
-  width: min(2400px, 96vw);
+  width: min(2000px, 96vw);
   min-width: 1200px;
-  max-width: 2400px;
+  max-width: 1200px;
   max-height: 800px;
   overflow-y: auto;
   font-family: Arial, sans-serif;
@@ -35,6 +35,7 @@
   margin: 8px 0 12px 0;
   border-bottom: 1px solid #e0e0e0;
 }
+
 .aba {
   background: transparent;
   border: none;
@@ -44,6 +45,7 @@
   font-weight: bold;
   border-bottom: 2px solid transparent;
 }
+
 .aba.ativa {
   border-bottom-color: #C3996B;
   color: #C3996B;
@@ -66,8 +68,27 @@
   flex-direction: column;
 }
 
+.label-erro {
+  font-weight: bold;
+  color: red;
+}
+
+
+.flag-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px; /* espaço entre texto e checkbox */
+}
+
+.flag-checkbox {
+  transform: scale(0.7);    /* aumenta um pouco o quadradinho */
+  cursor: pointer;
+}
+
 /* Larguras */
-.campo-micro { min-width: 60px; }
+.campo-micro-micro { width: 90px; }
+.campo-micro { min-width: 20px; }
+.campo-micro-flag { min-width: 20px; }
 .campo-curto { flex: 1 1 100px; min-width: 120px; }
 .campo-medio { flex: 2 1 200px; min-width: 180px; }
 .campo-longo { flex: 3 1 320px; min-width: 280px; }
@@ -76,32 +97,32 @@
 .modal-form label {
   font-weight: bold;
   margin-bottom: 4px;
-  font-size: 11px;
+  font-size: 10px;
   color: #1a1f3a;
 }
 
 /* Altura consistente */
 .modal-form input,
-.modal-form select {
+.modal-form select{
   box-sizing: border-box;
-  height: 30px;              /* altura unificada (maior) */
+  height: 29px;              /* altura unificada (maior) */
   line-height: 22px;
   padding: 8px 10px;
   border-radius: 4px;
   border: 1px solid #ccc;
-  font-size: 12px;
+  font-size: 11px;
   background-color: #fff;
 }
 
 /* Textarea com altura própria */
 .modal-form textarea {
   box-sizing: border-box;
-  min-height: 30px;
-  max-height: 30px;
+  min-height: 40px;
+  max-height: 29px;
   padding: 8px 10px;
   border-radius: 4px;
   border: 1px solid #ccc;
-  font-size: 12px;
+  font-size: 11px;
   resize: none ;
   background-color: #fff;
 }
@@ -141,6 +162,29 @@
   color: #fff;
 }
 
-.botoes .cancelar {
-  /* mesma aparência do primário por padrão */
+.bloco-header {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 2px;
+  background: #1a1f3a18; /* leve contraste */
+  align-items: baseline;
 }
+
+.bloco {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 2px;
+  background: #fafafa; /* leve contraste */
+}
+
+.bloco h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #C3996B; /* cor principal do sistema */
+}
+
+
+

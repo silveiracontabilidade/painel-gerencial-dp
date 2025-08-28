@@ -32,6 +32,7 @@ urlpatterns = [
     path('responsaveis/<int:pk>/editar/', ResponsavelUpdateView.as_view(), name='responsavel_editar'),
     path('responsaveis/<int:pk>/excluir/', ResponsavelDeleteView.as_view(), name='responsavel_excluir'),
 
+
     # Serviços
     path('servicos/', ServicoListView.as_view(), name='servico_listar'),
     path('servicos/novo/', ServicoCreateView.as_view(), name='servico_criar'),

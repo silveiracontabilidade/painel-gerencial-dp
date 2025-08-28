@@ -35,9 +35,17 @@ CSRF_TRUSTED_ORIGINS = [
     'http://10.0.0.17:3000',
 ]
 
+
+# Padrão de input/output de datas
+DATE_INPUT_FORMATS = ["%d-%m-%Y"]
+DATETIME_INPUT_FORMATS = ["%d-%m-%Y %H:%M:%S"]
+
 # Application definition
 
 REST_FRAMEWORK = {
+    "DATETIME_FORMAT": "%d-%m-%Y %H:%M:%S",
+    "DATE_FORMAT": "%d-%m-%Y",
+    
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -108,7 +116,7 @@ WSGI_APPLICATION = 'painel.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'automacoesdp',
+        'NAME': 'automacoesdp_uat',
         'USER': 'denis',
         'PASSWORD': 'hJ3#xL9v!2Zq',
         'HOST': '10.0.0.80',

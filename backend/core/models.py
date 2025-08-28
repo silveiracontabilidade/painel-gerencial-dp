@@ -35,10 +35,11 @@ class Responsavel(models.Model):
     def __str__(self):
         return self.nome
 
-#EMPRESAS - PLANILHA GERENCIAL
+# EMPRESAS - PLANILHA GERENCIAL
 class PlanilhaGerencial(models.Model):
     cod_folha = models.CharField(max_length=10, db_column='Cod_folha', primary_key=True)
     cod_geral = models.CharField(max_length=10, db_column='Cod_Geral', null=True, blank=True)
+    cod_acessorias = models.CharField(max_length=10, db_column='COD_ACESSORIAS', null=True, blank=True)
     razao_social = models.CharField(max_length=255, db_column='Razao_Social', null=True, blank=True)
     grupo_economico = models.CharField(max_length=255, db_column='Grupo_Economico', null=True, blank=True)
     cnpj = models.CharField(max_length=50, db_column='CNPJ', null=True, blank=True)
@@ -63,37 +64,125 @@ class PlanilhaGerencial(models.Model):
     classificacao2 = models.CharField(max_length=100, db_column='Classificacao2', null=True, blank=True)
     cod_folha_520 = models.CharField(max_length=100, db_column='cod_folha_520', null=True, blank=True)
 
-    # --- campos de folha --- #
-    serv_prest = models.CharField(max_length=255, db_column='SERV_PREST', null=True, blank=True)
+    # --- campos folha e operacionais ---
+    serv_prest = models.CharField(max_length=10, db_column='SERV_PREST', null=True, blank=True)
+    serv_tom = models.CharField(max_length=10, db_column='SERV_TOM', null=True, blank=True)
     deson = models.CharField(max_length=50, db_column='DESON', null=True, blank=True)
     secconci = models.CharField(max_length=50, db_column='SECCONCI', null=True, blank=True)
     planilha_folha = models.CharField(max_length=50, db_column='PLANILHA_FOLHA', null=True, blank=True)
     planilha_convenio = models.CharField(max_length=50, db_column='PLANILHA_CONVENIO', null=True, blank=True)
-    fecha_ponto = models.CharField(max_length=50, db_column='FECHA_PONTO', null=True, blank=True)
     obs_folha = models.TextField(db_column='OBS_FOLHA', null=True, blank=True)
     sst = models.CharField(max_length=50, db_column='SST', null=True, blank=True)
-    dt_adiantamento = models.DateField(db_column='DT_ADIANTAMENTO', null=True, blank=True)
+    data_entrega_folha = models.CharField(max_length=100, db_column='DATA_ENTREGA_FOLHA', null=True, blank=True)
+
+    # Adiantamento / 13º / PLR
+    adiantamento = models.CharField(max_length=10, db_column='ADIANTAMENTO', null=True, blank=True)
+    dt_adiantamento_entrega = models.CharField(max_length=50, db_column='DT_ADIANTAMENTO_ENTREGA', null=True, blank=True)
+    dt_adiantamento_pagamento = models.CharField(max_length=100, db_column='DT_ADIANTAMENTO_PAGAMENTO', null=True, blank=True)
     perc_adiantamento = models.CharField(max_length=20, db_column='PERC_ADIANTAMENTO', null=True, blank=True)
+    dt_13_entrega = models.CharField(max_length=50, db_column='DT_13_ENTREGA', null=True, blank=True)
+    dt_13_adiantamento_entrega = models.CharField(max_length=50, db_column='DT_13_ADIANTAMENTO_ENTREGA', null=True, blank=True)
+    obs_13 = models.TextField(db_column='OBS_13', null=True, blank=True)
+    obs_13_adiantamento = models.TextField(db_column='OBS_13_ADIANTAMENTO', null=True, blank=True)
+    plr = models.CharField(max_length=10, db_column='PLR', null=True, blank=True)
+    plr_dt_entrega = models.CharField(max_length=10, db_column='PLR_DT_ENTREGA', null=True, blank=True)
+    plr_dt_pagto = models.CharField(max_length=10, db_column='PLR_DT_PAGTO', null=True, blank=True)
+    obs_plr = models.TextField(db_column='OBS_PLR', null=True, blank=True)
+
+    # Observações
+    obs_admissao = models.TextField(db_column='OBS_ADMISSAO', null=True, blank=True)
+    obs_ferias = models.TextField(db_column='OBS_FERIAS', null=True, blank=True)
+    obs_rescisao = models.TextField(db_column='OBS_RESCISAO', null=True, blank=True)
+
+    # Ponto
     periodo_ponto = models.CharField(max_length=50, db_column='PERIODO_PONTO', null=True, blank=True)
     tipo_ponto = models.CharField(max_length=50, db_column='TIPO_PONTO', null=True, blank=True)
-    info_ferias = models.TextField(db_column='INFO_FERIAS', null=True, blank=True)
-    obs_rescisao = models.TextField(db_column='OBS_RESCISAO', null=True, blank=True)
+    ponto_ini = models.CharField(max_length=10, db_column='PONTO_INI', null=True, blank=True)
+    ponto_fim = models.CharField(max_length=10, db_column='PONTO_FIM', null=True, blank=True)
+    obs_ponto = models.TextField(db_column='OBS_PONTO', null=True, blank=True)
+    fecha_ponto = models.CharField(max_length=50, db_column='FECHA_PONTO', null=True, blank=True)
+    envia_ponto = models.CharField(max_length=50, db_column='ENVIA_PONTO', null=True, blank=True)
+
+    # Honorários
+    honorarios = models.DecimalField(max_digits=10, decimal_places=2, db_column='Honorarios', null=True, blank=True)
+
+    # Acessos e sistemas
     login_out_sist = models.CharField(max_length=100, db_column='LOGIN_OUT_SIST', null=True, blank=True)
     sen_out_sist = models.CharField(max_length=100, db_column='SEN_OUT_SIST', null=True, blank=True)
     cad_pat = models.CharField(max_length=50, db_column='CAD_PAT', null=True, blank=True)
     usu_pat = models.CharField(max_length=100, db_column='USU_PAT', null=True, blank=True)
     sen_pat = models.CharField(max_length=100, db_column='SEN_PAT', null=True, blank=True)
-    dt_envio_cct = models.DateField(db_column='DT_ENVIO_CCT', null=True, blank=True)
-    opc_rec_patronal = models.CharField(max_length=50, db_column='OPC_REC_PATRONAL', null=True, blank=True)
-    dt_venc_conec_social = models.DateField(db_column='DT_VENC_CONEC_SOCIAL', null=True, blank=True)
+    tem_pat = models.CharField(max_length=10, db_column='TEM_PAT', null=True, blank=True)
+
     sd_login = models.CharField(max_length=100, db_column='SD_LOGIN', null=True, blank=True)
     sd_senha = models.CharField(max_length=100, db_column='SD_SENHA', null=True, blank=True)
     sd_email = models.EmailField(db_column='SD_EMAIL', null=True, blank=True)
+
+    # Datas e vencimentos
+    dt_envio_cct = models.DateField(db_column='DT_ENVIO_CCT', null=True, blank=True)
+    opc_rec_patronal = models.CharField(max_length=50, db_column='OPC_REC_PATRONAL', null=True, blank=True)
+    dt_venc_conec_social = models.DateField(db_column='DT_VENC_CONEC_SOCIAL', null=True, blank=True)
+    venc_procuracao = models.DateField(db_column='VENC_PROCURACAO', null=True, blank=True)
+    venc_fgts_digital = models.DateField(db_column='VENC_FGTS_DIGITAL', null=True, blank=True)
+
+    # Outras flags
     fgts_digital = models.CharField(max_length=50, db_column='FGTS_DIGITAL', null=True, blank=True)
-    
+    tem_det = models.CharField(max_length=10, db_column='TEM_DET', null=True, blank=True)
+    tem_fap = models.CharField(max_length=10, db_column='TEM_FAP', null=True, blank=True)
+    apura_vt = models.CharField(max_length=10, db_column='APURA_VT', null=True, blank=True)
+
+    # Serviços
+    aprendizes = models.TextField(db_column='APRENDIZES', null=True, blank=True)
+    med_ocupa = models.TextField(db_column='MED_OCUPA', null=True, blank=True)
+
     class Meta:
-        managed = True
+        managed = False
         db_table = 'geral_planilha_gerencial'
+
+
+
+# PERÍODOS DE ENTREGA
+class PeriodoEntrega(models.Model):
+    DIA_TIPO_CHOICES = [
+        ('DIA', 'Dia Corrido'),
+        ('DIA_UTIL', 'Dia Útil'),
+    ]
+
+    dia = models.PositiveSmallIntegerField()  # Ex: 5, 10, 20
+    tipo = models.CharField(max_length=10, choices=DIA_TIPO_CHOICES)
+    descricao = models.CharField(max_length=50, editable=False)
+
+    class Meta:
+        managed = False
+        db_table = 'periodos_entrega'
+        unique_together = ('dia', 'tipo')
+        ordering = ['tipo', 'dia']
+
+    def save(self, *args, **kwargs):
+        # Gera descrição automaticamente
+        if self.tipo == 'DIA_UTIL':
+            self.descricao = f"{self.dia}º Dia Útil"
+        else:
+            self.descricao = f"Dia {self.dia}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.descricao
+
+
+# SISTEMAS
+class Sistema(models.Model):
+    nome = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        managed = False
+        db_table = 'sistemas'
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.nome
+
+
 
 #SERVIÇOS SOLICITADOS X EMPRESA 
 class ServicoSolicitado(models.Model):
@@ -128,6 +217,7 @@ class Servico(models.Model):
 
 #CADASTRO BASE DE AGENDA DE ATIVIDADES
 class AgendaBase(models.Model):
+    id = models.BigAutoField(primary_key=True) 
     PERIODO_CHOICES = [
         ('mensal', 'Mensal'),
         ('semestral', 'Semestral'),
@@ -144,6 +234,7 @@ class AgendaBase(models.Model):
 
     class Meta:
         db_table = 'pg_agenda_base'
+        managed = False 
 
     def __str__(self):
         return self.nome

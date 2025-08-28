@@ -5,6 +5,8 @@ import Grupos from './pages/grupos';
 import Responsaveis from './pages/responsaveis';
 import Servicos from './pages/servicos';
 import AgendaBase from './pages/agenda';
+import Periodos from './pages/periodos';
+import Sistemas from './pages/sistemas';
 import Login from './pages/login';
 import RequireAuth from './components/RequireAuth';
 import ServicosSolicitados from './pages/servicosSolicitados';
@@ -23,6 +25,8 @@ function App() {
             <Route path="servicos" element={<Servicos />} />
             <Route path="grupos" element={<Grupos />} />
             <Route path="responsaveis" element={<Responsaveis />} />
+            <Route path="sistemas" element={<Sistemas />} />
+            <Route path="periodos" element={<Periodos />} />
             <Route path="agenda" element={<AgendaBase />} />
             <Route path="servicos-solicitados" element={<ServicosSolicitados />} />
           </Route>

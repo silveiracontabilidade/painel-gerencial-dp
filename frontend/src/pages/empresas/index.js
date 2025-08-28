@@ -4,9 +4,10 @@ import { Plus, Pencil } from 'lucide-react';
 import React, { useEffect, useState, useMemo } from 'react';
 import api from '../../api/axios';
 import './Empresas.css';
+import { paraISO, paraBR } from '../../utils/datas';
 
 export default function Empresas() {
-// const [empresas, setEmpresas] = useState([]);
+
 const [empresas, setEmpresas] = useState([]);
 const [page, setPage] = useState(1);
 const pageSize = 2000; // ou outro valor conforme necessário 
@@ -15,6 +16,20 @@ const [modalDelegarAberto, setModalDelegarAberto] = useState(false);
 const [novoResponsavel, setNovoResponsavel] = useState('');
 
 const [ordenacao, setOrdenacao] = useState({ campo: '', direcao: 'asc' });
+
+const [responsaveis, setResponsaveis] = useState([]);
+
+useEffect(() => {
+  async function fetchResponsaveis() {
+    try {
+      const { data } = await api.get("/api/responsaveis/");
+      setResponsaveis(data); // já vem ordenado
+    } catch (err) {
+      console.error("Erro ao buscar responsáveis:", err);
+    }
+  }
+  fetchResponsaveis();
+}, []);
 
 const [filters, setFilters] = useState({
     cod_folha: '',
@@ -174,27 +189,60 @@ const fecharModal = () => {
   setEmpresaSelecionada(null);
 };
 
+ 
 const salvarEmpresa = async (empresa) => {
   try {
-    let novaEmpresa;
+    const camposData = [
+      'inicio_contrato',
+      'termino_contrato',
+      'dt_envio_cct',
+      'dt_venc_conec_social',
+      'venc_procuracao'
+    ];
 
-    if (empresa.id) {
-      const res = await api.put(`/api/empresas/${empresa.id}/`, empresa);
+    const payload = { ...empresa };
+
+    camposData.forEach(campo => {
+      if (payload[campo]) {
+        payload[campo] = paraISO(payload[campo]);
+      } else {
+        payload[campo] = null;
+      }
+    });
+
+    // 👉 loga aqui antes de enviar
+    console.log("Payload de datas preparado:", {
+      inicio_contrato: payload.inicio_contrato,
+      termino_contrato: payload.termino_contrato,
+      dt_envio_cct: payload.dt_envio_cct,
+      dt_venc_conec_social: payload.dt_venc_conec_social,
+      venc_procuracao: payload.venc_procuracao,
+    });
+
+    delete payload.cnpj_formatado;
+    delete payload.id;
+
+    let novaEmpresa;
+    if (payload.cod_folha) {
+      const res = await api.put(`/api/empresas/${payload.cod_folha}/`, payload);
       novaEmpresa = res.data;
       setEmpresas(prev =>
-        prev.map(e => e.id === empresa.id ? novaEmpresa : e)
+        prev.map(e => e.cod_folha === payload.cod_folha ? novaEmpresa : e)
       );
     } else {
-      const res = await api.post('/api/empresas/', empresa);
+      const res = await api.post('/api/empresas/', payload);
       novaEmpresa = res.data;
       setEmpresas(prev => [...prev, novaEmpresa]);
     }
 
     fecharModal();
   } catch (err) {
-    console.error(err);
+    console.error("Erro ao salvar empresa:", err.response?.data || err);
+    alert("Erro ao salvar empresa");
   }
 };
+
+
 
 
   return (
@@ -392,7 +440,7 @@ const salvarEmpresa = async (empresa) => {
                 </td>
                 <td>{emp.razao_social}</td>
                 <td>{emp.grupo_economico}</td>
-                <td>{emp.cnpj}</td>
+                <td>{emp.cnpj_formatado}</td>
                 <td>{emp.status_do_cliente}</td>
                 <td>{emp.inicio_contrato}</td>
                 <td>{emp.termino_contrato}</td>
@@ -448,12 +496,20 @@ const salvarEmpresa = async (empresa) => {
             <h3>Delegar Responsável</h3>
             <p>Selecione o novo responsável para as empresas marcadas:</p>
 
-            <select value={novoResponsavel} onChange={e => setNovoResponsavel(e.target.value)}>
+            {/* <select value={novoResponsavel} onChange={e => setNovoResponsavel(e.target.value)}>
               <option value="">Selecione</option>
               {options.resp_dp.map(r => (
                 <option key={r} value={r}>{r}</option>
               ))}
-            </select>
+            </select> */}
+
+            <select value={novoResponsavel} onChange={e => setNovoResponsavel(e.target.value)}>
+              <option value="">Selecione</option>
+              {responsaveis.map(r => (
+                <option key={r.id} value={r.nome}>{r.nome}</option>
+              ))}
+            </select>  
+
 
             <div className="modal-botoes">
               <button onClick={async () => {

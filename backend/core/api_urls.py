@@ -6,7 +6,9 @@ from .api_views import (
     PlanilhaGerencialViewSet,
     ServicoViewSet,
     ServicoSolicitadoViewSet, 
-    AgendaBaseViewSet
+    AgendaBaseViewSet, 
+    SistemaViewSet,
+    PeriodoEntregaViewSet
 )
 
 router = DefaultRouter()
@@ -17,5 +19,7 @@ router.register(r'empresas', PlanilhaGerencialViewSet)
 router.register(r'servicos', ServicoViewSet)
 router.register(r'solicitacoes', ServicoSolicitadoViewSet)
 router.register(r'agenda-base', AgendaBaseViewSet)
+router.register(r'sistemas', SistemaViewSet)
+router.register(r'periodos-entrega', PeriodoEntregaViewSet)
 
 urlpatterns = router.urls

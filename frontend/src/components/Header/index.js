@@ -81,7 +81,10 @@ const Header = () => {
                   <li><NavLink to="/grupos">Grupos</NavLink></li>
                   <li><NavLink to="/responsaveis">Responsáveis</NavLink></li>
                   <li><NavLink to="/servicos">Serviços</NavLink></li>
+                  <li><NavLink to="/sistemas">Sistemas</NavLink></li>
+                  <li><NavLink to="/periodos">Periodos</NavLink></li>
                   <li><NavLink to="/agenda">Agenda</NavLink></li>
+                  
                 </ul>
               )}
             </li>
