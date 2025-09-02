@@ -5,12 +5,11 @@ from .models import (
     Responsavel,
     PlanilhaGerencial,
     Servico,
-    ServicoSolicitado,AgendaBase,Sistema, PeriodoEntrega
+    ServicoSolicitado,AgendaBase,Sistema, PeriodoEntrega, CCT, PG_PLR
 )
 import math
 from decimal import Decimal
 from rest_framework.fields import CharField
-
 
 
 # --------- Saneamento: NaN/"nan" -> "" na saída | "" -> None na entrada ----------
@@ -111,6 +110,9 @@ class ServicoSerializer(BaseSerializer):
         fields = ['id', 'nome', 'prazo_dias']
 
 # ---------------------- Serviço Solicitado ----------------------
+
+from .models import ServicoSolicitado, PlanilhaGerencial  # garante import de PlanilhaGerencial
+
 class ServicoSolicitadoSerializer(BaseSerializer):
     empresa_razao_social = serializers.SerializerMethodField(read_only=True)
     servico_nome = serializers.StringRelatedField(source='servico', read_only=True)
@@ -120,11 +122,48 @@ class ServicoSolicitadoSerializer(BaseSerializer):
         fields = [
             'id', 'data_solicitacao', 'empresa', 'empresa_razao_social',
             'servico', 'servico_nome', 'competencia', 'identificacao',
-            'descricao_servico', 'data_vencimento', 'data_para_resposta', 'data_conclusao'
+            'descricao_servico', 'data_vencimento', 'data_para_resposta',
+            'data_conclusao', 'status'   # 👈 novo campo incluído
         ]
 
     def get_empresa_razao_social(self, obj):
-        return getattr(obj.empresa, 'razao_social', None)
+        try:
+            emp = PlanilhaGerencial.objects.get(cod_folha=obj.empresa)
+            return emp.razao_social
+        except PlanilhaGerencial.DoesNotExist:
+            return None
+        except Exception:
+            return None
+
+
+
+# class ServicoSolicitadoSerializer(BaseSerializer):
+#     empresa_razao_social = serializers.SerializerMethodField(read_only=True)
+#     servico_nome = serializers.StringRelatedField(source='servico', read_only=True)
+
+#     class Meta:
+#         model = ServicoSolicitado
+#         fields = [
+#             'id', 'data_solicitacao', 'empresa', 'empresa_razao_social',
+#             'servico', 'servico_nome', 'competencia', 'identificacao',
+#             'descricao_servico', 'data_vencimento', 'data_para_resposta',
+#             'data_conclusao', 'status'   # 👈 adiciona aqui
+#         ]
+
+# class ServicoSolicitadoSerializer(BaseSerializer):
+#     empresa_razao_social = serializers.SerializerMethodField(read_only=True)
+#     servico_nome = serializers.StringRelatedField(source='servico', read_only=True)
+
+#     class Meta:
+#         model = ServicoSolicitado
+#         fields = [
+#             'id', 'data_solicitacao', 'empresa', 'empresa_razao_social',
+#             'servico', 'servico_nome', 'competencia', 'identificacao',
+#             'descricao_servico', 'data_vencimento', 'data_para_resposta', 'data_conclusao'
+#         ]
+
+#     def get_empresa_razao_social(self, obj):
+#         return getattr(obj.empresa, 'razao_social', None)    
     
 
 # # # ---------------------- AGENDA BASE ----------------------
@@ -167,4 +206,66 @@ class PeriodoEntregaSerializer(serializers.ModelSerializer):
             descricao = f"Dia {dia}"
         validated_data['descricao'] = descricao
         return super().update(instance, validated_data)
+
+
+
+# # # ---------------------- CCTs ----------------------
+class CCTSerializer(serializers.ModelSerializer):
+    empresa_nome = serializers.SerializerMethodField()
+    # aceita vazio e múltiplos formatos de data
+    data_envio = serializers.DateField(
+        required=False,
+        allow_null=True,
+        input_formats=['%Y-%m-%d', '%d-%m-%Y', '%Y/%m/%d']
+    )
+
+    class Meta:
+        model = CCT
+        fields = [
+            'id',
+            'cod_folha',
+            'codigo_sindicato',
+            'data_envio',
+            'ano_base',
+            'empresa_nome',
+            'cct_link',
+            'cct_login',
+            'cct_senha',
+        ]
+        # 👇 Permite string vazia ('') e não obriga envio
+        extra_kwargs = {
+            'cct_link':  {'required': False, 'allow_blank': True},
+            'cct_login': {'required': False, 'allow_blank': True},
+            'cct_senha': {'required': False, 'allow_blank': True},
+            # se quiser também aceitar null (None), só ative se o model tiver null=True:
+            # 'cct_link':  {'required': False, 'allow_blank': True, 'allow_null': True},
+            # 'cct_login': {'required': False, 'allow_blank': True, 'allow_null': True},
+            # 'cct_senha': {'required': False, 'allow_blank': True, 'allow_null': True},
+        }
+
+    def get_empresa_nome(self, obj):
+        try:
+            # ajuste se a relação correta for com cod_folha (em vez de cod_folha_520)
+            return PlanilhaGerencial.objects.get(cod_folha_520=obj.cod_folha).razao_social
+        except PlanilhaGerencial.DoesNotExist:
+            return None
+
+
+
+
+
+
+# # # ---------------------- PLR ----------------------
+class PGPLRSerializer(serializers.ModelSerializer):
+    data_entrega = serializers.DateField(required=False, allow_null=True,
+                                         input_formats=['%Y-%m-%d','%d-%m-%Y','%Y/%m/%d'])
+    class Meta:
+        model = PG_PLR
+        fields = ['id','cod_folha','numero_sindicato','parcela','valor','mes_pagamento','data_entrega']
+        extra_kwargs = {
+            'cod_folha':        {'required': False, 'allow_blank': True},
+            'numero_sindicato': {'required': False, 'allow_blank': True},
+            'parcela':          {'required': False, 'allow_blank': True},
+            'mes_pagamento':    {'required': False, 'allow_blank': True},
+        }
 

@@ -127,6 +127,30 @@
   background-color: #fff;
 }
 
+.modal-form .textarea-grande {
+  box-sizing: border-box;
+  min-height: 80px;
+  max-height: 29px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 11px;
+  resize: none ;
+  background-color: #fff;
+}
+
+.modal-form .textarea-medio {
+  box-sizing: border-box;
+  min-height: 70px;
+  max-height: 29px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 11px;
+  resize: none ;
+  background-color: #fff;
+}
+
 /* Foco */
 .modal-form input:focus,
 .modal-form select:focus,
@@ -186,5 +210,16 @@
   color: #C3996B; /* cor principal do sistema */
 }
 
+/* Tabela CCT */
+.tabela-cct {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
 
-
+.tabela-cct th, .tabela-cct td {
+  font-size: 10px;
+  border: 1px solid #ccc;
+  padding: 5px;
+  text-align: left;
+}

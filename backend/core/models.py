@@ -93,6 +93,7 @@ class PlanilhaGerencial(models.Model):
     obs_admissao = models.TextField(db_column='OBS_ADMISSAO', null=True, blank=True)
     obs_ferias = models.TextField(db_column='OBS_FERIAS', null=True, blank=True)
     obs_rescisao = models.TextField(db_column='OBS_RESCISAO', null=True, blank=True)
+    obs_gerencial = models.TextField(db_column='OBS_GERENCIAL', null=True, blank=True)
 
     # Ponto
     periodo_ponto = models.CharField(max_length=50, db_column='PERIODO_PONTO', null=True, blank=True)
@@ -154,7 +155,7 @@ class PeriodoEntrega(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'periodos_entrega'
+        db_table = 'pg_periodos_entrega'
         unique_together = ('dia', 'tipo')
         ordering = ['tipo', 'dia']
 
@@ -176,7 +177,7 @@ class Sistema(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'sistemas'
+        db_table = 'pg_sistemas'
         ordering = ['nome']
 
     def __str__(self):
@@ -187,8 +188,8 @@ class Sistema(models.Model):
 #SERVIÇOS SOLICITADOS X EMPRESA 
 class ServicoSolicitado(models.Model):
     data_solicitacao = models.DateField()
-    empresa = models.IntegerField()
-    servico = models.ForeignKey('Servico', on_delete=models.CASCADE)  # FK nova
+    empresa = models.IntegerField()  # cod_folha da empresa
+    servico = models.ForeignKey('Servico', on_delete=models.CASCADE)  # FK para Servico
     competencia = models.CharField(max_length=6)
     identificacao = models.CharField(max_length=100, null=True, blank=True)
     descricao_servico = models.TextField(null=True, blank=True)
@@ -196,11 +197,18 @@ class ServicoSolicitado(models.Model):
     data_para_resposta = models.DateField(null=True, blank=True)
     data_conclusao = models.DateField(null=True, blank=True)
 
+    STATUS_CHOICES = [
+        ("PENDENTE", "Pendente"),
+        ("PAUSADO", "Pendente"),
+        ("CONCLUIDO", "Concluído"),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDENTE")
+
     class Meta:
         db_table = 'pg_servicos_solicitados'
 
     def __str__(self):
-        return f"{self.empresa.razao_social} - {self.servico.nome} ({self.competencia})"
+        return f"Empresa {self.empresa} - {self.servico.nome} ({self.competencia})"
     
 #CADASTRO DE SERVIÇOS
 class Servico(models.Model):
@@ -238,3 +246,41 @@ class AgendaBase(models.Model):
 
     def __str__(self):
         return self.nome
+
+
+class CCT(models.Model):
+    id = models.AutoField(primary_key=True)
+    cod_folha = models.CharField(max_length=10, db_column='cod_folha')
+    codigo_sindicato = models.CharField(max_length=50)
+    data_envio = models.DateField()
+    ano_base = models.IntegerField()
+    cct_link = models.CharField(max_length=60)
+    cct_login = models.CharField(max_length=20)
+    cct_senha = models.CharField(max_length=20)
+
+    class Meta:
+        db_table = 'pg_ccts'
+
+    def __str__(self):
+        return f"{self.cod_folha} - {self.codigo_sindicato} ({self.ano_base})"
+    
+    
+class PG_PLR(models.Model):
+    id = models.AutoField(primary_key=True)
+    cod_folha = models.CharField("Cód. Folha", max_length=20, blank=True, null=True)  # <— novo
+    numero_sindicato = models.CharField("Nº Sindicato", max_length=50, blank=True, null=True)
+    parcela = models.CharField("Parcela", max_length=20, blank=True, null=True)
+    valor = models.DecimalField("Valor", max_digits=12, decimal_places=2, blank=True, null=True)
+    mes_pagamento = models.CharField("Mês de Pagamento", max_length=20, blank=True, null=True)
+    data_entrega = models.DateField("Data da Entrega", blank=True, null=True)
+
+    class Meta:
+        db_table = 'pg_plr'
+        verbose_name = "Pagamento de PLR"
+        verbose_name_plural = "Pagamentos de PLR"
+        managed = False
+
+    def __str__(self):
+        return f"{self.cod_folha or ''} - {self.numero_sindicato or ''} - {self.parcela or ''}"
+
+

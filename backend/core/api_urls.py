@@ -8,7 +8,9 @@ from .api_views import (
     ServicoSolicitadoViewSet, 
     AgendaBaseViewSet, 
     SistemaViewSet,
-    PeriodoEntregaViewSet
+    PeriodoEntregaViewSet,
+    CCTViewSet,
+    PGPLRViewSet
 )
 
 router = DefaultRouter()
@@ -21,5 +23,8 @@ router.register(r'solicitacoes', ServicoSolicitadoViewSet)
 router.register(r'agenda-base', AgendaBaseViewSet)
 router.register(r'sistemas', SistemaViewSet)
 router.register(r'periodos-entrega', PeriodoEntregaViewSet)
+router.register(r'ccts', CCTViewSet)   # <-- registra aqui
+router.register(r'pg-plr', PGPLRViewSet, basename='pg-plr')
+
 
 urlpatterns = router.urls

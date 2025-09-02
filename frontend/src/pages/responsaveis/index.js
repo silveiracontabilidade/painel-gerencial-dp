@@ -65,7 +65,7 @@ export default function Responsaveis() {
       email: '',
       ramal: '',
       grupo: null,
-      perfil: 'operador'
+      perfil: ''
     });
   };
 
@@ -137,7 +137,9 @@ export default function Responsaveis() {
                   onChange={(e) => setDadosEditados({ ...dadosEditados, perfil: e.target.value })}
                 >
                   <option value="admin">Administrador</option>
-                  <option value="operador">Operador</option>
+                  <option value="coordenador">Coordenador</option>
+                  <option value="analista-senior">Analista Sênior</option>
+                  <option value="analista">Analista</option>
                 </select>
               </td>
               <td className="col-acoes acoes">
@@ -215,8 +217,9 @@ export default function Responsaveis() {
                     onChange={(e) => setDadosEditados({ ...dadosEditados, perfil: e.target.value })}
                   >
                     <option value="admin">Administrador</option>
-                    <option value="operador">Coordenador</option>
-                    <option value="operador">Operador</option>
+                    <option value="coordenador">Coordenador</option>
+                    <option value="analista-senior">Analista Sênior</option>
+                    <option value="analista">Analista</option>
                   </select>
                 ) : (
                   r.perfil

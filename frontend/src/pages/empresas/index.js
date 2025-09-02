@@ -48,7 +48,8 @@ const [filters, setFilters] = useState({
     ramal: '',
     data_pagto_salario_inicio: '',
     data_pagto_salario_fim: '',
-    classificacao: '',
+    categoria: '',
+    classificacao2: '',
     matriz: '',
     enviadctf: '',
   });
@@ -84,7 +85,8 @@ const empresasFiltradas = useMemo(() => {
     (!filters.grupo || normalize(emp.grupo) === normalize(filters.grupo)) &&
     (!filters.resp_dp || normalize(emp.resp_dp) === normalize(filters.resp_dp)) &&
     (!filters.ramal || normalize(emp.ramal).includes(normalize(filters.ramal))) &&
-    (!filters.classificacao || normalize(emp.classificacao) === normalize(filters.classificacao)) &&
+    (!filters.categoria || normalize(emp.classificacao) === normalize(filters.categoria)) &&
+    (!filters.classificacao2 || normalize(emp.classificacao2) === normalize(filters.classificacao2)) &&
     (!filters.matriz || normalize(emp.matriz).includes(normalize(filters.matriz))) &&
     (!filters.enviadctf || normalize(emp.enviadctf).includes(normalize(filters.enviadctf))) &&
     (!filters.data_pagto_salario_inicio || normalize(emp.data_pagto_salario) === normalize(filters.data_pagto_salario_inicio)) &&
@@ -190,6 +192,70 @@ const fecharModal = () => {
 };
 
  
+// const salvarEmpresa = async (empresa) => {
+//   try {
+//     const camposData = [
+//       'inicio_contrato',
+//       'termino_contrato',
+//       'dt_envio_cct',
+//       'dt_venc_conec_social',
+//       'venc_procuracao'
+//     ];
+
+//     const payload = { ...empresa };
+
+//     // normaliza datas
+//     camposData.forEach(campo => {
+//       if (payload[campo]) {
+//         payload[campo] = paraISO(payload[campo]);
+//       } else {
+//         payload[campo] = null;
+//       }
+//     });
+
+//     delete payload.cnpj_formatado;
+//     delete payload.id;
+
+//     // salva empresa
+//     let novaEmpresa;
+//     if (payload.cod_folha) {
+//       const res = await api.put(`/api/empresas/${payload.cod_folha}/`, payload);
+//       novaEmpresa = res.data;
+//       setEmpresas(prev =>
+//         prev.map(e => e.cod_folha === payload.cod_folha ? novaEmpresa : e)
+//       );
+//     } else {
+//       const res = await api.post('/api/empresas/', payload);
+//       novaEmpresa = res.data;
+//       setEmpresas(prev => [...prev, novaEmpresa]);
+//     }
+
+//     // 🔥 sincroniza os CCTs
+//     if (empresa.ccts && empresa.ccts.length > 0) {
+//       for (const cct of empresa.ccts) {
+//         if (cct.id && Number.isInteger(cct.id)) {
+//           // já existe no banco → update
+//           await api.put(`/api/ccts/${cct.id}/`, {
+//             ...cct,
+//             cod_folha: novaEmpresa.cod_folha,
+//           });
+//         } else {
+//           // novo → create
+//           await api.post(`/api/ccts/`, {
+//             ...cct,
+//             cod_folha: novaEmpresa.cod_folha,
+//           });
+//         }
+//       }
+//     }
+
+//     fecharModal();
+//   } catch (err) {
+//     console.error("Erro ao salvar empresa:", err.response?.data || err);
+//     alert("Erro ao salvar empresa");
+//   }
+// };
+
 const salvarEmpresa = async (empresa) => {
   try {
     const camposData = [
@@ -202,6 +268,7 @@ const salvarEmpresa = async (empresa) => {
 
     const payload = { ...empresa };
 
+    // normaliza datas da empresa
     camposData.forEach(campo => {
       if (payload[campo]) {
         payload[campo] = paraISO(payload[campo]);
@@ -210,18 +277,10 @@ const salvarEmpresa = async (empresa) => {
       }
     });
 
-    // 👉 loga aqui antes de enviar
-    console.log("Payload de datas preparado:", {
-      inicio_contrato: payload.inicio_contrato,
-      termino_contrato: payload.termino_contrato,
-      dt_envio_cct: payload.dt_envio_cct,
-      dt_venc_conec_social: payload.dt_venc_conec_social,
-      venc_procuracao: payload.venc_procuracao,
-    });
-
     delete payload.cnpj_formatado;
     delete payload.id;
 
+    // salva empresa
     let novaEmpresa;
     if (payload.cod_folha) {
       const res = await api.put(`/api/empresas/${payload.cod_folha}/`, payload);
@@ -235,14 +294,75 @@ const salvarEmpresa = async (empresa) => {
       setEmpresas(prev => [...prev, novaEmpresa]);
     }
 
+    // 🔥 sincroniza os CCTs (PUT com fallback para POST) + data_envio em ISO
+    if (empresa.ccts && empresa.ccts.length > 0) {
+      for (const cct of empresa.ccts) {
+        // monta payload do CCT
+        const payloadCCT = {
+          ...cct,
+          cod_folha: novaEmpresa.cod_folha,
+          // se vier "dd-mm-aaaa", converte; se já vier ISO, mantém
+          data_envio: cct.data_envio ? paraISO(cct.data_envio) : null,
+        };
+
+        if (cct.id) {
+          try {
+            // tenta atualizar
+            await api.put(`/api/ccts/${cct.id}/`, payloadCCT);
+          } catch (e) {
+            // se não existir, cria
+            if (e?.response?.status === 404) {
+              const { id, ...semId } = payloadCCT;
+              await api.post(`/api/ccts/`, semId);
+            } else {
+              throw e; // propaga outros erros
+            }
+          }
+        } else {
+          // sem id → cria
+          const { id, ...semId } = payloadCCT;
+          await api.post(`/api/ccts/`, semId);
+        }
+      }
+    }
+
+    // 🔥 sincroniza os PLRs (PUT com fallback para POST) + normalizações
+    if (empresa.plrs && empresa.plrs.length > 0) {
+      for (const plr of empresa.plrs) {
+        const payloadPLR = {
+          ...plr,
+          cod_folha: novaEmpresa.cod_folha,
+          data_entrega: plr.data_entrega ? paraISO(plr.data_entrega) : null,
+          // normaliza valor: "1.234,56" → "1234.56"
+          valor: plr.valor === '' || plr.valor === null || plr.valor === undefined
+            ? null
+            : String(plr.valor).replace(/\./g, '').replace(',', '.'),
+        };
+
+        if (plr.id && !String(plr.id).startsWith('tmp-')) {
+          try {
+            await api.put(`/api/pg-plr/${plr.id}/`, payloadPLR);
+          } catch (e) {
+            if (e?.response?.status === 404) {
+              const { id, ...semId } = payloadPLR;
+              await api.post(`/api/pg-plr/`, semId);
+            } else {
+              throw e;
+            }
+          }
+        } else {
+          const { id, ...semId } = payloadPLR;
+          await api.post(`/api/pg-plr/`, semId);
+        }
+      }
+    }
+
     fecharModal();
-  } catch (err) {
-    console.error("Erro ao salvar empresa:", err.response?.data || err);
-    alert("Erro ao salvar empresa");
-  }
-};
-
-
+      } catch (err) {
+        console.error("Erro ao salvar empresa:", err.response?.data || err);
+        alert("Erro ao salvar empresa");
+      }
+    };
 
 
   return (
@@ -276,13 +396,13 @@ const salvarEmpresa = async (empresa) => {
           <thead>
             <tr>
               <th className="col-texto-muito-curto">#</th>
-              <th className="col-texto-medio" onClick={() => handleOrdenar('cod_folha')} style={{ cursor: 'pointer' }}>
+              <th className="col-texto-curto2" onClick={() => handleOrdenar('cod_folha')} style={{ cursor: 'pointer' }}>
                 Código {ordenacao.campo === 'cod_folha' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-texto-longo" onClick={() => handleOrdenar('razao_social')} style={{ cursor: 'pointer' }}>
                 Nome {ordenacao.campo === 'razao_social' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="col-texto-curto" onClick={() => handleOrdenar('grupo_economico')} style={{ cursor: 'pointer' }}>
+              <th className="col-texto-medio" onClick={() => handleOrdenar('grupo_economico')} style={{ cursor: 'pointer' }}>
                 Grupo Econ. {ordenacao.campo === 'grupo_economico' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-texto-curto" onClick={() => handleOrdenar('cnpj')} style={{ cursor: 'pointer' }}>
@@ -309,15 +429,19 @@ const salvarEmpresa = async (empresa) => {
               <th className="col-texto-medio" onClick={() => handleOrdenar('resp_dp')} style={{ cursor: 'pointer' }}>
                 Resp. {ordenacao.campo === 'resp_dp' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="col-texto-sim-nao" onClick={() => handleOrdenar('ramal')} style={{ cursor: 'pointer' }}>
+              {/* <th className="col-texto-sim-nao" onClick={() => handleOrdenar('ramal')} style={{ cursor: 'pointer' }}>
                 Ramal {ordenacao.campo === 'ramal' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
-              </th>
+              </th> */}
               <th className="col-data" onClick={() => handleOrdenar('data_pagto_salario')} style={{ cursor: 'pointer' }}>
                 Data Pgt. {ordenacao.campo === 'data_pagto_salario' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-texto-medio" onClick={() => handleOrdenar('classificacao')} style={{ cursor: 'pointer' }}>
-                Class. {ordenacao.campo === 'classificacao' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+                Categ. {ordenacao.campo === 'classificacao' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
+              <th className="col-texto-medio" onClick={() => handleOrdenar('classificacao2')} style={{ cursor: 'pointer' }}>
+                Class. {ordenacao.campo === 'classificacao2' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+              </th>
+
               <th className="col-texto-sim-nao" onClick={() => handleOrdenar('matriz')} style={{ cursor: 'pointer' }}>
                 Mat. {ordenacao.campo === 'matriz' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
@@ -379,9 +503,9 @@ const salvarEmpresa = async (empresa) => {
                   {options.resp_dp.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </th>
-              <th className="col-texto-curto">
+              {/* <th className="col-texto-curto">
                 <input type="text" value={filters.ramal} onChange={handleFilterChange('ramal')} className={filters.ramal ? 'filtro-ativo' : ''} />
-              </th>
+              </th> */}
               <th className="col-data">
                 <select
                   value={filters.data_pagto_salario_inicio}
@@ -402,6 +526,25 @@ const salvarEmpresa = async (empresa) => {
                   <option value="Prata">Prata</option>
                   <option value="Ouro">Ouro</option>
                   <option value="Diamante">Diamante</option>
+                </select>
+              </th>
+              <th>
+                <select value={filters.classificacao2} onChange={handleFilterChange('classificacao2')}>
+                  <option value="">Todos</option>
+                  <option value="BPO FIN">BPO FIN</option>
+                  <option value="BPO RH">BPO RH</option>
+                  <option value="CARNÊ LEÃO">CARNÊ LEÃO</option>
+                  <option value="CONSULTORIA">CONSULTORIA</option>
+                  <option value="DOM S/ MOV">DOM S/ MOV</option>
+                  <option value="DOMÉSTICA">DOMÉSTICA</option>
+                  <option value="FACULTATIVO">FACULTATIVO</option>
+                  <option value="FATOR R">FATOR R</option>
+                  <option value="FATOR R + FUNCS">FATOR R + FUNCS</option>
+                  <option value="FOLHA COM DADOS">FOLHA COM DADOS</option>
+                  <option value="FOLHA SEM DADOS">FOLHA SEM DADOS</option>
+                  <option value="PRÓ LABORE">PRÓ LABORE</option>
+                  <option value="TIME OUT">TIME OUT</option>
+                  <option value="SEM MOVIMENTO">SEM MOVIMENTO</option>
                 </select>
               </th>
               <th className="col-texto-curto">
@@ -448,9 +591,11 @@ const salvarEmpresa = async (empresa) => {
                 <td>{emp.sistema}</td>
                 <td>{emp.grupo}</td>
                 <td>{emp.resp_dp}</td>
-                <td>{emp.ramal}</td>
                 <td>{emp.data_pagto_salario}</td>
                 <td>{emp.classificacao}</td>
+                <td className={`classificacao2 ${emp.classificacao2?.toUpperCase().replace(/\s+/g, '-').replace('+','-')}`}>
+                    {emp.classificacao2}
+                </td>
                 <td>{emp.matriz}</td>
                 <td>{emp.enviadctf}</td>
               </tr>
@@ -495,13 +640,6 @@ const salvarEmpresa = async (empresa) => {
           <div className="modal-conteudo">
             <h3>Delegar Responsável</h3>
             <p>Selecione o novo responsável para as empresas marcadas:</p>
-
-            {/* <select value={novoResponsavel} onChange={e => setNovoResponsavel(e.target.value)}>
-              <option value="">Selecione</option>
-              {options.resp_dp.map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select> */}
 
             <select value={novoResponsavel} onChange={e => setNovoResponsavel(e.target.value)}>
               <option value="">Selecione</option>

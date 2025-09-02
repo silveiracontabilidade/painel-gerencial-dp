@@ -1,0 +1,441 @@
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, UserCog } from 'lucide-react';
+import EmpresaFormModal from './EmpresaFormModal'; // ajuste o path
+import { Plus } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import api from '../../api/axios';
+import './Empresas.css';
+import { paraISO } from '../../utils/datas';
+
+export default function Empresas() {
+  const [empresas, setEmpresas] = useState([]);
+  const [page, setPage] = useState(1);
+  const pageSize = 2000;
+
+  const [modalDelegarAberto, setModalDelegarAberto] = useState(false);
+  const [novoResponsavel, setNovoResponsavel] = useState('');
+
+  const [ordenacao, setOrdenacao] = useState({ campo: '', direcao: 'asc' });
+
+  const [responsaveis, setResponsaveis] = useState([]);
+
+  useEffect(() => {
+    async function fetchResponsaveis() {
+      try {
+        const { data } = await api.get("/api/responsaveis/");
+        setResponsaveis(data);
+      } catch (err) {
+        console.error("Erro ao buscar responsáveis:", err);
+      }
+    }
+    fetchResponsaveis();
+  }, []);
+
+  const [filters, setFilters] = useState({
+    cod_folha: '',
+    razao_social: '',
+    grupo_economico: '',
+    cnpj: '',
+    status_do_cliente: '',
+    inicio_contrato_inicio: '',
+    inicio_contrato_fim: '',
+    termino_contrato_inicio: '',
+    termino_contrato_fim: '',
+    tributacao: '',
+    sistema: '',
+    grupo: '',
+    resp_dp: '',
+    ramal: '',
+    data_pagto_salario_inicio: '',
+    data_pagto_salario_fim: '',
+    categoria: '',
+    classificacao2: '',
+    matriz: '',
+    enviadctf: '',
+  });
+
+  const handleOrdenar = campo => {
+    setOrdenacao(prev => ({
+      campo,
+      direcao: prev.campo === campo && prev.direcao === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const empresasFiltradas = useMemo(() => {
+    const normalize = val => {
+      return (val || '')
+        .toString()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/["']/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+    };
+
+    const filtradas = empresas.filter(emp =>
+      (!filters.cod_folha || normalize(emp.cod_folha).includes(normalize(filters.cod_folha))) &&
+      (!filters.razao_social || normalize(emp.razao_social).includes(normalize(filters.razao_social))) &&
+      (!filters.grupo_economico || normalize(emp.grupo_economico).includes(normalize(filters.grupo_economico))) &&
+      (!filters.cnpj || normalize(emp.cnpj).includes(normalize(filters.cnpj))) &&
+      (!filters.status_do_cliente || normalize(emp.status_do_cliente) === normalize(filters.status_do_cliente)) &&
+      (!filters.tributacao || normalize(emp.tributacao).includes(normalize(filters.tributacao))) &&
+      (!filters.sistema || normalize(emp.sistema) === normalize(filters.sistema)) &&
+      (!filters.grupo || normalize(emp.grupo) === normalize(filters.grupo)) &&
+      (!filters.resp_dp || normalize(emp.resp_dp) === normalize(filters.resp_dp)) &&
+      (!filters.ramal || normalize(emp.ramal).includes(normalize(filters.ramal))) &&
+      (!filters.categoria || normalize(emp.classificacao) === normalize(filters.categoria)) &&
+      (!filters.classificacao2 || normalize(emp.classificacao2) === normalize(filters.classificacao2)) &&
+      (!filters.matriz || normalize(emp.matriz).includes(normalize(filters.matriz))) &&
+      (!filters.enviadctf || normalize(emp.enviadctf).includes(normalize(filters.enviadctf))) &&
+      (!filters.data_pagto_salario_inicio || normalize(emp.data_pagto_salario) === normalize(filters.data_pagto_salario_inicio)) &&
+      (!filters.inicio_contrato_inicio || new Date(emp.inicio_contrato) >= new Date(filters.inicio_contrato_inicio)) &&
+      (!filters.inicio_contrato_fim || new Date(emp.inicio_contrato) <= new Date(filters.inicio_contrato_fim)) &&
+      (!filters.termino_contrato_inicio || new Date(emp.termino_contrato) >= new Date(filters.termino_contrato_inicio)) &&
+      (!filters.termino_contrato_fim || new Date(emp.termino_contrato) <= new Date(filters.termino_contrato_fim))
+    );
+
+    if (ordenacao.campo) {
+      filtradas.sort((a, b) => {
+        const valA = (a[ordenacao.campo] || '').toString().toUpperCase();
+        const valB = (b[ordenacao.campo] || '').toString().toUpperCase();
+        if (valA < valB) return ordenacao.direcao === 'asc' ? -1 : 1;
+        if (valA > valB) return ordenacao.direcao === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return filtradas;
+  }, [empresas, filters, ordenacao]);
+
+  const empresasVisiveis = useMemo(() => {
+    const inicio = (page - 1) * pageSize;
+    return empresasFiltradas.slice(inicio, inicio + pageSize);
+  }, [empresasFiltradas, page]);
+
+  const [todosSelecionados, setTodosSelecionados] = useState(false);
+  const toggleSelecionado = (empresa) => {
+    setEmpresas(prev =>
+      prev.map(e =>
+        e === empresa ? { ...e, selecionado: !e.selecionado } : e
+      )
+    );
+  };
+  const toggleTodos = () => {
+    const novoValor = !todosSelecionados;
+    setTodosSelecionados(novoValor);
+    setEmpresas(prev =>
+      prev.map(e => ({ ...e, selecionado: novoValor }))
+    );
+  };
+
+  const options = useMemo(() => ({
+    sistema: Array.from(new Set(empresas.map(e => e.sistema).filter(Boolean))),
+    grupo: Array.from(new Set(empresas.map(e => e.grupo).filter(Boolean))),
+    resp_dp: Array.from(new Set(empresas.map(e => e.resp_dp).filter(Boolean))),
+  }), [empresas]);
+
+  useEffect(() => {
+    api.get('api/empresas/', { params: { page: 1, page_size: 2000 } })
+      .then(({ data }) => {
+        setEmpresas(data.results);
+      })
+      .catch(err => console.error(err));
+  }, []);
+
+  const handleFilterChange = field => e => {
+    setPage(1);
+    setFilters(prev => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const totalPages = Math.ceil(empresasFiltradas.length / pageSize);
+
+  const renderPages = () => {
+    const pages = [];
+    const maxPagesToShow = 5;
+    if (totalPages <= maxPagesToShow + 2) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (page <= 3) {
+        pages.push(1, 2, 3, 4, 5, 'ellipsis', totalPages);
+      } else if (page >= totalPages - 2) {
+        pages.push(1, 'ellipsis', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, 'ellipsis', page - 1, page, page + 1, 'ellipsis', totalPages);
+      }
+    }
+    return pages;
+  };
+
+  const [modalAberto, setModalAberto] = useState(false);
+  const [empresaSelecionada, setEmpresaSelecionada] = useState(null);
+
+  const abrirModal = (empresa = null) => {
+    setEmpresaSelecionada(empresa);
+    setModalAberto(true);
+  };
+  
+  const fecharModal = () => {
+    setModalAberto(false);
+    setEmpresaSelecionada(null);
+  };
+
+  const salvarEmpresa = async (empresa) => {
+    try {
+      const camposData = [
+        'inicio_contrato',
+        'termino_contrato',
+        'dt_envio_cct',
+        'dt_venc_conec_social',
+        'venc_procuracao'
+      ];
+
+      const payload = { ...empresa };
+      camposData.forEach(campo => {
+        if (payload[campo]) {
+          payload[campo] = paraISO(payload[campo]);
+        } else {
+          payload[campo] = null;
+        }
+      });
+
+      delete payload.cnpj_formatado;
+      delete payload.id;
+
+      let novaEmpresa;
+      if (payload.cod_folha) {
+        const res = await api.put(`/api/empresas/${payload.cod_folha}/`, payload);
+        novaEmpresa = res.data;
+        setEmpresas(prev =>
+          prev.map(e => e.cod_folha === payload.cod_folha ? novaEmpresa : e)
+        );
+      } else {
+        const res = await api.post('/api/empresas/', payload);
+        novaEmpresa = res.data;
+        setEmpresas(prev => [...prev, novaEmpresa]);
+      }
+
+      if (empresa.ccts && empresa.ccts.length > 0) {
+        for (const cct of empresa.ccts) {
+          if (cct.id && Number.isInteger(cct.id)) {
+            await api.put(`/api/ccts/${cct.id}/`, {
+              ...cct,
+              cod_folha: novaEmpresa.cod_folha,
+            });
+          } else {
+            await api.post(`/api/ccts/`, {
+              ...cct,
+              cod_folha: novaEmpresa.cod_folha,
+            });
+          }
+        }
+      }
+
+      fecharModal();
+    } catch (err) {
+      console.error("Erro ao salvar empresa:", err.response?.data || err);
+      alert("Erro ao salvar empresa");
+    }
+  };
+
+  return (
+    <div className="empresas-container">
+      <div className="empresas-titulo">
+        <h2>Empresas</h2>
+        <div>
+          <button onClick={() => abrirModal()} className="novo-botao" title="Nova Empresa">
+            <Plus size={16} />
+          </button>
+          <button
+            onClick={() => {
+              const selecionadas = empresas.filter(e => e.selecionado);
+              if (selecionadas.length === 0) {
+                alert("Selecione pelo menos uma empresa para delegar.");
+                return;
+              }
+              setModalDelegarAberto(true);
+            }}
+            className="delegar-botao"
+            title="Delegar Responsável"
+          >
+            <UserCog size={16} />
+          </button>
+        </div>
+      </div>
+
+      <div className="empresas-tabela-wrapper">
+        <table className="empresas-table">
+          <thead>
+            <tr>
+              <th className="col-texto-muito-curto">#</th>
+              <th className='col-texto-curto2' onClick={() => handleOrdenar('cod_folha')}>Código</th>
+              <th className='col-texto-longo' onClick={() => handleOrdenar('razao_social')}>Nome</th>
+              <th className='col-texto-curto' onClick={() => handleOrdenar('grupo_economico')}>Grupo Econ.</th>
+              <th className='col-texto-curto' onClick={() => handleOrdenar('cnpj')}>CNPJ</th>
+              <th onClick={() => handleOrdenar('status_do_cliente')}>Status</th>
+              <th onClick={() => handleOrdenar('inicio_contrato')}>Início</th>
+              <th onClick={() => handleOrdenar('termino_contrato')}>Término</th>
+              <th onClick={() => handleOrdenar('tributacao')}>Trib.</th>
+              <th className='col-texto-curto2' onClick={() => handleOrdenar('sistema')}>Sist.</th>
+              <th onClick={() => handleOrdenar('grupo')}>Grupo</th>
+              <th onClick={() => handleOrdenar('resp_dp')}>Resp.</th>
+              {/* <th onClick={() => handleOrdenar('ramal')}>Ramal</th> */}
+              <th className='col-texto-medio' onClick={() => handleOrdenar('data_pagto_salario')}>Data Pgt.</th>
+              <th className='col-texto-curto2' onClick={() => handleOrdenar('classificacao')}>Categ.</th>
+              <th onClick={() => handleOrdenar('classificacao2')}>Classificação</th>
+              <th className='col-texto-sim-nao' onClick={() => handleOrdenar('matriz')}>Mat.</th>
+              <th className='col-texto-sim-nao' onClick={() => handleOrdenar('enviadctf')}>DCTF</th>
+            </tr>
+            <tr className="filters-row">
+              <th>
+                <button type="button" onClick={toggleTodos} className="checkbox-botao">
+                  <input type="checkbox" checked={todosSelecionados} readOnly />
+                </button>
+              </th>
+              <th><input type="text" value={filters.cod_folha} onChange={handleFilterChange('cod_folha')} /></th>
+              <th><input type="text" value={filters.razao_social} onChange={handleFilterChange('razao_social')} /></th>
+              <th><input type="text" value={filters.grupo_economico} onChange={handleFilterChange('grupo_economico')} /></th>
+              <th><input type="text" value={filters.cnpj} onChange={handleFilterChange('cnpj')} /></th>
+              <th>
+                <select value={filters.status_do_cliente} onChange={handleFilterChange('status_do_cliente')}>
+                  <option value="">Todos</option>
+                  <option value="Ativo">Ativo</option>
+                  <option value="Inativo">Inativo</option>
+                </select>
+              </th>
+              <th>
+                <input type="date" value={filters.inicio_contrato_inicio} onChange={handleFilterChange('inicio_contrato_inicio')} />
+                <input type="date" value={filters.inicio_contrato_fim} onChange={handleFilterChange('inicio_contrato_fim')} />
+              </th>
+              <th>
+                <input type="date" value={filters.termino_contrato_inicio} onChange={handleFilterChange('termino_contrato_inicio')} />
+                <input type="date" value={filters.termino_contrato_fim} onChange={handleFilterChange('termino_contrato_fim')} />
+              </th>
+              <th><input type="text" value={filters.tributacao} onChange={handleFilterChange('tributacao')} /></th>
+              <th>
+                <select value={filters.sistema} onChange={handleFilterChange('sistema')}>
+                  <option value="">Todos</option>
+                  {options.sistema.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </th>
+              <th>
+                <select value={filters.grupo} onChange={handleFilterChange('grupo')}>
+                  <option value="">Todos</option>
+                  {options.grupo.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </th>
+              <th>
+                <select value={filters.resp_dp} onChange={handleFilterChange('resp_dp')}>
+                  <option value="">Todos</option>
+                  {options.resp_dp.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </th>
+              {/* <th><input type="text" value={filters.ramal} onChange={handleFilterChange('ramal')} /></th> */}
+              <th>
+                <select value={filters.data_pagto_salario_inicio} onChange={handleFilterChange('data_pagto_salario_inicio')}>
+                  <option value="">Todos</option>
+                  <option value="5º dia">5º dia</option>
+                  <option value="2º dia">2º dia</option>
+                  <option value="dia 30">Dia 30</option>
+                  <option value="dia 31">Dia 31</option>
+                </select>
+              </th>
+              <th>
+                <select value={filters.categoria} onChange={handleFilterChange('categoria')}>
+                  <option value="">Todos</option>
+                  <option value="Bronze">Bronze</option>
+                  <option value="Prata">Prata</option>
+                  <option value="Ouro">Ouro</option>
+                  <option value="Diamante">Diamante</option>
+                </select>
+              </th>
+              <th>
+                <select value={filters.classificacao2} onChange={handleFilterChange('classificacao2')}>
+                  <option value="">Todos</option>
+                  <option value="BPO FIN">BPO FIN</option>
+                  <option value="BPO RH">BPO RH</option>
+                  <option value="CARNÊ LEÃO">CARNÊ LEÃO</option>
+                  <option value="CONSULTORIA">CONSULTORIA</option>
+                  <option value="DOM S/ MOV">DOM S/ MOV</option>
+                  <option value="DOMÉSTICA">DOMÉSTICA</option>
+                  <option value="FACULTATIVO">FACULTATIVO</option>
+                  <option value="FATOR R">FATOR R</option>
+                  <option value="FATOR R + FUNCS">FATOR R + FUNCS</option>
+                  <option value="FOLHA COM DADOS">FOLHA COM DADOS</option>
+                  <option value="FOLHA SEM DADOS">FOLHA SEM DADOS</option>
+                  <option value="PRÓ LABORE">PRÓ LABORE</option>
+                  <option value="TIME OUT">TIME OUT</option>
+                  <option value="SEM MOVIMENTO">SEM MOVIMENTO</option>
+                </select>
+              </th>
+              <th>
+                <select value={filters.matriz} onChange={handleFilterChange('matriz')}>
+                  <option value="">Todos</option>
+                  <option value="Sim">Sim</option>
+                  <option value="Não">Não</option>
+                </select>
+              </th>
+              <th>
+                <select value={filters.enviadctf} onChange={handleFilterChange('enviadctf')}>
+                  <option value="">Todos</option>
+                  <option value="Sim">Sim</option>
+                  <option value="Não">Não</option>
+                </select>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {empresasVisiveis.map(emp => (
+            //   <tr key={emp.cod_folha || emp.id}>
+            //     <td>
+            //         <input type="checkbox" checked={emp.selecionado || false} onChange={() => toggleSelecionado(emp)} />
+            //     </td>
+
+
+            //     <td
+            //       onClick={() => abrirModal(emp)}
+            //       style={{ cursor: 'pointer', color: '#2B9FAE', fontWeight: 'bold', width:'30px' }}
+            //       title="Clique para editar"
+            //     >
+            //       {emp.cod_folha}
+            //     </td>
+            <tr key={emp.cod_folha || emp.id}>
+                <td>
+                    <input
+                      type="checkbox"
+                      checked={emp.selecionado || false}
+                      onChange={() => toggleSelecionado(emp)}
+                    />
+                </td>
+                <td
+                  onClick={() => abrirModal(emp)}
+                  style={{ cursor: 'pointer', color: '#2B9FAE', fontWeight: 'bold', width:'30px' }}
+                  title="Clique para editar"
+                >
+                  {emp.cod_folha}
+                </td>
+                <td>{emp.razao_social}</td>
+                <td>{emp.grupo_economico}</td>
+                <td>{emp.cnpj_formatado}</td>
+                <td>{emp.status_do_cliente}</td>
+                <td>{emp.inicio_contrato}</td>
+                <td>{emp.termino_contrato}</td>
+                <td>{emp.tributacao}</td>
+                <td>{emp.sistema}</td>
+                <td>{emp.grupo}</td>
+                <td>{emp.resp_dp}</td>
+                <td>{emp.data_pagto_salario}</td>
+                <td>{emp.classificacao}</td>
+                <td className={`classificacao2 ${emp.classificacao2?.toUpperCase().replace(/\s+/g, '-')}`}>
+                    {emp.classificacao2}
+                </td>
+                <td>{emp.matriz}</td>
+                <td>{emp.enviadctf}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Paginação e modais permanecem iguais */}
+    </div>
+  );
+}

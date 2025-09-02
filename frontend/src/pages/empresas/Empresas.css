@@ -80,6 +80,12 @@
   max-width: 100px;
 }
 
+.col-texto-curto2 {
+  width: 40px;
+  min-width: 100px;
+  max-width: 100px;
+}
+
 .col-texto-muito-curto {
   width: 10px;
   min-width: 10px;
@@ -220,4 +226,45 @@
 
 .delegar-botao:hover {
   background-color: #C3996B;
+}
+
+/* Coluna Classificação2 com cores */
+.empresas-table td.classificacao2 {
+  /* font-weight: bold; */
+  color: #000000; /* texto branco por padrão */
+  text-align: center;
+}
+
+/* Cores específicas */
+.empresas-table td.classificacao2.FOLHA-COM-DADOS {
+  background-color: #1e471e; /* verde escuro */
+}
+
+.empresas-table td.classificacao2.FOLHA-SEM-DADOS {
+  background-color: #4d864d; /* verde claro */
+  color: #000; /* texto preto p/ contraste */
+}
+
+.empresas-table td.classificacao2.PROLABORE {
+  color: #ffffff; /* texto branco por padrão */
+  background-color: #1c7cdb; /* azul */
+}
+
+.empresas-table td.classificacao2.FATOR-R {
+  color: #ffffff; /* texto branco por padrão */
+  background-color: #700f0f; /* vermelho */
+}
+
+.empresas-table td.classificacao2.FATOR-R-+-FUNCS {
+  color: #ffffff; /* texto branco por padrão */
+  background-color: #700f0f; /* vermelho */
+}
+
+.empresas-table td.classificacao2.TIMEOUT {
+  background-color: #000000; /* preto */
+}
+
+.empresas-table td.classificacao2.TIME-OUT {
+  color: #ffffff; /* texto branco por padrão */
+  background-color: #000000; /* preto */
 }

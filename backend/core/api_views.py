@@ -1,6 +1,5 @@
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.viewsets import ReadOnlyModelViewSet
-from rest_framework import filters  # para OrderingFilter e SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, CharFilter, DateFilter
 from rest_framework import viewsets, filters, pagination
 from django.contrib.auth.models import User
@@ -10,7 +9,9 @@ from .models import (
     PlanilhaGerencial,
     Servico,
     ServicoSolicitado, 
-    AgendaBase, Sistema, PeriodoEntrega
+    AgendaBase, Sistema, PeriodoEntrega, 
+    CCT,
+    PG_PLR
 )
 from .serializers import (
     UserSerializer,
@@ -21,9 +22,10 @@ from .serializers import (
     ServicoSolicitadoSerializer, 
     AgendaBaseSerializer, 
     SistemaSerializer, 
-    PeriodoEntregaSerializer
+    PeriodoEntregaSerializer,
+    CCTSerializer,
+    PGPLRSerializer
 )
-
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -113,3 +115,35 @@ class SistemaViewSet(viewsets.ModelViewSet):
 class PeriodoEntregaViewSet(viewsets.ModelViewSet):
     queryset = PeriodoEntrega.objects.all()
     serializer_class = PeriodoEntregaSerializer
+    
+    
+class CCTViewSet(viewsets.ModelViewSet):
+    serializer_class = CCTSerializer
+    queryset = CCT.objects.all()
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        empresa = self.request.query_params.get('empresa')
+        if empresa:
+            # Se o campo na tabela CCT for 'cod_folha', mantenha assim:
+            qs = qs.filter(cod_folha=empresa)
+
+            # Se na sua base a ligação for por 'cod_folha_520', troque para:
+            # qs = qs.filter(cod_folha_520=empresa)
+        return qs
+
+class PGPLRViewSet(viewsets.ModelViewSet):
+    serializer_class = PGPLRSerializer
+    queryset = PG_PLR.objects.all().order_by('id')
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['numero_sindicato','parcela','mes_pagamento']
+    ordering_fields = ['id','numero_sindicato','parcela','mes_pagamento','data_entrega','valor']
+    ordering = ['id']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        empresa = self.request.query_params.get('empresa')  # ex.: ?empresa=1234
+        if empresa:
+            qs = qs.filter(cod_folha=empresa)
+        return qs
+
