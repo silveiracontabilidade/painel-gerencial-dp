@@ -39,16 +39,86 @@ export default function Responsaveis() {
     setDadosEditados({});
   };
 
+  // const salvar = async (id) => {
+  //   const payload = {
+  //     usuario: dadosEditados.usuario,
+  //     nome: dadosEditados.nome,
+  //     email: dadosEditados.email,
+  //     ramal: dadosEditados.ramal || null,
+  //     grupo: dadosEditados.grupo ? Number(dadosEditados.grupo) : null,
+  //     perfil: dadosEditados.perfil
+  //   };
+
+  //   if (id === 'novo') {
+  //     await api.post('/api/responsaveis/', payload);
+  //   } else {
+  //     await api.put(`/api/responsaveis/${id}/`, payload);
+  //   }
+  //   setEditandoId(null);
+  //   setDadosEditados({});
+  //   carregarDados();
+  // };
+
   const salvar = async (id) => {
-    if (id === 'novo') {
-      await api.post('/api/responsaveis/', dadosEditados);
-    } else {
-      await api.put(`/api/responsaveis/${id}/`, dadosEditados);
+    // validação básica antes de enviar
+    if (!dadosEditados.usuario || dadosEditados.usuario.trim() === "") {
+      alert("O campo Usuário é obrigatório.");
+      return;
     }
-    setEditandoId(null);
-    setDadosEditados({});
-    carregarDados();
+    if (!dadosEditados.nome || dadosEditados.nome.trim() === "") {
+      alert("O campo Nome é obrigatório.");
+      return;
+    }
+    if (!dadosEditados.email || dadosEditados.email.trim() === "") {
+      alert("O campo Email é obrigatório.");
+      return;
+    }
+    // regex simples para validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(dadosEditados.email)) {
+      alert("Informe um email válido.");
+      return;
+    }
+
+    const perfisValidos = ["admin", "especialista", "especialista_senior", "coordenador"];
+    if (!perfisValidos.includes(dadosEditados.perfil)) {
+      alert("Perfil inválido. Selecione uma opção válida.");
+      return;
+    }
+
+    const payload = {
+      usuario: dadosEditados.usuario.trim(),
+      nome: dadosEditados.nome.trim(),
+      email: dadosEditados.email.trim(),
+      ramal: dadosEditados.ramal?.trim() || null,
+      grupo: dadosEditados.grupo ? Number(dadosEditados.grupo) : null,
+      perfil: dadosEditados.perfil
+    };
+
+    try {
+      if (id === 'novo') {
+        await api.post('/api/responsaveis/', payload);
+      } else {
+        await api.put(`/api/responsaveis/${id}/`, payload);
+      }
+
+      setEditandoId(null);
+      setDadosEditados({});
+      carregarDados();
+    } catch (err) {
+      console.error("Erro ao salvar responsável:", err.response?.data || err);
+      if (err.response?.data) {
+        // monta mensagens do backend
+        const mensagens = Object.entries(err.response.data)
+          .map(([campo, msgs]) => `${campo}: ${Array.isArray(msgs) ? msgs.join(", ") : msgs}`)
+          .join("\n");
+        alert(`Erro ao salvar:\n${mensagens}`);
+      } else {
+        alert("Erro inesperado ao salvar.");
+      }
+    }
   };
+
 
   const excluir = async (id) => {
     if (window.confirm('Confirma a exclusão?')) {
@@ -65,7 +135,7 @@ export default function Responsaveis() {
       email: '',
       ramal: '',
       grupo: null,
-      perfil: ''
+      perfil: 'especialista'
     });
   };
 
@@ -92,57 +162,25 @@ export default function Responsaveis() {
         <tbody>
           {editandoId === 'novo' && (
             <tr>
-              <td className="col-usuario">
-                <input
-                  type="text"
-                  value={dadosEditados.usuario || ''}
-                  onChange={(e) => setDadosEditados({ ...dadosEditados, usuario: e.target.value })}
-                />
-              </td>
-              <td className="col-nome">
-                <input
-                  type="text"
-                  value={dadosEditados.nome || ''}
-                  onChange={(e) => setDadosEditados({ ...dadosEditados, nome: e.target.value })}
-                />
-              </td>
-              <td className="col-email">
-                <input
-                  type="text"
-                  value={dadosEditados.email || ''}
-                  onChange={(e) => setDadosEditados({ ...dadosEditados, email: e.target.value })}
-                />
-              </td>
-              <td className="col-ramal">
-                <input
-                  type="text"
-                  value={dadosEditados.ramal || ''}
-                  onChange={(e) => setDadosEditados({ ...dadosEditados, ramal: e.target.value })}
-                />
-              </td>
-              <td className="col-grupo">
-                <select
-                  value={dadosEditados.grupo || ''}
-                  onChange={(e) => setDadosEditados({ ...dadosEditados, grupo: e.target.value || null })}
-                >
+              <td><input type="text" value={dadosEditados.usuario || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, usuario: e.target.value })} /></td>
+              <td><input type="text" value={dadosEditados.nome || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, nome: e.target.value })} /></td>
+              <td><input type="email" value={dadosEditados.email || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, email: e.target.value })} /></td>
+              <td><input type="text" value={dadosEditados.ramal || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, ramal: e.target.value })} /></td>
+              <td>
+                <select value={dadosEditados.grupo || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, grupo: e.target.value || null })}>
                   <option value="">-- Nenhum --</option>
-                  {grupos.map(g => (
-                    <option key={g.id} value={g.id}>{g.nome}</option>
-                  ))}
+                  {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
                 </select>
               </td>
-              <td className="col-perfil">
-                <select
-                  value={dadosEditados.perfil}
-                  onChange={(e) => setDadosEditados({ ...dadosEditados, perfil: e.target.value })}
-                >
+              <td>
+                <select value={dadosEditados.perfil} onChange={(e) => setDadosEditados({ ...dadosEditados, perfil: e.target.value })}>
                   <option value="admin">Administrador</option>
+                  <option value="especialista">Especialista</option>
+                  <option value="especialista_senior">Especialista Senior</option>
                   <option value="coordenador">Coordenador</option>
-                  <option value="analista-senior">Analista Sênior</option>
-                  <option value="analista">Analista</option>
                 </select>
               </td>
-              <td className="col-acoes acoes">
+              <td className="acoes">
                 <button onClick={() => salvar('novo')} title="Salvar"><Check size={16} /></button>
                 <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
               </td>
@@ -151,81 +189,29 @@ export default function Responsaveis() {
 
           {responsaveis.map((r) => (
             <tr key={r.id}>
-              <td className="col-usuario">
+              <td>{editandoId === r.id ? <input type="text" value={dadosEditados.usuario || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, usuario: e.target.value })} /> : r.usuario}</td>
+              <td>{editandoId === r.id ? <input type="text" value={dadosEditados.nome || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, nome: e.target.value })} /> : r.nome}</td>
+              <td>{editandoId === r.id ? <input type="email" value={dadosEditados.email || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, email: e.target.value })} /> : r.email}</td>
+              <td>{editandoId === r.id ? <input type="text" value={dadosEditados.ramal || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, ramal: e.target.value })} /> : (r.ramal || '-')}</td>
+              <td>
                 {editandoId === r.id ? (
-                  <input
-                    type="text"
-                    value={dadosEditados.usuario || ''}
-                    onChange={(e) => setDadosEditados({ ...dadosEditados, usuario: e.target.value })}
-                  />
-                ) : (
-                  r.usuario
-                )}
-              </td>
-              <td className="col-nome">
-                {editandoId === r.id ? (
-                  <input
-                    type="text"
-                    value={dadosEditados.nome || ''}
-                    onChange={(e) => setDadosEditados({ ...dadosEditados, nome: e.target.value })}
-                  />
-                ) : (
-                  r.nome
-                )}
-              </td>
-              <td className="col-email">
-                {editandoId === r.id ? (
-                  <input
-                    type="text"
-                    value={dadosEditados.email || ''}
-                    onChange={(e) => setDadosEditados({ ...dadosEditados, email: e.target.value })}
-                  />
-                ) : (
-                  r.email
-                )}
-              </td>
-              <td className="col-ramal">
-                {editandoId === r.id ? (
-                  <input
-                    type="text"
-                    value={dadosEditados.ramal || ''}
-                    onChange={(e) => setDadosEditados({ ...dadosEditados, ramal: e.target.value })}
-                  />
-                ) : (
-                  r.ramal || '-'
-                )}
-              </td>
-              <td className="col-grupo">
-                {editandoId === r.id ? (
-                  <select
-                    value={dadosEditados.grupo || ''}
-                    onChange={(e) => setDadosEditados({ ...dadosEditados, grupo: e.target.value || null })}
-                  >
+                  <select value={dadosEditados.grupo || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, grupo: e.target.value || null })}>
                     <option value="">-- Nenhum --</option>
-                    {grupos.map(g => (
-                      <option key={g.id} value={g.id}>{g.nome}</option>
-                    ))}
+                    {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
                   </select>
-                ) : (
-                  r.grupo_nome || '-'
-                )}
+                ) : (r.grupo_nome || '-')}
               </td>
-              <td className="col-perfil">
+              <td>
                 {editandoId === r.id ? (
-                  <select
-                    value={dadosEditados.perfil}
-                    onChange={(e) => setDadosEditados({ ...dadosEditados, perfil: e.target.value })}
-                  >
+                  <select value={dadosEditados.perfil} onChange={(e) => setDadosEditados({ ...dadosEditados, perfil: e.target.value })}>
                     <option value="admin">Administrador</option>
+                    <option value="especialista">Especialista</option>
+                    <option value="especialista_senior">Especialista Senior</option>
                     <option value="coordenador">Coordenador</option>
-                    <option value="analista-senior">Analista Sênior</option>
-                    <option value="analista">Analista</option>
                   </select>
-                ) : (
-                  r.perfil
-                )}
+                ) : r.perfil}
               </td>
-              <td className="col-acoes acoes">
+              <td className="acoes">
                 {editandoId === r.id ? (
                   <>
                     <button onClick={() => salvar(r.id)} title="Salvar"><Check size={16} /></button>

@@ -6,20 +6,20 @@
 .responsaveis-header {
   display: flex;
   width: 100%;
-  max-width: 1000px;
+  max-width: 1200px;
   justify-content: space-between;
   align-items: center;
   margin: 30px 0 16px 0;
 }
 
 .responsaveis-header h2 {
-  font-size: 20px;
+  font-size: 22px;
   color: #1a1f3a;
   margin: 0;
 }
 
 .responsaveis-header button {
-  padding: 6px 10px;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
   background-color: #1a1f3a;
@@ -27,6 +27,7 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 13px;
 }
 
 .responsaveis-header button:hover {
@@ -35,16 +36,16 @@
 
 .responsaveis-container table {
   width: 100%;
-  max-width: 1000px;
+  max-width: 1200px;
   border-collapse: collapse;
   background-color: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .responsaveis-container th,
 .responsaveis-container td {
   border: 1px solid #ddd;
-  padding: 4px 6px;
+  padding: 6px 8px;
   text-align: left;
   vertical-align: middle;
   font-size: 13px;
@@ -52,33 +53,44 @@
 
 .responsaveis-container th {
   background-color: #1a1f3a;
-  color: #ddd;
-  height: 20px;
+  color: #fff;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
 }
 
-.col-usuario { width: 50px; }
-.col-nome    { width: 250px; }
-.col-email   { width: 400px; }
-.col-ramal   { width: 50px; }
-.col-grupo   { width: 100px; }
-.col-perfil  { width: 100px; }
-.col-acoes   { width: 50px; text-align: center; }
+.col-usuario { width: 120px; }
+.col-nome    { width: 220px; }
+.col-email   { width: 320px; min-width: 300px;}
+.col-ramal   { width: 150px; min-width: 60px;}
+.col-grupo   { width: 150px; min-width: 110px; }
+.col-perfil  { width: 180px; min-width: 150px; }
+.col-acoes   { width: 80px; text-align: center; }
 
 .responsaveis-container tr:nth-child(even) {
-  background-color: #f9f9f9;
+  background-color: #fafafa;
 }
 
 .responsaveis-container input[type="text"],
+.responsaveis-container input[type="email"],
 .responsaveis-container select {
   width: 100%;
-  padding: 4px 6px;
+  padding: 6px 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.responsaveis-container input:focus,
+.responsaveis-container select:focus {
+  border-color: #1a1f3a;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(26, 31, 58, 0.15);
 }
 
 .responsaveis-container td.acoes {
-  width: 75px;
   text-align: center;
 }
 
@@ -86,8 +98,8 @@
   background: none;
   border: none;
   cursor: pointer;
-  padding: 3px;
-  margin: 0 2px;
+  padding: 4px;
+  margin: 0 3px;
 }
 
 .responsaveis-container td.acoes button:hover svg {

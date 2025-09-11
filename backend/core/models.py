@@ -18,7 +18,9 @@ class GrupoGerencial(models.Model):
 class Responsavel(models.Model):
     PERFIL_CHOICES = [
         ('admin', 'Administrador'),
-        ('operador', 'Operador'),
+        ('especialista', 'Especialista'),
+        ('especialista_senior', 'Especialista Senior'),
+        ('coordenador', 'Coordenador'),
     ]
 
     usuario = models.CharField(max_length=100, unique=True)
@@ -27,10 +29,11 @@ class Responsavel(models.Model):
     voip = models.CharField(max_length=20, null=True, blank=True)
     ramal = models.CharField(max_length=20, null=True, blank=True)
     grupo = models.ForeignKey('GrupoGerencial', on_delete=models.SET_NULL, null=True, blank=True, related_name='membros')
-    perfil = models.CharField(max_length=10, choices=PERFIL_CHOICES)
+    perfil = models.CharField(max_length=100, choices=PERFIL_CHOICES)
 
     class Meta:
         db_table = 'pg_responsaveis'
+        managed = False
 
     def __str__(self):
         return self.nome
@@ -41,6 +44,7 @@ class PlanilhaGerencial(models.Model):
     cod_geral = models.CharField(max_length=10, db_column='Cod_Geral', null=True, blank=True)
     cod_acessorias = models.CharField(max_length=10, db_column='COD_ACESSORIAS', null=True, blank=True)
     razao_social = models.CharField(max_length=255, db_column='Razao_Social', null=True, blank=True)
+    forma_comunica = models.CharField(max_length=100, db_column='FORMA_COMUNICA', null=True, blank=True)
     grupo_economico = models.CharField(max_length=255, db_column='Grupo_Economico', null=True, blank=True)
     cnpj = models.CharField(max_length=50, db_column='CNPJ', null=True, blank=True)
     cnpj_original = models.CharField(max_length=50, db_column='CNPJ_Original', null=True, blank=True)
@@ -186,16 +190,63 @@ class Sistema(models.Model):
 
 
 #SERVIÇOS SOLICITADOS X EMPRESA 
+# class ServicoSolicitado(models.Model):
+#     data_solicitacao = models.DateField()
+#     empresa = models.IntegerField()  # cod_folha da empresa
+#     servico = models.ForeignKey('Servico', on_delete=models.CASCADE)  # FK para Servico
+#     competencia = models.CharField(max_length=6)
+#     identificacao = models.CharField(max_length=100, null=True, blank=True)
+#     descricao_servico = models.TextField(null=True, blank=True)
+#     data_vencimento = models.DateField(null=True, blank=True)
+#     data_para_resposta = models.DateField(null=True, blank=True)
+#     data_conclusao = models.DateField(null=True, blank=True)
+
+#     STATUS_CHOICES = [
+#         ("PENDENTE", "Pendente"),
+#         ("PAUSADO", "Pendente"),
+#         ("CONCLUIDO", "Concluído"),
+#     ]
+#     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDENTE")
+
+#     class Meta:
+#         db_table = 'pg_servicos_solicitados'
+
+#     def __str__(self):
+#         return f"Empresa {self.empresa} - {self.servico.nome} ({self.competencia})"
+    
+    
 class ServicoSolicitado(models.Model):
     data_solicitacao = models.DateField()
-    empresa = models.IntegerField()  # cod_folha da empresa
-    servico = models.ForeignKey('Servico', on_delete=models.CASCADE)  # FK para Servico
+    empresa = models.IntegerField()
+    servico = models.ForeignKey('Servico', on_delete=models.CASCADE)
     competencia = models.CharField(max_length=6)
     identificacao = models.CharField(max_length=100, null=True, blank=True)
     descricao_servico = models.TextField(null=True, blank=True)
     data_vencimento = models.DateField(null=True, blank=True)
     data_para_resposta = models.DateField(null=True, blank=True)
     data_conclusao = models.DateField(null=True, blank=True)
+
+    # FERIAS
+    ferias_abono = models.CharField(max_length=100, null=True, blank=True)
+    ferias_data_ini = models.CharField(max_length=100, null=True, blank=True)
+
+    # RESCISÃO
+    rescisao_tipo_aviso = models.CharField(max_length=100, null=True, blank=True)
+    rescisao_dias_aviso = models.CharField(max_length=100, null=True, blank=True)
+    rescisao_data_ini = models.CharField(max_length=100, null=True, blank=True)
+    rescisao_tipo = models.CharField(max_length=100, null=True, blank=True)
+
+    # ADMISSÃO
+    admissao_tipo = models.CharField(max_length=100, null=True, blank=True)
+    admissao_data_ini = models.CharField(max_length=100, null=True, blank=True)
+    admissao_deslig_programado = models.CharField(max_length=100, null=True, blank=True)
+
+    # AFASTAMENTO
+    afast_tipo = models.CharField(max_length=100, null=True, blank=True)
+    afast_dias = models.CharField(max_length=100, null=True, blank=True)
+    afast_ini = models.CharField(max_length=100, null=True, blank=True)
+    afast_pericia = models.CharField(max_length=100, null=True, blank=True)
+
 
     STATUS_CHOICES = [
         ("PENDENTE", "Pendente"),

@@ -78,6 +78,55 @@ class PlanilhaGerencialFilter(FilterSet):
     classificacao = CharFilter(lookup_expr='exact')
     matriz = CharFilter(lookup_expr='exact')
     enviadctf = CharFilter(lookup_expr='exact')
+    
+    #FILTROS AVANÇADOS
+    sci_report = CharFilter(lookup_expr='icontains')
+    visitacao = CharFilter(lookup_expr='icontains')
+    tempo_demandado = CharFilter(lookup_expr='icontains')
+
+    serv_prest = CharFilter(lookup_expr='exact')
+    serv_tom = CharFilter(lookup_expr='exact')
+    deson = CharFilter(lookup_expr='icontains')
+    secconci = CharFilter(lookup_expr='icontains')
+    planilha_folha = CharFilter(lookup_expr='exact')
+    planilha_convenio = CharFilter(lookup_expr='exact')
+    sst = CharFilter(lookup_expr='icontains')
+    apura_vt = CharFilter(lookup_expr='exact')
+    opc_rec_patronal = CharFilter(lookup_expr='icontains')
+
+    plr = CharFilter(lookup_expr='exact')
+    plr_dt_entrega_inicio = DateFilter(field_name='plr_dt_entrega', lookup_expr='gte')
+    plr_dt_entrega_fim = DateFilter(field_name='plr_dt_entrega', lookup_expr='lte')
+    plr_dt_pagto_inicio = DateFilter(field_name='plr_dt_pagto', lookup_expr='gte')
+    plr_dt_pagto_fim = DateFilter(field_name='plr_dt_pagto', lookup_expr='lte')
+
+    adiantamento = CharFilter(lookup_expr='exact')
+    perc_adiantamento_min = CharFilter(field_name='perc_adiantamento', lookup_expr='gte')
+    perc_adiantamento_max = CharFilter(field_name='perc_adiantamento', lookup_expr='lte')
+    dt_adiantamento_entrega_inicio = DateFilter(field_name='dt_adiantamento_entrega', lookup_expr='gte')
+    dt_adiantamento_entrega_fim = DateFilter(field_name='dt_adiantamento_entrega', lookup_expr='lte')
+    dt_adiantamento_pagamento_inicio = DateFilter(field_name='dt_adiantamento_pagamento', lookup_expr='gte')
+    dt_adiantamento_pagamento_fim = DateFilter(field_name='dt_adiantamento_pagamento', lookup_expr='lte')
+
+    periodo_ponto = CharFilter(lookup_expr='icontains')
+    tipo_ponto = CharFilter(lookup_expr='icontains')
+    ponto_ini = CharFilter(lookup_expr='icontains')
+    ponto_fim = CharFilter(lookup_expr='icontains')
+    fecha_ponto = CharFilter(lookup_expr='icontains')
+    envia_ponto = CharFilter(lookup_expr='exact')
+    honorarios_min = CharFilter(field_name='honorarios', lookup_expr='gte')
+    honorarios_max = CharFilter(field_name='honorarios', lookup_expr='lte')
+
+    dt_13_entrega_inicio = DateFilter(field_name='dt_13_entrega', lookup_expr='gte')
+    dt_13_entrega_fim = DateFilter(field_name='dt_13_entrega', lookup_expr='lte')
+    dt_13_adiantamento_entrega_inicio = DateFilter(field_name='dt_13_adiantamento_entrega', lookup_expr='gte')
+    dt_13_adiantamento_entrega_fim = DateFilter(field_name='dt_13_adiantamento_entrega', lookup_expr='lte')
+
+    venc_procuracao_inicio = DateFilter(field_name='venc_procuracao', lookup_expr='gte')
+    venc_procuracao_fim = DateFilter(field_name='venc_procuracao', lookup_expr='lte')
+    venc_fgts_digital_inicio = DateFilter(field_name='venc_fgts_digital', lookup_expr='gte')
+    venc_fgts_digital_fim = DateFilter(field_name='venc_fgts_digital', lookup_expr='lte')
+    
 
     class Meta:
         model = PlanilhaGerencial

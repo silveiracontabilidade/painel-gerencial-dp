@@ -122,49 +122,23 @@ class ServicoSolicitadoSerializer(BaseSerializer):
         fields = [
             'id', 'data_solicitacao', 'empresa', 'empresa_razao_social',
             'servico', 'servico_nome', 'competencia', 'identificacao',
-            'descricao_servico', 'data_vencimento', 'data_para_resposta',
-            'data_conclusao', 'status'   # 👈 novo campo incluído
+            'descricao_servico', 'data_vencimento', 'data_para_resposta', 'data_conclusao',
+            # --- NOVOS CAMPOS DINÂMICOS (mapeados 1:1) ---
+            # FÉRIAS
+            'ferias_abono', 'ferias_data_ini',
+            # RESCISÃO
+            'rescisao_tipo_aviso', 'rescisao_dias_aviso', 'rescisao_data_ini', 'rescisao_tipo',
+            # ADMISSÃO
+            'admissao_tipo', 'admissao_data_ini', 'admissao_deslig_programado',
+            # AFASTAMENTO
+            'afast_tipo', 'afast_dias', 'afast_ini', 'afast_pericia',
+            # STATUS
+            'status',
         ]
 
     def get_empresa_razao_social(self, obj):
-        try:
-            emp = PlanilhaGerencial.objects.get(cod_folha=obj.empresa)
-            return emp.razao_social
-        except PlanilhaGerencial.DoesNotExist:
-            return None
-        except Exception:
-            return None
-
-
-
-# class ServicoSolicitadoSerializer(BaseSerializer):
-#     empresa_razao_social = serializers.SerializerMethodField(read_only=True)
-#     servico_nome = serializers.StringRelatedField(source='servico', read_only=True)
-
-#     class Meta:
-#         model = ServicoSolicitado
-#         fields = [
-#             'id', 'data_solicitacao', 'empresa', 'empresa_razao_social',
-#             'servico', 'servico_nome', 'competencia', 'identificacao',
-#             'descricao_servico', 'data_vencimento', 'data_para_resposta',
-#             'data_conclusao', 'status'   # 👈 adiciona aqui
-#         ]
-
-# class ServicoSolicitadoSerializer(BaseSerializer):
-#     empresa_razao_social = serializers.SerializerMethodField(read_only=True)
-#     servico_nome = serializers.StringRelatedField(source='servico', read_only=True)
-
-#     class Meta:
-#         model = ServicoSolicitado
-#         fields = [
-#             'id', 'data_solicitacao', 'empresa', 'empresa_razao_social',
-#             'servico', 'servico_nome', 'competencia', 'identificacao',
-#             'descricao_servico', 'data_vencimento', 'data_para_resposta', 'data_conclusao'
-#         ]
-
-#     def get_empresa_razao_social(self, obj):
-#         return getattr(obj.empresa, 'razao_social', None)    
-    
+        return getattr(obj.empresa, 'razao_social', None)
+ 
 
 # # # ---------------------- AGENDA BASE ----------------------
 class AgendaBaseSerializer(serializers.ModelSerializer):

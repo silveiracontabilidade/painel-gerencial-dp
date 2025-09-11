@@ -147,6 +147,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
       { id: 'PONTO', label: 'Ponto' }, 
       { id: 'PROCURACOES', label: 'Procurações e Acessos' }, 
       { id: 'CCT', label: 'CCT' }, 
+      { id: 'ACORDOS', label: 'Acordos' }, 
   ];
 
   // dd-mm-yyyy
@@ -433,6 +434,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
             {renderText('cod_acessorias', 'ACESSÓRIAS', 'campo-micro-micro','text',null,'numeric')}
             {renderSelect('status_do_cliente', 'STATUS DO CLIENTE', opcoes.status_do_cliente, "campo-micro", empresa.status_do_cliente)}
             {renderFlag('sci_report', 'SCI REPORT', empresa.sci_report)}
+            {renderFlag('opc_rec_patronal', 'PATRONAL', empresa.opc_rec_patronal)}
             {renderSelect(
                   'classificacao',
                   <span className={(!empresa.classificacao || empresa.classificacao.trim() === '') ? 'label-erro' : ''}>
@@ -451,7 +453,8 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
             )}
           </div>
           <div className='linha'>
-            {renderText('razao_social', 'RAZÃO SOCIAL', 'campo-longo')}
+            {renderText('razao_social', 'RAZÃO SOCIAL', 'campo-medio')}
+            {renderText('forma_comunica', 'FORMA DE COMUNICAÇÃO', 'campo-curto')}
           </div>
         </div>
 
@@ -490,7 +493,6 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
                 {renderText('inicio_contrato', 'INÍCIO CONTRATO', 'campo-curto', 'text',null, 'date')}
                 {renderText('termino_contrato', 'TÉRMINO CONTRATO', 'campo-curto', 'text',null, 'date')}
                 {renderSelect('motivo_termino', 'MOTIVO TÉRMINO', opcoes.motivo_termino,'campo-medio', empresa.motivo_termino)}
-                {renderTextarea('obs_gerencial', 'OBSERVAÇÕES/ACORDOS COM O CLIENTE  ', 'campo-longo','textarea')}
               </div>
             </div>
           </>
@@ -633,7 +635,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
               <h4>SERVIÇOS</h4>
               <div className="linha">
                 {renderText('aprendizes', 'APRENDIZES', 'campo-curto')}
-                {renderText('med_ocupa', 'MED. OCUPACIONAL', 'campo-curto')}
+                {renderText('med_ocupa', 'MEDICINA OCUPACIONAL', 'campo-curto')}
               </div>
               <br></br>
               <div className="linha">
@@ -703,7 +705,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
                   <th>CÓDIGO DO SINDICATO</th>
                   <th>DATA ENVIO CCT</th>
                   <th>ANO BASE</th>
-                  <th>LINK</th>
+                  <th>LINK DA CONTRIBUIÇÃO</th>
                   <th>LOGIN</th>
                   <th>SENHA</th>
                   <th>AÇÕES</th>
@@ -762,6 +764,17 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
               </tbody>
             </table>
           </div>
+        )}
+       
+        {aba === 'ACORDOS' && (
+          <>
+            <div className='bloco'>
+              <h4>ACORDOS</h4>
+              <div className="linha">
+                {renderTextarea('obs_gerencial', 'OBSERVAÇÕES/ACORDOS COM O CLIENTE  ', 'campo-longo','textarea-gigante')}
+              </div>
+            </div>
+          </>
         )}
 
       <div className="botoes">

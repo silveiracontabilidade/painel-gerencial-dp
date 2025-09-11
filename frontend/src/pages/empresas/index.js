@@ -1,23 +1,34 @@
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, UserCog } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, UserCog, Plus, Pencil, Filter } from 'lucide-react';
 import EmpresaFormModal from './EmpresaFormModal'; // ajuste o path
-import { Plus, Pencil } from 'lucide-react';
 import React, { useEffect, useState, useMemo } from 'react';
 import api from '../../api/axios';
 import './Empresas.css';
 import { paraISO, paraBR } from '../../utils/datas';
+import FiltrosAvancadosModal from './FiltrosAvancadosModal';
 
 export default function Empresas() {
 
 const [empresas, setEmpresas] = useState([]);
 const [page, setPage] = useState(1);
 const pageSize = 2000; // ou outro valor conforme necessário 
-
 const [modalDelegarAberto, setModalDelegarAberto] = useState(false);
 const [novoResponsavel, setNovoResponsavel] = useState('');
-
 const [ordenacao, setOrdenacao] = useState({ campo: '', direcao: 'asc' });
-
 const [responsaveis, setResponsaveis] = useState([]);
+const [modalFiltrosAberto, setModalFiltrosAberto] = useState(false);
+
+// lista de campos considerados "avançados"
+const camposAvancados = [
+  "sci_report","visitacao","tempo_demandado","serv_prest","serv_tom","deson",
+  "secconci","planilha_folha","planilha_convenio","sst","apura_vt","opc_rec_patronal",
+  "plr","plr_dt_entrega_inicio","plr_dt_entrega_fim","plr_dt_pagto_inicio","plr_dt_pagto_fim",
+  "adiantamento","perc_adiantamento_min","perc_adiantamento_max","dt_adiantamento_entrega_inicio",
+  "dt_adiantamento_entrega_fim","dt_adiantamento_pagamento_inicio","dt_adiantamento_pagamento_fim",
+  "periodo_ponto","tipo_ponto","ponto_ini","ponto_fim","fecha_ponto","envia_ponto",
+  "honorarios_min","honorarios_max","dt_13_entrega_inicio","dt_13_entrega_fim",
+  "dt_13_adiantamento_entrega_inicio","dt_13_adiantamento_entrega_fim",
+  "venc_procuracao_inicio","venc_procuracao_fim","venc_fgts_digital_inicio","venc_fgts_digital_fim"
+];
 
 useEffect(() => {
   async function fetchResponsaveis() {
@@ -52,8 +63,54 @@ const [filters, setFilters] = useState({
     classificacao2: '',
     matriz: '',
     enviadctf: '',
+    sci_report: '',
+    visitacao: '',
+    tempo_demandado: '',
+    serv_prest: '',
+    serv_tom: '',
+    deson: '',
+    secconci: '',
+    planilha_folha: '',
+    planilha_convenio: '',
+    sst: '',
+    apura_vt: '',
+    opc_rec_patronal: '',
+    plr: '',
+    plr_dt_entrega_inicio: '',
+    plr_dt_entrega_fim: '',
+    plr_dt_pagto_inicio: '',
+    plr_dt_pagto_fim: '',
+    adiantamento: '',
+    perc_adiantamento_min: '',
+    perc_adiantamento_max: '',
+    dt_adiantamento_entrega_inicio: '',
+    dt_adiantamento_entrega_fim: '',
+    dt_adiantamento_pagamento_inicio: '',
+    dt_adiantamento_pagamento_fim: '',
+    periodo_ponto: '',
+    tipo_ponto: '',
+    ponto_ini: '',
+    ponto_fim: '',
+    fecha_ponto: '',
+    envia_ponto: '',
+    honorarios_min: '',
+    honorarios_max: '',
+    dt_13_entrega_inicio: '',
+    dt_13_entrega_fim: '',
+    dt_13_adiantamento_entrega_inicio: '',
+    dt_13_adiantamento_entrega_fim: '',
+    venc_procuracao_inicio: '',
+    venc_procuracao_fim: '',
+    venc_fgts_digital_inicio: '',
+    venc_fgts_digital_fim: ''
   });
 
+  // verifica se há filtros avançados preenchidos
+  const filtrosAvancadosAtivos = camposAvancados.filter(
+    (campo) => filters[campo] && filters[campo] !== ""
+  );
+  const temFiltrosAvancados = filtrosAvancadosAtivos.length > 0;
+  const qtdFiltrosAvancados = filtrosAvancadosAtivos.length;
   const handleOrdenar = campo => {
     setOrdenacao(prev => ({
       campo,
@@ -61,55 +118,57 @@ const [filters, setFilters] = useState({
     }));
   };
 
+  //FILTROS DE EMPRESAS - TESTANDO O BACKEND
+  const empresasFiltradas = useMemo(() => {
+    const normalize = val => {
+      return (val || '')
+        .toString()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/["']/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+    };
 
-const empresasFiltradas = useMemo(() => {
-  const normalize = val => {
-    return (val || '')
-      .toString()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/["']/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toUpperCase();
-  };
+    const filtradas = empresas.filter(emp =>
+      (!filters.cod_folha || normalize(emp.cod_folha).includes(normalize(filters.cod_folha))) &&
+      (!filters.razao_social || normalize(emp.razao_social).includes(normalize(filters.razao_social))) &&
+      (!filters.grupo_economico || normalize(emp.grupo_economico).includes(normalize(filters.grupo_economico))) &&
+      (!filters.cnpj || normalize(emp.cnpj).includes(normalize(filters.cnpj))) &&
+      (!filters.status_do_cliente || normalize(emp.status_do_cliente) === normalize(filters.status_do_cliente)) &&
+      (!filters.tributacao || normalize(emp.tributacao).includes(normalize(filters.tributacao))) &&
+      (!filters.sistema || normalize(emp.sistema) === normalize(filters.sistema)) &&
+      (!filters.grupo || normalize(emp.grupo) === normalize(filters.grupo)) &&
+      (!filters.resp_dp || normalize(emp.resp_dp) === normalize(filters.resp_dp)) &&
+      (!filters.ramal || normalize(emp.ramal).includes(normalize(filters.ramal))) &&
+      (!filters.categoria || normalize(emp.classificacao) === normalize(filters.categoria)) &&
+      (!filters.classificacao2 || normalize(emp.classificacao2) === normalize(filters.classificacao2)) &&
+      (!filters.matriz || normalize(emp.matriz).includes(normalize(filters.matriz))) &&
+      (!filters.enviadctf || normalize(emp.enviadctf).includes(normalize(filters.enviadctf))) &&
+      (!filters.data_pagto_salario_inicio || normalize(emp.data_pagto_salario) === normalize(filters.data_pagto_salario_inicio)) &&
+      (!filters.inicio_contrato_inicio || new Date(emp.inicio_contrato) >= new Date(filters.inicio_contrato_inicio)) &&
+      (!filters.inicio_contrato_fim || new Date(emp.inicio_contrato) <= new Date(filters.inicio_contrato_fim)) &&
+      (!filters.termino_contrato_inicio || new Date(emp.termino_contrato) >= new Date(filters.termino_contrato_inicio)) &&
+      (!filters.termino_contrato_fim || new Date(emp.termino_contrato) <= new Date(filters.termino_contrato_fim))
+    );
 
-  const filtradas = empresas.filter(emp =>
-    (!filters.cod_folha || normalize(emp.cod_folha).includes(normalize(filters.cod_folha))) &&
-    (!filters.razao_social || normalize(emp.razao_social).includes(normalize(filters.razao_social))) &&
-    (!filters.grupo_economico || normalize(emp.grupo_economico).includes(normalize(filters.grupo_economico))) &&
-    (!filters.cnpj || normalize(emp.cnpj).includes(normalize(filters.cnpj))) &&
-    (!filters.status_do_cliente || normalize(emp.status_do_cliente) === normalize(filters.status_do_cliente)) &&
-    (!filters.tributacao || normalize(emp.tributacao).includes(normalize(filters.tributacao))) &&
-    (!filters.sistema || normalize(emp.sistema) === normalize(filters.sistema)) &&
-    (!filters.grupo || normalize(emp.grupo) === normalize(filters.grupo)) &&
-    (!filters.resp_dp || normalize(emp.resp_dp) === normalize(filters.resp_dp)) &&
-    (!filters.ramal || normalize(emp.ramal).includes(normalize(filters.ramal))) &&
-    (!filters.categoria || normalize(emp.classificacao) === normalize(filters.categoria)) &&
-    (!filters.classificacao2 || normalize(emp.classificacao2) === normalize(filters.classificacao2)) &&
-    (!filters.matriz || normalize(emp.matriz).includes(normalize(filters.matriz))) &&
-    (!filters.enviadctf || normalize(emp.enviadctf).includes(normalize(filters.enviadctf))) &&
-    (!filters.data_pagto_salario_inicio || normalize(emp.data_pagto_salario) === normalize(filters.data_pagto_salario_inicio)) &&
-    (!filters.inicio_contrato_inicio || new Date(emp.inicio_contrato) >= new Date(filters.inicio_contrato_inicio)) &&
-    (!filters.inicio_contrato_fim || new Date(emp.inicio_contrato) <= new Date(filters.inicio_contrato_fim)) &&
-    (!filters.termino_contrato_inicio || new Date(emp.termino_contrato) >= new Date(filters.termino_contrato_inicio)) &&
-    (!filters.termino_contrato_fim || new Date(emp.termino_contrato) <= new Date(filters.termino_contrato_fim))
-  );
+    // Aplica ordenação, se houver campo definido
+    if (ordenacao.campo) {
+      filtradas.sort((a, b) => {
+        const valA = (a[ordenacao.campo] || '').toString().toUpperCase();
+        const valB = (b[ordenacao.campo] || '').toString().toUpperCase();
 
-  // Aplica ordenação, se houver campo definido
-  if (ordenacao.campo) {
-    filtradas.sort((a, b) => {
-      const valA = (a[ordenacao.campo] || '').toString().toUpperCase();
-      const valB = (b[ordenacao.campo] || '').toString().toUpperCase();
+        if (valA < valB) return ordenacao.direcao === 'asc' ? -1 : 1;
+        if (valA > valB) return ordenacao.direcao === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
 
-      if (valA < valB) return ordenacao.direcao === 'asc' ? -1 : 1;
-      if (valA > valB) return ordenacao.direcao === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }
+    return filtradas;
+  }, [empresas, filters, ordenacao]);
+  ////////////////////////
 
-  return filtradas;
-}, [empresas, filters, ordenacao]);
 
   const empresasVisiveis = useMemo(() => {
     const inicio = (page - 1) * pageSize;
@@ -143,13 +202,28 @@ const empresasFiltradas = useMemo(() => {
 
   const params = useMemo(() => ({ page, page_size: pageSize, ...filters }), [filters, page]);
 
+  //FILTROS DE EMPRESAS - TESTANDO O BACKEND
+  // useEffect(() => {
+  //   api.get('api/empresas/', { params: { page: 1, page_size: 2000 } }) // ou mais, se necessário
+  //     .then(({ data }) => {
+  //       setEmpresas(data.results);
+  //     })
+  //     .catch(err => console.error(err));
+  // }, []);
+  /////////////////
+
   useEffect(() => {
-    api.get('api/empresas/', { params: { page: 1, page_size: 2000 } }) // ou mais, se necessário
+    api.get('api/empresas/', {
+      params: { page, page_size: pageSize, ...filters }
+    })
       .then(({ data }) => {
         setEmpresas(data.results);
+        setCount(data.count || data.results.length);
       })
       .catch(err => console.error(err));
-  }, []);
+  }, [filters, page]);
+
+
 
   const handleFilterChange = field => e => {
     setPage(1);
@@ -190,71 +264,6 @@ const fecharModal = () => {
   setModalAberto(false);
   setEmpresaSelecionada(null);
 };
-
- 
-// const salvarEmpresa = async (empresa) => {
-//   try {
-//     const camposData = [
-//       'inicio_contrato',
-//       'termino_contrato',
-//       'dt_envio_cct',
-//       'dt_venc_conec_social',
-//       'venc_procuracao'
-//     ];
-
-//     const payload = { ...empresa };
-
-//     // normaliza datas
-//     camposData.forEach(campo => {
-//       if (payload[campo]) {
-//         payload[campo] = paraISO(payload[campo]);
-//       } else {
-//         payload[campo] = null;
-//       }
-//     });
-
-//     delete payload.cnpj_formatado;
-//     delete payload.id;
-
-//     // salva empresa
-//     let novaEmpresa;
-//     if (payload.cod_folha) {
-//       const res = await api.put(`/api/empresas/${payload.cod_folha}/`, payload);
-//       novaEmpresa = res.data;
-//       setEmpresas(prev =>
-//         prev.map(e => e.cod_folha === payload.cod_folha ? novaEmpresa : e)
-//       );
-//     } else {
-//       const res = await api.post('/api/empresas/', payload);
-//       novaEmpresa = res.data;
-//       setEmpresas(prev => [...prev, novaEmpresa]);
-//     }
-
-//     // 🔥 sincroniza os CCTs
-//     if (empresa.ccts && empresa.ccts.length > 0) {
-//       for (const cct of empresa.ccts) {
-//         if (cct.id && Number.isInteger(cct.id)) {
-//           // já existe no banco → update
-//           await api.put(`/api/ccts/${cct.id}/`, {
-//             ...cct,
-//             cod_folha: novaEmpresa.cod_folha,
-//           });
-//         } else {
-//           // novo → create
-//           await api.post(`/api/ccts/`, {
-//             ...cct,
-//             cod_folha: novaEmpresa.cod_folha,
-//           });
-//         }
-//       }
-//     }
-
-//     fecharModal();
-//   } catch (err) {
-//     console.error("Erro ao salvar empresa:", err.response?.data || err);
-//     alert("Erro ao salvar empresa");
-//   }
-// };
 
 const salvarEmpresa = async (empresa) => {
   try {
@@ -364,19 +373,37 @@ const salvarEmpresa = async (empresa) => {
       }
     };
 
-
   return (
     <div className="empresas-container">
       <br></br>
       <div className="empresas-titulo">
         <h2>Empresas</h2>
-        <div>
-          <button onClick={() => abrirModal()} className="novo-botao" title="Nova Empresa">
+        <div className="empresas-header-info">
+          <span>Exibindo: {empresas.length} empresas</span>
+        </div>
+
+       <div>
+          {/* Botão Filtros Avançados */}
+          <button
+            onClick={() => setModalFiltrosAberto(true)}
+            className={`delegar-botao ${temFiltrosAvancados ? "filtro-ativo" : ""}`}
+          >
+            <Filter size={14} style={{ marginRight: "4px" }} />
+            Filtros
+            {temFiltrosAvancados && (
+              <span className="filtros-badge">{qtdFiltrosAvancados}</span>
+            )}
+          </button>
+
+          {/* Botão Nova Empresa */}
+          <button onClick={() => abrirModal()} className="delegar-botao" title="Nova Empresa">
             <Plus size={16} />
           </button>
+
+          {/* Botão Delegar */}
           <button
             onClick={() => {
-              const selecionadas = empresas.filter(e => e.selecionado);
+              const selecionadas = empresas.filter((e) => e.selecionado);
               if (selecionadas.length === 0) {
                 alert("Selecione pelo menos uma empresa para delegar.");
                 return;
@@ -389,6 +416,9 @@ const salvarEmpresa = async (empresa) => {
             <UserCog size={16} />
           </button>
         </div>
+        
+ 
+
       </div>
 
       <div className="empresas-tabela-wrapper">
@@ -418,16 +448,16 @@ const salvarEmpresa = async (empresa) => {
                 Término {ordenacao.campo === 'termino_contrato' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-texto-medio" onClick={() => handleOrdenar('tributacao')} style={{ cursor: 'pointer' }}>
-                Trib. {ordenacao.campo === 'tributacao' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+                Tributação {ordenacao.campo === 'tributacao' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-texto-medio" onClick={() => handleOrdenar('sistema')} style={{ cursor: 'pointer' }}>
-                Sist. {ordenacao.campo === 'sistema' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+                Sistema {ordenacao.campo === 'sistema' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-texto-medio" onClick={() => handleOrdenar('grupo')} style={{ cursor: 'pointer' }}>
                 Grupo {ordenacao.campo === 'grupo' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-texto-medio" onClick={() => handleOrdenar('resp_dp')} style={{ cursor: 'pointer' }}>
-                Resp. {ordenacao.campo === 'resp_dp' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+                Responsável {ordenacao.campo === 'resp_dp' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               {/* <th className="col-texto-sim-nao" onClick={() => handleOrdenar('ramal')} style={{ cursor: 'pointer' }}>
                 Ramal {ordenacao.campo === 'ramal' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
@@ -436,14 +466,14 @@ const salvarEmpresa = async (empresa) => {
                 Data Pgt. {ordenacao.campo === 'data_pagto_salario' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-texto-medio" onClick={() => handleOrdenar('classificacao')} style={{ cursor: 'pointer' }}>
-                Categ. {ordenacao.campo === 'classificacao' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+                Categoria {ordenacao.campo === 'classificacao' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-texto-medio" onClick={() => handleOrdenar('classificacao2')} style={{ cursor: 'pointer' }}>
-                Class. {ordenacao.campo === 'classificacao2' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+                Classificação {ordenacao.campo === 'classificacao2' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
 
               <th className="col-texto-sim-nao" onClick={() => handleOrdenar('matriz')} style={{ cursor: 'pointer' }}>
-                Mat. {ordenacao.campo === 'matriz' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+                Matriz {ordenacao.campo === 'matriz' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-texto-sim-nao" onClick={() => handleOrdenar('enviadctf')} style={{ cursor: 'pointer' }}>
                 DCTF {ordenacao.campo === 'enviadctf' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
@@ -688,6 +718,15 @@ const salvarEmpresa = async (empresa) => {
         aoSalvar={salvarEmpresa}
         dados={empresaSelecionada}
       />
+
+      {modalFiltrosAberto && (
+        <FiltrosAvancadosModal
+          visivel={modalFiltrosAberto}
+          aoFechar={() => setModalFiltrosAberto(false)}
+          filters={filters}
+          setFilters={setFilters}
+        />
+      )}
     </div>
   );
 }

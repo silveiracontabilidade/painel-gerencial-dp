@@ -53,6 +53,13 @@
   z-index: 2;
 }
 
+.empresas-header-info {
+  font-size: 12px;
+  color: #1a1f3a;
+  margin: 6px 0;
+  display: flex;
+  gap: 12px;
+}
 
 .empresas-table tr.filters-row th {
   position: sticky;
@@ -228,6 +235,20 @@
   background-color: #C3996B;
 }
 
+.filtrar-botao {
+  background-color: #1a1f3a;
+  height: 28px;
+  color: #ffffff;
+  margin-left: 6px;
+  border: none;
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.filtrar-botao:hover {
+  background-color: #C3996B;
+}
+
 /* Coluna Classificação2 com cores */
 .empresas-table td.classificacao2 {
   /* font-weight: bold; */
@@ -267,4 +288,14 @@
 .empresas-table td.classificacao2.TIME-OUT {
   color: #ffffff; /* texto branco por padrão */
   background-color: #000000; /* preto */
+}
+
+.filtros-badge {
+  background: #C3996B; /* dourado */
+  color: white;
+  border-radius: 8px;
+  padding: 0 6px;
+  font-size: 10px;
+  margin-left: 6px;
+  font-weight: bold;
 }
