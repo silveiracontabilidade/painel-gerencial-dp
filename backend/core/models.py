@@ -139,6 +139,7 @@ class PlanilhaGerencial(models.Model):
     # Serviços
     aprendizes = models.TextField(db_column='APRENDIZES', null=True, blank=True)
     med_ocupa = models.TextField(db_column='MED_OCUPA', null=True, blank=True)
+    med_ocupa_proc_venc = models.DateField(db_column='MED_OCUPA_PROC_VENC', null=True, blank=True)
 
     class Meta:
         managed = False

@@ -167,8 +167,7 @@ const [filters, setFilters] = useState({
 
     return filtradas;
   }, [empresas, filters, ordenacao]);
-  ////////////////////////
-
+  
 
   const empresasVisiveis = useMemo(() => {
     const inicio = (page - 1) * pageSize;

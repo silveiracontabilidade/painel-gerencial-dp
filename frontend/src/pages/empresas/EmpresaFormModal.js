@@ -229,6 +229,27 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
     return `${HH}:${MM}`.slice(0, 5);            // garante "HH:MM"
   };
 
+  // --- DURAÇÃO EM HORAS (pode ser > 24h) ---
+  const mascararDuracao = (valor) => {
+    valor = valor.replace(/\D/g, ""); // mantém só números
+    if (valor.length <= 2) return valor; // só horas
+    return valor.slice(0, -2) + ":" + valor.slice(-2); // insere ":" antes dos 2 últimos dígitos
+  };
+
+  const normalizarDuracao = (valor) => {
+    if (!valor) return "";
+    const [h, m] = valor.split(":");
+    let horas = parseInt(h || "0", 10);
+    let minutos = parseInt(m || "0", 10);
+
+    if (isNaN(horas)) horas = 0;
+    if (isNaN(minutos)) minutos = 0;
+
+    if (minutos > 59) minutos = 59; // só trava minutos
+
+    return `${horas}:${String(minutos).padStart(2, "0")}`;
+  };
+
 
   // Valida apenas números
   const validarNumero = (valor) => {
@@ -299,23 +320,24 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
   tipo = 'text',
   valorCustom = null,
   validation = null
-) => {
-  const value = valorCustom !== null ? valorCustom : (empresa[campo] || '');
-  const maxLength =
-    validation === 'date' ? 10 :
-    validation === 'time' ? 5  :
-    undefined;
+    ) => {
+    const value = valorCustom !== null ? valorCustom : (empresa[campo] || '');
+    const maxLength =
+      validation === 'date' ? 10 :
+      validation === 'time' ? 5  :
+      validation === 'duration' ? 999 : // não limita, pode ser muitas horas
+      undefined;
 
-  // Teclado numérico em mobile (melhora UX)
-  const inputMode =
-    validation === 'numeric' ? 'numeric' :
-    validation === 'date' || validation === 'time' ? 'numeric' :
-    undefined;
+    const inputMode =
+      validation === 'numeric' ? 'numeric' :
+      validation === 'date' || validation === 'time' || validation === 'duration' ? 'numeric' :
+      undefined;
 
-  const placeholder =
-    validation === 'date' ? 'dd-mm-aaaa' :
-    validation === 'time' ? 'hh:mm' :
-    undefined;
+    const placeholder =
+      validation === 'date' ? 'dd-mm-aaaa' :
+      validation === 'time' ? 'hh:mm' :
+      validation === 'duration' ? 'hh:mm' :
+      undefined;
 
   return (
     <div className={`campo ${classe}`} key={campo}>
@@ -331,26 +353,25 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
           let valor = e.target.value;
 
           if (validation === "numeric") valor = validarNumero(valor);
-
-          // DATE: máscara leve durante digitação
-          if (validation === "date")    valor = mascararData(valor);
-
-          // TIME: máscara leve durante digitação
-          if (validation === "time")    valor = mascararHora(valor);
+          if (validation === "date") valor = mascararData(valor);
+          if (validation === "time") valor = mascararHora(valor);
+          if (validation === "duration") valor = mascararDuracao(valor);
 
           handleChange(campo)({ target: { value: valor } });
         }}
         onBlur={(e) => {
-          // TIME: normaliza ao sair (zero-pad + clamp 23:59)
           if (validation === "time") {
-            const valor = normalizarHora(e.target.value);
-            handleChange(campo)({ target: { value: valor } });
-          }
-          // DATE: normaliza ao sair (zero-pad + limites básicos)
-          if (validation === "date") {
-            const valor = normalizarData(e.target.value);
-            handleChange(campo)({ target: { value: valor } });
-          }
+              const valor = normalizarHora(e.target.value);
+              handleChange(campo)({ target: { value: valor } });
+            }
+            if (validation === "date") {
+              const valor = normalizarData(e.target.value);
+              handleChange(campo)({ target: { value: valor } });
+            }
+            if (validation === "duration") {
+              const valor = normalizarDuracao(e.target.value);
+              handleChange(campo)({ target: { value: valor } });
+            }
         }}
       />
     </div>
@@ -470,7 +491,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
                 {renderFlag('matriz', 'MATRIZ', empresa.matriz)}
                 {renderFlag('enviadctf', 'ENVIA DCTF', empresa.enviadctf)}
                 {renderSelect('visitacao', 'VISITAÇÃO', opcoes.visitacao, empresa.visitacao)}
-                {renderText('tempo_demandado', 'TEMPO DEMANDADO', 'campo-curto', 'text', null, "time")}
+                {renderText('tempo_demandado', 'TEMPO DEMANDADO', 'campo-curto', 'text', null, "duration")}
                 {renderText('honorarios', 'HONORÁRIO', 'campo-curto')}
                 
               </div>
@@ -635,7 +656,11 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
               <h4>SERVIÇOS</h4>
               <div className="linha">
                 {renderText('aprendizes', 'APRENDIZES', 'campo-curto')}
+              {/* </div>
+              <br></br>
+              <div className="linha"> */}
                 {renderText('med_ocupa', 'MEDICINA OCUPACIONAL', 'campo-curto')}
+                {renderText('med_ocupa_proc_venc', 'VENC. PROC. MEDICINA', 'campo-micro', 'text',null, 'date')}
               </div>
               <br></br>
               <div className="linha">
