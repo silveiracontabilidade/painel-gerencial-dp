@@ -3,6 +3,11 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, CharFilter, DateFilter
 from rest_framework import viewsets, filters, pagination
 from django.contrib.auth.models import User
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+
 from .models import (
     GrupoGerencial,
     Responsavel,
@@ -11,7 +16,8 @@ from .models import (
     ServicoSolicitado, 
     AgendaBase, Sistema, PeriodoEntrega, 
     CCT,
-    PG_PLR
+    PG_PLR,
+    Responsavel
 )
 from .serializers import (
     UserSerializer,
@@ -24,8 +30,10 @@ from .serializers import (
     SistemaSerializer, 
     PeriodoEntregaSerializer,
     CCTSerializer,
-    PGPLRSerializer
+    PGPLRSerializer,
+    UsuarioResponsavelSerializer
 )
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -196,3 +204,24 @@ class PGPLRViewSet(viewsets.ModelViewSet):
             qs = qs.filter(cod_folha=empresa)
         return qs
 
+
+class UsuarioResponsavelViewSet(viewsets.ModelViewSet):
+    serializer_class = UsuarioResponsavelSerializer
+    queryset = Responsavel.objects.all()
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def me(request):
+    user = request.user
+    try:
+        responsavel = Responsavel.objects.get(usuario=user.username)
+        return Response({
+            "id": responsavel.id,
+            "nome": responsavel.nome,
+            "email": responsavel.email,
+            "perfil": responsavel.perfil,
+            "grupo": responsavel.grupo_id
+        })
+    except Responsavel.DoesNotExist:
+        return Response({"error": "Responsável não encontrado"}, status=404)

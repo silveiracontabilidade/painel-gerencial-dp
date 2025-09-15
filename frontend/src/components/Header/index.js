@@ -8,6 +8,8 @@ import './Header.css';
 const Header = () => {
   const [menuAberto, setMenuAberto] = useState(null);
   const [nomeUsuario, setNomeUsuario] = useState('Usuário');
+  const [nomePessoa, setNomePessoa] = useState('');
+
 
   useEffect(() => {
     const carregarUsuario = async () => {
@@ -15,16 +17,17 @@ const Header = () => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const decoded = JSON.parse(atob(token.split('.')[1]));
-        const userId = decoded.user_id;
+        const res = await api.get(`/api/me`);
+        
+        // username = login/email
+        setNomeUsuario(res.data.username || 'Usuário');  
 
-        const res = await api.get(`/api/usuarios/${userId}/`);
-        setNomeUsuario(res.data.username || 'Usuário');
+        // nome = nome do responsável
+        setNomePessoa(res.data.nome || '');              
       } catch (err) {
         console.error('Erro ao buscar nome do usuário:', err);
       }
     };
-
     carregarUsuario();
   }, []);
 
@@ -92,7 +95,7 @@ const Header = () => {
               <span className="menu__title"><User size={20} /></span>
               {menuAberto === 'usuario' && (
                 <ul className="submenu submenu-usuario">
-                  <li className="info">{nomeUsuario}</li>
+                  <li className="info">{nomePessoa}</li>
                   <li onClick={handleLogout}>Sair</li>
                 </ul>
               )}

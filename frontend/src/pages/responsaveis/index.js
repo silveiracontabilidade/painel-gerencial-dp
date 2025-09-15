@@ -8,6 +8,20 @@ export default function Responsaveis() {
   const [grupos, setGrupos] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
   const [dadosEditados, setDadosEditados] = useState({});
+  const [perfilUsuario, setPerfilUsuario] = useState(null);
+
+  useEffect(() => {
+    async function fetchPerfil() {
+      try {
+        const { data } = await api.get("/api/me");
+        setPerfilUsuario(data.perfil);
+      } catch (err) {
+        console.error("Erro ao buscar perfil:", err);
+      }
+    }
+    fetchPerfil();
+  }, []);
+
 
   useEffect(() => {
     carregarDados();
@@ -141,11 +155,19 @@ export default function Responsaveis() {
 
   return (
     <div className="responsaveis-container">
-      <div className="responsaveis-header">
+      {/* <div className="responsaveis-header">
         <h2>Responsáveis</h2>
         <button onClick={novo} disabled={editandoId !== null} title="Novo Responsável">
           <Plus size={18} />
         </button>
+      </div> */}
+      <div className="responsaveis-header">
+        <h2>Responsáveis</h2>
+        {(perfilUsuario === "admin" || perfilUsuario === "coordenador") && (
+          <button onClick={novo} disabled={editandoId !== null} title="Novo Responsável">
+            <Plus size={18} />
+          </button>
+        )}
       </div>
       <table>
         <thead>
@@ -212,18 +234,23 @@ export default function Responsaveis() {
                 ) : r.perfil}
               </td>
               <td className="acoes">
-                {editandoId === r.id ? (
-                  <>
-                    <button onClick={() => salvar(r.id)} title="Salvar"><Check size={16} /></button>
-                    <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
-                  </>
+                {(perfilUsuario === "admin" || perfilUsuario === "coordenador") ? (
+                  editandoId === r.id ? (
+                    <>
+                      <button onClick={() => salvar(r.id)} title="Salvar"><Check size={16} /></button>
+                      <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => editar(r)} title="Editar"><Pencil size={16} /></button>
+                      <button onClick={() => excluir(r.id)} title="Excluir"><Trash2 size={16} /></button>
+                    </>
+                  )
                 ) : (
-                  <>
-                    <button onClick={() => editar(r)} title="Editar"><Pencil size={16} /></button>
-                    <button onClick={() => excluir(r.id)} title="Excluir"><Trash2 size={16} /></button>
-                  </>
+                  <span>-</span>
                 )}
               </td>
+
             </tr>
           ))}
         </tbody>

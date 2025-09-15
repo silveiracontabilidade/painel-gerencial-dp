@@ -16,6 +16,7 @@ const [novoResponsavel, setNovoResponsavel] = useState('');
 const [ordenacao, setOrdenacao] = useState({ campo: '', direcao: 'asc' });
 const [responsaveis, setResponsaveis] = useState([]);
 const [modalFiltrosAberto, setModalFiltrosAberto] = useState(false);
+const [perfilUsuario, setPerfilUsuario] = useState(null);
 
 // lista de campos considerados "avançados"
 const camposAvancados = [
@@ -41,6 +42,20 @@ useEffect(() => {
   }
   fetchResponsaveis();
 }, []);
+
+useEffect(() => {
+  async function fetchPerfil() {
+    try {
+      const { data } = await api.get("/api/me/");
+      setPerfilUsuario(data.perfil);
+    } catch (err) {
+      console.error("Erro ao buscar perfil do usuário:", err);
+    }
+  }
+  fetchPerfil();
+}, []);
+
+
 
 const [filters, setFilters] = useState({
     cod_folha: '',
@@ -253,16 +268,30 @@ const [filters, setFilters] = useState({
 
 const [modalAberto, setModalAberto] = useState(false);
 const [empresaSelecionada, setEmpresaSelecionada] = useState(null);
+const [readOnlyModal, setReadOnlyModal] = useState(false);
 
-const abrirModal = (empresa = null) => {
+const abrirModal = (empresa = null, readOnly = false) => {
   setEmpresaSelecionada(empresa);
+  setReadOnlyModal(readOnly);
   setModalAberto(true);
 };
 
 const fecharModal = () => {
   setModalAberto(false);
   setEmpresaSelecionada(null);
+  setReadOnlyModal(false);
 };
+
+
+// const abrirModal = (empresa = null) => {
+//   setEmpresaSelecionada(empresa);
+//   setModalAberto(true);
+// };
+
+// const fecharModal = () => {
+//   setModalAberto(false);
+//   setEmpresaSelecionada(null);
+// };
 
 const salvarEmpresa = async (empresa) => {
   try {
@@ -393,11 +422,18 @@ const salvarEmpresa = async (empresa) => {
               <span className="filtros-badge">{qtdFiltrosAvancados}</span>
             )}
           </button>
-
+          
+              
           {/* Botão Nova Empresa */}
-          <button onClick={() => abrirModal()} className="delegar-botao" title="Nova Empresa">
+          {/* <button onClick={() => abrirModal()} className="delegar-botao" title="Nova Empresa">
             <Plus size={16} />
-          </button>
+          </button> */}
+
+          {(perfilUsuario === 'admin' || perfilUsuario === 'coordenador') && (
+            <button onClick={() => abrirModal(null, false)} className="delegar-botao" title="Nova Empresa">
+              <Plus size={16} />
+            </button>
+          )}
 
           {/* Botão Delegar */}
           <button
@@ -415,9 +451,6 @@ const salvarEmpresa = async (empresa) => {
             <UserCog size={16} />
           </button>
         </div>
-        
- 
-
       </div>
 
       <div className="empresas-tabela-wrapper">
@@ -603,10 +636,22 @@ const salvarEmpresa = async (empresa) => {
                       onChange={() => toggleSelecionado(emp)}
                     />
                 </td>
-                <td
+                {/* <td
                   onClick={() => abrirModal(emp)}
                   style={{ cursor: 'pointer', color: '#2B9FAE', fontWeight: 'bold', width:'30px' }}
                   title="Clique para editar"
+                >
+                  {emp.cod_folha}
+                </td> */}
+                <td
+                  onClick={() => {
+                    if (perfilUsuario === 'admin' || perfilUsuario === 'coordenador') {
+                      abrirModal(emp, false);   // edição
+                    } else {
+                      abrirModal(emp, true);    // somente leitura
+                    }
+                  }}
+                  style={{ cursor: 'pointer', color: '#2B9FAE', fontWeight: 'bold' }}
                 >
                   {emp.cod_folha}
                 </td>
@@ -711,11 +756,19 @@ const salvarEmpresa = async (empresa) => {
           </div>
         </div>
       )}
+      {/* <EmpresaFormModal
+        visivel={modalAberto}
+        aoFechar={fecharModal}
+        aoSalvar={salvarEmpresa}
+        dados={empresaSelecionada}
+      /> */}
+
       <EmpresaFormModal
         visivel={modalAberto}
         aoFechar={fecharModal}
         aoSalvar={salvarEmpresa}
         dados={empresaSelecionada}
+        readOnly={readOnlyModal}
       />
 
       {modalFiltrosAberto && (

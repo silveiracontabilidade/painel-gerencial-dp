@@ -336,3 +336,26 @@ class PG_PLR(models.Model):
         return f"{self.cod_folha or ''} - {self.numero_sindicato or ''} - {self.parcela or ''}"
 
 
+#tabela de permissões
+class Permissao(models.Model):
+    PERFIL_CHOICES = [
+        ('admin', 'Administrador'),
+        ('coordenador', 'Coordenador'),
+        ('analista_senior', 'Analista Sênior'),
+        ('analista', 'Analista'),
+    ]
+
+    id = models.AutoField(primary_key=True)
+    perfil = models.CharField(max_length=50, choices=PERFIL_CHOICES)
+    tela = models.CharField(max_length=50)       # Ex.: 'empresa', 'responsaveis', 'sistemas'
+    aba = models.CharField(max_length=50, blank=True, null=True)  # só se a tela tiver abas
+    campo = models.CharField(max_length=100)     # Ex.: 'grupo', 'resp_dp', 'tributacao'
+    pode_editar = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "pg_permissoes"
+        managed = False
+        unique_together = ("perfil", "tela", "aba", "campo")
+
+    def __str__(self):
+        return f"{self.perfil} - {self.tela} - {self.aba or '-'} - {self.campo}"

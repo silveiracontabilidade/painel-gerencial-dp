@@ -7,6 +7,20 @@ export default function Servicos() {
   const [servicos, setServicos] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
   const [dadosEditados, setDadosEditados] = useState({});
+  const [perfilUsuario, setPerfilUsuario] = useState(null);
+
+  useEffect(() => {
+    async function fetchPerfil() {
+      try {
+        const { data } = await api.get("/api/me");
+        setPerfilUsuario(data.perfil);
+      } catch (err) {
+        console.error("Erro ao buscar perfil:", err);
+      }
+    }
+    fetchPerfil();
+  }, []);
+
 
   useEffect(() => {
     carregarServicos();
@@ -60,9 +74,11 @@ export default function Servicos() {
     <div className="servicos-container">
       <div className="servicos-header">
         <h2>Serviços</h2>
-        <button onClick={novo} disabled={editandoId !== null}>
-          <Plus size={18} />
-        </button>
+        {(perfilUsuario === "admin" || perfilUsuario === "coordenador") && (
+          <button onClick={novo} disabled={editandoId !== null} title="Novo Serviço">
+            <Plus size={18} />
+          </button>
+        )}
       </div>
       <table>
         <thead>
@@ -109,18 +125,23 @@ export default function Servicos() {
                 )}
               </td>
               <td className="acoes">
-                {editandoId === servico.id ? (
-                  <>
-                    <button onClick={() => salvar(servico.id)}><Check size={16} /></button>
-                    <button onClick={cancelar}><X size={16} /></button>
-                  </>
+                {(perfilUsuario === "admin" || perfilUsuario === "coordenador") ? (
+                  editandoId === servico.id ? (
+                    <>
+                      <button onClick={() => salvar(servico.id)}><Check size={16} /></button>
+                      <button onClick={cancelar}><X size={16} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => editar(servico)}><Pencil size={16} /></button>
+                      <button onClick={() => excluir(servico.id)}><Trash2 size={16} /></button>
+                    </>
+                  )
                 ) : (
-                  <>
-                    <button onClick={() => editar(servico)}><Pencil size={16} /></button>
-                    <button onClick={() => excluir(servico.id)}><Trash2 size={16} /></button>
-                  </>
+                  <span>-</span>
                 )}
               </td>
+
             </tr>
           ))}
         </tbody>

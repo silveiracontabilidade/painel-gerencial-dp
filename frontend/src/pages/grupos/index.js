@@ -8,6 +8,20 @@ export default function Grupos() {
   const [responsaveis, setResponsaveis] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
   const [dadosEditados, setDadosEditados] = useState({});
+  const [perfilUsuario, setPerfilUsuario] = useState(null);
+
+  useEffect(() => {
+  async function fetchPerfil() {
+      try {
+        const { data } = await api.get("/api/me");
+        setPerfilUsuario(data.perfil);
+      } catch (err) {
+        console.error("Erro ao buscar perfil:", err);
+      }
+    }
+    fetchPerfil();
+  }, []);
+
 
   useEffect(() => {
     carregarDados();
@@ -56,13 +70,14 @@ export default function Grupos() {
   };
 
   return (
-    <div className="grupos-container">
+     <div className="grupos-container">
       <div className="grupos-header">
         <h2>Grupos Gerenciais</h2>
-        <button onClick={novo} disabled={editandoId !== null} title="Novo Grupo">
-          <Plus size={18} />
-        </button>
-        {/* <button onClick={novo} disabled={editandoId !== null}>Novo Grupo</button> */}
+        {(perfilUsuario === "admin" || perfilUsuario === "coordenador") && (
+          <button onClick={novo} disabled={editandoId !== null} title="Novo Grupo">
+            <Plus size={18} />
+          </button>
+        )}
       </div>
       <table>
         <thead>
@@ -100,17 +115,21 @@ export default function Grupos() {
                   grupo.coordenadora_nome || '-'
                 )}
               </td>
-             <td className="acoes">
-                {editandoId === grupo.id ? (
-                  <>
-                    <button onClick={() => salvar(grupo.id)} title="Salvar"><Check size={16} /></button>
-                    <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
-                  </>
+           <td className="acoes">
+                {perfilUsuario === "admin" || perfilUsuario === "coordenador" ? (
+                  editandoId === grupo.id ? (
+                    <>
+                      <button onClick={() => salvar(grupo.id)} title="Salvar"><Check size={16} /></button>
+                      <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => editar(grupo)} title="Editar"><Pencil size={16} /></button>
+                      <button onClick={() => excluir(grupo.id)} title="Excluir"><Trash2 size={16} /></button>
+                    </>
+                  )
                 ) : (
-                  <>
-                    <button onClick={() => editar(grupo)} title="Editar"><Pencil size={16} /></button>
-                    <button onClick={() => excluir(grupo.id)} title="Excluir"><Trash2 size={16} /></button>
-                  </>
+                  <span>-</span> // ou deixa vazio
                 )}
               </td>
             </tr>

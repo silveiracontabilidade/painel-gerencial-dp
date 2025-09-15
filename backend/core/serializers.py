@@ -5,8 +5,9 @@ from .models import (
     Responsavel,
     PlanilhaGerencial,
     Servico,
-    ServicoSolicitado,AgendaBase,Sistema, PeriodoEntrega, CCT, PG_PLR
-)
+    ServicoSolicitado,AgendaBase,Sistema, PeriodoEntrega, CCT, PG_PLR,
+    Responsavel
+    )
 import math
 from decimal import Decimal
 from rest_framework.fields import CharField
@@ -65,6 +66,24 @@ class GrupoGerencialSerializer(BaseSerializer):
         fields = ['id', 'nome', 'coordenadora', 'coordenadora_nome']
 
 # ---------------------- Responsável ----------------------
+# class ResponsavelSerializer(serializers.ModelSerializer):
+#     grupo_nome = serializers.StringRelatedField(source='grupo', read_only=True)
+
+#     class Meta:
+#         model = Responsavel
+#         fields = [
+#             'id',
+#             'usuario',     # agora é string
+#             'nome',
+#             'email',
+#             'voip',
+#             'ramal',
+#             'grupo',
+#             'grupo_nome',
+#             'perfil',
+#         ]
+from django.contrib.auth.models import User
+
 class ResponsavelSerializer(serializers.ModelSerializer):
     grupo_nome = serializers.StringRelatedField(source='grupo', read_only=True)
 
@@ -72,7 +91,7 @@ class ResponsavelSerializer(serializers.ModelSerializer):
         model = Responsavel
         fields = [
             'id',
-            'usuario',     # agora é string
+            'usuario',   # FK para User
             'nome',
             'email',
             'voip',
@@ -81,6 +100,21 @@ class ResponsavelSerializer(serializers.ModelSerializer):
             'grupo_nome',
             'perfil',
         ]
+        extra_kwargs = {
+            'usuario': {'read_only': True},  # não deixa escolher manualmente
+        }
+
+    def create(self, validated_data):
+        # cria User com senha padrão
+        user = User.objects.create_user(
+            username=validated_data['email'],  # usa o email como login
+            email=validated_data['email'],
+            password="Mudar123"
+        )
+
+        # cria Responsavel vinculado
+        responsavel = Responsavel.objects.create(usuario=user, **validated_data)
+        return responsavel
 
 
 # ---------------------- Empresa / Planilha ----------------------      
@@ -243,3 +277,43 @@ class PGPLRSerializer(serializers.ModelSerializer):
             'mes_pagamento':    {'required': False, 'allow_blank': True},
         }
 
+
+
+
+# usuario e responsável
+class UsuarioResponsavelSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    nome = serializers.CharField()
+    grupo = serializers.IntegerField()   # id do GrupoGerencial
+    perfil = serializers.CharField()
+
+    def create(self, validated_data):
+        # cria User
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=validated_data['password']
+        )
+
+        # cria Responsavel vinculado
+        responsavel = Responsavel.objects.create(
+            usuario=user,
+            nome=validated_data['nome'],
+            email=validated_data['email'],
+            grupo_id=validated_data['grupo'],
+            perfil=validated_data['perfil']
+        )
+        return responsavel
+
+    def to_representation(self, instance):
+        return {
+            "id": instance.id,
+            "usuario_id": instance.usuario.id,
+            "username": instance.usuario.username,
+            "email": instance.email,
+            "nome": instance.nome,
+            "perfil": instance.perfil,
+            "grupo": instance.grupo_id,
+        }

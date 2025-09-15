@@ -7,6 +7,20 @@ export default function PeriodosEntrega() {
   const [periodos, setPeriodos] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
   const [dadosEditados, setDadosEditados] = useState({});
+  const [perfilUsuario, setPerfilUsuario] = useState(null);
+
+  useEffect(() => {
+    async function fetchPerfil() {
+      try {
+        const { data } = await api.get("/api/me");
+        setPerfilUsuario(data.perfil);
+      } catch (err) {
+        console.error("Erro ao buscar perfil:", err);
+      }
+    }
+    fetchPerfil();
+  }, []);
+
 
   useEffect(() => {
     carregarDados();
@@ -27,17 +41,6 @@ export default function PeriodosEntrega() {
     setDadosEditados({});
     carregarDados(); // remove linha "novo" se cancelar
   };
-
-  // const salvar = async (id) => {
-  //   if (id === 'novo') {
-  //     await api.post('/api/periodos-entrega/', dadosEditados);
-  //   } else {
-  //     await api.put(`/api/periodos-entrega/${id}/`, dadosEditados);
-  //   }
-  //   setEditandoId(null);
-  //   setDadosEditados({});
-  //   carregarDados();
-  // };
 
   const salvar = async (id) => {
     try {
@@ -79,9 +82,11 @@ export default function PeriodosEntrega() {
     <div className="periodos-container">
       <div className="periodos-header">
         <h2>Períodos de Entrega</h2>
-        <button onClick={novo} disabled={editandoId !== null} title="Novo Período">
-          <Plus size={18} />
-        </button>
+        {(perfilUsuario === "admin" || perfilUsuario === "coordenador") && (
+          <button onClick={novo} disabled={editandoId !== null} title="Novo Período">
+            <Plus size={18} />
+          </button>
+        )}
       </div>
       <table>
         <thead>
@@ -121,16 +126,20 @@ export default function PeriodosEntrega() {
               </td>
               <td>{p.descricao}</td>
               <td className="acoes">
-                {editandoId === p.id ? (
-                  <>
-                    <button onClick={() => salvar(p.id)} title="Salvar"><Check size={16} /></button>
-                    <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
-                  </>
+                {(perfilUsuario === "admin" || perfilUsuario === "coordenador") ? (
+                  editandoId === p.id ? (
+                    <>
+                      <button onClick={() => salvar(p.id)} title="Salvar"><Check size={16} /></button>
+                      <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => editar(p)} title="Editar"><Pencil size={16} /></button>
+                      <button onClick={() => excluir(p.id)} title="Excluir"><Trash2 size={16} /></button>
+                    </>
+                  )
                 ) : (
-                  <>
-                    <button onClick={() => editar(p)} title="Editar"><Pencil size={16} /></button>
-                    <button onClick={() => excluir(p.id)} title="Excluir"><Trash2 size={16} /></button>
-                  </>
+                  <span>-</span>
                 )}
               </td>
             </tr>

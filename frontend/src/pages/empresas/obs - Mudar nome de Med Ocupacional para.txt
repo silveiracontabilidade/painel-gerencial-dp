@@ -4,8 +4,6 @@ ok - Tempo de demanda - só aceita até 24 horas
 ok - Verificar padrão de datas (estão em formato americano) na tela inicial
 
 
-
-
 HISTORICO (OK)
 
 obs - Mudar nome de Med Ocupacional para Medicina ocupacional e colocar o campo vcto da procuração (colocar em modelo de data, por favor) <<vcto da procuração referente a medicina ocpuacional ?>>.
