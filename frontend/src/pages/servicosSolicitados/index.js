@@ -104,6 +104,44 @@ export default function ServicosSolicitados() {
     });
   }, [solicitacoes, empresaByCodigo, filters, respById, grupoById]);
 
+  // Helpers
+  const renderDetalhes = (s) => {
+    let partes = [];
+
+    // Sempre começa com Identificação (se existir)
+    if (s.identificacao) partes.push(s.identificacao);
+
+    // Admissão
+    if (s.admissao_data_ini || s.admissao_tipo) {
+      partes.push(`Admissão: ${s.admissao_data_ini || '-'} ${s.admissao_tipo || ''}`);
+    }
+
+    // Rescisão
+    if (s.rescisao_tipo_aviso || s.rescisao_data_ini || s.rescisao_dias_aviso) {
+      partes.push(
+        `Rescisão: ${s.rescisao_tipo_aviso || '-'}, ` +
+        `${s.rescisao_data_ini || '-'}, ` +
+        `${s.rescisao_dias_aviso ? `Aviso ${s.rescisao_dias_aviso}` : ''}`
+      );
+    }
+
+    // Férias
+      if (s.ferias_data_ini || s.ferias_abono) {
+        partes.push(
+          `Férias: ${s.ferias_data_ini || '-'}, ` +
+          `${s.ferias_abono ? `${s.ferias_abono} abono` : ''}`
+        );
+      }
+
+      // Afastamento
+      if (s.afast_tipo || s.afast_ini) {
+        partes.push(`Afast.: ${s.afast_tipo || '-'} ${s.afast_ini || ''}`);
+      }
+
+      return partes.join(" | ");
+    };
+
+
   const abrirModal = (solicitacao = null) => {
     setSolicitacaoSelecionada(solicitacao);
     setModalAberto(true);
@@ -211,11 +249,11 @@ export default function ServicosSolicitados() {
             <th>Responsável</th> {/* NOVA COLUNA */}
             <th>Grupo</th>        {/* NOVA COLUNA */}
             <th>Serviço</th>
+            <th>Detalhes</th>
             <th>Competência</th>
             <th>Solicitação</th>
             <th>Vencimento</th>
             <th>Conclusão</th>
-            <th>Status</th>
             <th>Ações</th>
           </tr>
         </thead>
@@ -226,11 +264,11 @@ export default function ServicosSolicitados() {
               <td>{renderResp(s.empresa)}</td>   {/* NOVA CÉLULA */}
               <td>{renderGrupo(s.empresa)}</td>  {/* NOVA CÉLULA */}
               <td>{s.servico_nome}</td>
+              <td>{renderDetalhes(s)}</td>
               <td>{s.competencia}</td>
               <td>{s.data_solicitacao}</td>
               <td>{s.data_vencimento || '-'}</td>
               <td>{s.data_conclusao || '-'}</td>
-              <td>{s.status || '-'}</td>
               <td className="acoes">
                 <button onClick={() => abrirModal(s)} title="Editar">
                   <Pencil size={16} />

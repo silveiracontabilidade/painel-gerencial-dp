@@ -12,6 +12,35 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
   const [ccts, setCcts] = useState([]);
   const [plrs, setPlrs] = useState([]);
   const [aba, setAba] = useState('GERENCIAL'); // 'GERENCIAL' | 'FOLHA'
+  const [permissoes, setPermissoes] = useState([]);
+  const [perfilUsuario, setPerfilUsuario] = useState(null);
+  
+  
+    //Permissoes do usuário
+  useEffect(() => {
+    async function fetchPermissoes() {
+      try {
+        const { data } = await api.get("/api/permissoes/mine/");
+        setPermissoes(data);
+      } catch (err) {
+        console.error("Erro ao buscar permissões:", err);
+      }
+    }
+    fetchPermissoes();
+  }, []);
+
+    //Perfil do usuario
+  useEffect(() => {
+    async function fetchPerfil() {
+      try {
+        const { data } = await api.get("/api/me");
+        setPerfilUsuario(data.perfil); // admin, coordenador, especialista, especialista_senior
+      } catch (err) {
+        console.error("Erro ao buscar perfil do usuário:", err);
+      }
+    }
+    fetchPerfil();
+  }, []);
 
   // dados da empresa
   useEffect(() => {
@@ -136,6 +165,19 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
         'VENDA',
       ]
   };
+
+  const camposRestritos = [
+      "cod_folha",
+      "cod_geral",
+      "cod_acessorias",
+      "status_do_cliente",
+      "sci_report",
+      "opc_rec_patronal",
+      "classificacao",
+      "cnpj_original",
+      "razao_social",
+      "forma_comunica"
+    ];
 
   const abasDisponiveis = [
       { id: 'GERENCIAL', label: 'Gerencial' },
@@ -275,9 +317,30 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
     return resultado;
   };
 
+  //helper para verificar se pode editar
+  const podeEditar = (aba, campo) => {
+    // 🔒 Se for especialista, nunca pode editar os campos restritos
+    if (
+      ["especialista", "especialista_senior"].includes(perfilUsuario) &&
+      camposRestritos.includes(campo)
+    ) {
+      return false;
+    }
+
+    const regra = permissoes.find(
+      (p) =>
+        p.tela === "empresa" &&
+        p.aba === aba &&
+        (p.campo === campo || p.campo === "*")
+    );
+    return regra ? regra.pode_editar : false;
+  };
+
+
 
   const renderFlag = (campo, label, valorAtual) => {
     const normalizado = (valorAtual || '').toUpperCase();
+    const pode = podeEditar(aba, campo);
 
     return (
       <div className="campo campo-micro-flag" key={campo}>
@@ -286,32 +349,50 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
           type="checkbox"
           className="flag-checkbox"
           checked={normalizado === 'SIM'}
-          onChange={(e) =>
-            setEmpresa({
-              ...empresa,
-              [campo]: e.target.checked ? 'SIM' : 'NÃO',
-            })
+          disabled={!pode}
+          onChange={
+            pode
+              ? (e) =>
+                  setEmpresa({
+                    ...empresa,
+                    [campo]: e.target.checked ? 'SIM' : 'NÃO',
+                  })
+              : undefined
           }
         />
       </div>
     );
   };
 
-  const renderSelect = (campo, label, options,  classe = 'campo-curto', valorAtual) => {
+
+  const renderSelect = (campo, label, options, classe = 'campo-curto', valorAtual) => {
     const normalizado = (valorAtual || '').toUpperCase();
-    const lista = normalizado && !options.includes(normalizado) ? [normalizado, ...options] : options;
+    const lista =
+      normalizado && !options.includes(normalizado)
+        ? [normalizado, ...options]
+        : options;
+
+    const pode = podeEditar(aba, campo);
+
     return (
-      <div className={`campo ${classe}`}  key={campo}>
+      <div className={`campo ${classe}`} key={campo}>
         <label>{label}</label>
-        <select value={empresa[campo] || ''} onChange={handleChange(campo)}>
+        <select
+          value={empresa[campo] || ''}
+          onChange={pode ? handleChange(campo) : undefined}
+          disabled={!pode}
+        >
           <option value="">--</option>
-          {lista.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
+          {lista.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
           ))}
         </select>
       </div>
     );
   };
+
 
   const renderText = (
   campo,
@@ -339,53 +420,71 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
       validation === 'duration' ? 'hh:mm' :
       undefined;
 
-  return (
-    <div className={`campo ${classe}`} key={campo}>
-      <label>{label}</label>
-      <input
-        type={tipo}
-        value={value}
-        maxLength={maxLength}
-        inputMode={inputMode}
-        placeholder={placeholder}
-        autoComplete="off"
-        onChange={(e) => {
-          let valor = e.target.value;
+    return (
+      <div className={`campo ${classe}`} key={campo}>
+        <label>{label}</label>
+        <input
+            type={tipo}
+            value={value}
+            maxLength={maxLength}
+            inputMode={inputMode}
+            placeholder={placeholder}
+            autoComplete="off"
+            readOnly={!podeEditar(aba, campo)}
+            disabled={!podeEditar(aba, campo)}
+            onChange={(e) => {
+              if (!podeEditar(aba, campo)) return;
 
-          if (validation === "numeric") valor = validarNumero(valor);
-          if (validation === "date") valor = mascararData(valor);
-          if (validation === "time") valor = mascararHora(valor);
-          if (validation === "duration") valor = mascararDuracao(valor);
+              let valor = e.target.value;
 
-          handleChange(campo)({ target: { value: valor } });
-        }}
-        onBlur={(e) => {
-          if (validation === "time") {
-              const valor = normalizarHora(e.target.value);
+              if (validation === "numeric") valor = validarNumero(valor);
+              if (validation === "date") valor = mascararData(valor);
+              if (validation === "time") valor = mascararHora(valor);
+              if (validation === "duration") valor = mascararDuracao(valor);
+
               handleChange(campo)({ target: { value: valor } });
-            }
-            if (validation === "date") {
-              const valor = normalizarData(e.target.value);
-              handleChange(campo)({ target: { value: valor } });
-            }
-            if (validation === "duration") {
-              const valor = normalizarDuracao(e.target.value);
-              handleChange(campo)({ target: { value: valor } });
-            }
-        }}
-      />
-    </div>
-  );
-};
+            }}
+            onBlur={(e) => {
+              if (!podeEditar(aba, campo)) return;
+
+              if (validation === "time") {
+                const valor = normalizarHora(e.target.value);
+                handleChange(campo)({ target: { value: valor } });
+              }
+              if (validation === "date") {
+                const valor = normalizarData(e.target.value);
+                handleChange(campo)({ target: { value: valor } });
+              }
+              if (validation === "duration") {
+                const valor = normalizarDuracao(e.target.value);
+                handleChange(campo)({ target: { value: valor } });
+              }
+            }}
+          />
+
+      </div>
+    );
+  };
 
 
-  const renderTextarea = (campo, label, classe = 'campo-longo', classearea) => (
-    <div className={`campo ${classe}`} key={campo}>
-      <label>{label}</label>
-      <textarea value={empresa[campo] || ''} className={classearea} onChange={handleChange(campo)} rows={3} />
-    </div>
-  );
-
+  const renderTextarea = (campo, label, classe = 'campo-longo', classearea) => {
+    return (
+      <div className={`campo ${classe}`} key={campo}>
+        <label>{label}</label>
+        <textarea
+          value={empresa[campo] || ''}
+          className={classearea}
+          rows={3}
+          readOnly={!podeEditar(aba, campo)}
+          disabled={!podeEditar(aba, campo)}
+          onChange={(e) => {
+            if (!podeEditar(aba, campo)) return;
+            handleChange(campo)(e);
+          }}
+        />
+      </div>
+    );
+  };
 
   // CRUD DO CCT //
   const adicionarCCT = () => {
@@ -426,7 +525,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
   };
   //========================
 
-
+  const podeEditarCamposTopo = ["admin", "coordenador"].includes(perfilUsuario);
 
   return (
   <div className="modal-overlay">
@@ -447,7 +546,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
       </div>
 
       <div className="modal-form">
-        {/* Topo comum nas duas abas */}
+        {/* Topo comum nas abas */}
         <div className="bloco-header">
           <div className="linha topo-comum">
             {renderText('cod_folha', 'CÓD. FOLHA', 'campo-micro-micro','text',null,'numeric')}
@@ -477,7 +576,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
             {renderText('razao_social', 'RAZÃO SOCIAL', 'campo-medio')}
             {renderText('forma_comunica', 'FORMA DE COMUNICAÇÃO', 'campo-curto')}
           </div>
-        </div>
+        </div> 
 
         {aba === 'GERENCIAL' && (
           <>
@@ -812,4 +911,3 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
 );
 
 }
-

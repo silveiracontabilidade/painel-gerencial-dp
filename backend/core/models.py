@@ -102,8 +102,8 @@ class PlanilhaGerencial(models.Model):
     # Ponto
     periodo_ponto = models.CharField(max_length=50, db_column='PERIODO_PONTO', null=True, blank=True)
     tipo_ponto = models.CharField(max_length=50, db_column='TIPO_PONTO', null=True, blank=True)
-    ponto_ini = models.CharField(max_length=10, db_column='PONTO_INI', null=True, blank=True)
-    ponto_fim = models.CharField(max_length=10, db_column='PONTO_FIM', null=True, blank=True)
+    ponto_ini = models.CharField(max_length=50, db_column='PONTO_INI', null=True, blank=True)
+    ponto_fim = models.CharField(max_length=50, db_column='PONTO_FIM', null=True, blank=True)
     obs_ponto = models.TextField(db_column='OBS_PONTO', null=True, blank=True)
     fecha_ponto = models.CharField(max_length=50, db_column='FECHA_PONTO', null=True, blank=True)
     envia_ponto = models.CharField(max_length=50, db_column='ENVIA_PONTO', null=True, blank=True)
@@ -227,9 +227,12 @@ class ServicoSolicitado(models.Model):
     data_para_resposta = models.DateField(null=True, blank=True)
     data_conclusao = models.DateField(null=True, blank=True)
 
-    # FERIAS
+    # FÉRIAS
     ferias_abono = models.CharField(max_length=100, null=True, blank=True)
     ferias_data_ini = models.CharField(max_length=100, null=True, blank=True)
+    ferias_tipo = models.CharField(max_length=100, null=True, blank=True)
+    ferias_qtd_dias = models.CharField(max_length=100, null=True, blank=True)
+    ferias_qtd_dias_abono = models.CharField(max_length=100, null=True, blank=True)
 
     # RESCISÃO
     rescisao_tipo_aviso = models.CharField(max_length=100, null=True, blank=True)
@@ -241,6 +244,7 @@ class ServicoSolicitado(models.Model):
     admissao_tipo = models.CharField(max_length=100, null=True, blank=True)
     admissao_data_ini = models.CharField(max_length=100, null=True, blank=True)
     admissao_deslig_programado = models.CharField(max_length=100, null=True, blank=True)
+    admissao_preliminar = models.CharField(max_length=100, null=True, blank=True)
 
     # AFASTAMENTO
     afast_tipo = models.CharField(max_length=100, null=True, blank=True)
@@ -248,10 +252,12 @@ class ServicoSolicitado(models.Model):
     afast_ini = models.CharField(max_length=100, null=True, blank=True)
     afast_pericia = models.CharField(max_length=100, null=True, blank=True)
 
+    # OUTROS
+    id_acessorias = models.CharField(max_length=100, null=True, blank=True)
 
     STATUS_CHOICES = [
         ("PENDENTE", "Pendente"),
-        ("PAUSADO", "Pendente"),
+        ("PAUSADO", "Pausado"),
         ("CONCLUIDO", "Concluído"),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDENTE")
@@ -261,6 +267,7 @@ class ServicoSolicitado(models.Model):
 
     def __str__(self):
         return f"Empresa {self.empresa} - {self.servico.nome} ({self.competencia})"
+
     
 #CADASTRO DE SERVIÇOS
 class Servico(models.Model):

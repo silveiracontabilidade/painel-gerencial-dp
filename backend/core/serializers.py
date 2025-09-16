@@ -11,6 +11,7 @@ from .models import (
 import math
 from decimal import Decimal
 from rest_framework.fields import CharField
+from datetime import timedelta
 
 
 # --------- Saneamento: NaN/"nan" -> "" na saída | "" -> None na entrada ----------
@@ -66,22 +67,6 @@ class GrupoGerencialSerializer(BaseSerializer):
         fields = ['id', 'nome', 'coordenadora', 'coordenadora_nome']
 
 # ---------------------- Responsável ----------------------
-# class ResponsavelSerializer(serializers.ModelSerializer):
-#     grupo_nome = serializers.StringRelatedField(source='grupo', read_only=True)
-
-#     class Meta:
-#         model = Responsavel
-#         fields = [
-#             'id',
-#             'usuario',     # agora é string
-#             'nome',
-#             'email',
-#             'voip',
-#             'ramal',
-#             'grupo',
-#             'grupo_nome',
-#             'perfil',
-#         ]
 from django.contrib.auth.models import User
 
 class ResponsavelSerializer(serializers.ModelSerializer):
@@ -138,10 +123,34 @@ class PlanilhaGerencialSerializer(serializers.ModelSerializer):
 
 
 # ---------------------- Serviço ----------------------
-class ServicoSerializer(BaseSerializer):
+class ServicoSerializer(serializers.ModelSerializer):
+    tempo_execucao = serializers.CharField()  # força string no payload
+
     class Meta:
         model = Servico
-        fields = ['id', 'nome', 'prazo_dias']
+        fields = "__all__"
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        if instance.tempo_execucao:
+            total_seconds = int(instance.tempo_execucao.total_seconds())
+            horas, resto = divmod(total_seconds, 3600)
+            minutos, _ = divmod(resto, 60)
+            rep["tempo_execucao"] = f"{horas:02d}:{minutos:02d}"
+        else:
+            rep["tempo_execucao"] = "00:00"
+        return rep
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        tempo_str = data.get("tempo_execucao")
+        if tempo_str:
+            try:
+                h, m = map(int, tempo_str.split(":"))
+                ret["tempo_execucao"] = timedelta(hours=h, minutes=m)
+            except Exception:
+                raise serializers.ValidationError({"tempo_execucao": "Formato inválido. Use HH:MM"})
+        return ret
 
 # ---------------------- Serviço Solicitado ----------------------
 

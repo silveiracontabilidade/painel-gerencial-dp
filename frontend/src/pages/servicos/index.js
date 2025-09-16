@@ -30,7 +30,7 @@ export default function Servicos() {
     const res = await api.get('/api/servicos/');
     const dadosFormatados = (res.data.results || res.data).map(s => ({
       ...s,
-      tempo_execucao: s.tempo_execucao?.slice(0, 5) || '00:00', // "hh:mm:ss" → "hh:mm"
+      tempo_execucao: s.tempo_execucao || '00:00', // já vem "HH:MM"
     }));
     setServicos(dadosFormatados);
   };
@@ -46,14 +46,27 @@ export default function Servicos() {
   };
 
   const salvar = async (id) => {
+    let tempo = dadosEditados.tempo_execucao || "0:00";
+
+    // garante sempre HH:MM
+    if (!tempo.includes(":")) tempo = `${tempo}:00`;
+
+    const [h, m] = tempo.split(":");
+    const hh = parseInt(h, 10) || 0;
+    const mm = parseInt(m, 10) || 0;
+
+    const formatado = `${hh}:${mm.toString().padStart(2, "0")}`;
+
     const payload = {
       ...dadosEditados,
-      tempo_execucao: dadosEditados.tempo_execucao + ':00', // "hh:mm" → "hh:mm:ss"
+      tempo_execucao: formatado, // sempre HH:MM:00
     };
+
     await api.put(`/api/servicos/${id}/`, payload);
     cancelar();
     carregarServicos();
   };
+
 
   const excluir = async (id) => {
     if (window.confirm('Confirma a exclusão?')) {
@@ -63,8 +76,14 @@ export default function Servicos() {
   };
 
   const novo = async () => {
-    const novoServico = { nome: 'Novo Serviço', prazo_dias: 0, tempo_execucao: '00:00' };
-    const res = await api.post('/api/servicos/', { ...novoServico, tempo_execucao: '00:00:00' });
+    const novoServico = { nome: "Novo Serviço", prazo_dias: 0, tempo_execucao: "0:00" };
+
+    const payload = {
+      ...novoServico,
+      tempo_execucao: "0:00",
+    };
+
+    const res = await api.post("/api/servicos/", payload);
     setEditandoId(res.data.id);
     setDadosEditados(novoServico);
     carregarServicos();
@@ -116,10 +135,32 @@ export default function Servicos() {
               <td>
                 {editandoId === servico.id ? (
                   <input
-                    type="time"
+                    type="text"
                     value={dadosEditados.tempo_execucao}
-                    onChange={(e) => setDadosEditados({ ...dadosEditados, tempo_execucao: e.target.value })}
+                    onChange={(e) => {
+                      let valor = e.target.value.replace(/\D/g, ""); // só dígitos
+
+                      if (valor.length === 0) {
+                        setDadosEditados({ ...dadosEditados, tempo_execucao: "" });
+                        return;
+                      }
+
+                      if (valor.length <= 2) {
+                        // Só horas ainda (ex: "5" → "5")
+                        setDadosEditados({ ...dadosEditados, tempo_execucao: valor });
+                      } else {
+                        const horas = valor.slice(0, -2); // tudo menos os 2 últimos
+                        let minutos = valor.slice(-2);
+
+                        if (parseInt(minutos, 10) > 59) minutos = "59";
+
+                        const formatado = `${parseInt(horas, 10)}:${minutos.padStart(2, "0")}`;
+                        setDadosEditados({ ...dadosEditados, tempo_execucao: formatado });
+                      }
+                    }}
+                    placeholder="HH:MM"
                   />
+
                 ) : (
                   servico.tempo_execucao
                 )}

@@ -1,5 +1,5 @@
 // ServicoSolicitadoFormModal.js
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback  } from 'react';
 import api from '../../api/axios';
 import './servicos-solicitados.css';
 import Select from 'react-select';
@@ -62,32 +62,37 @@ const FIELD_MAP = {
   // FÉRIAS
   ferias: {
     abono: 'ferias_abono',
-    data_ini: 'ferias_data_ini', // CharField (guardamos dd-mm-aaaa)
+    data_ini: 'ferias_data_ini',
+    tipo: 'ferias_tipo',
+    qtd_dias: 'ferias_qtd_dias',
+    qtd_dias_abono: 'ferias_qtd_dias_abono',
   },
 
   // RESCISÃO
   rescisao: {
     tipo_aviso: 'rescisao_tipo_aviso',
     dias_aviso: 'rescisao_dias_aviso',
-    data_ini: 'rescisao_data_ini', // CharField (dd-mm-aaaa)
+    data_ini: 'rescisao_data_ini',
     tipo: 'rescisao_tipo',
   },
 
   // ADMISSÃO
   admissao: {
     tipo: 'admissao_tipo',
-    data_ini: 'admissao_data_ini', // CharField (dd-mm-aaaa)
+    data_ini: 'admissao_data_ini',
     deslig_programado: 'admissao_deslig_programado',
+    preliminar: 'admissao_preliminar',
   },
 
   // AFASTAMENTO
   afast: {
     tipo: 'afast_tipo',
     dias: 'afast_dias',
-    ini: 'afast_ini', // CharField (dd-mm-aaaa)
+    ini: 'afast_ini',
     pericia: 'afast_pericia',
   },
 };
+
 
 export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   const [form, setForm] = useState({});
@@ -96,10 +101,38 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   const [errors, setErrors] = useState({});
 
   // estados blocos dinâmicos (mantidos como strings; datas específicas ficam em dd-mm-aaaa)
-  const [ferias, setFerias] = useState({});
-  const [rescisao, setRescisao] = useState({});
-  const [admissao, setAdmissao] = useState({});
-  const [afast, setAfast] = useState({});
+  const [ferias, setFerias] = useState({
+    [FIELD_MAP.ferias.abono]: '',
+    [FIELD_MAP.ferias.data_ini]: '',
+    [FIELD_MAP.ferias.tipo]: '',
+    [FIELD_MAP.ferias.qtd_dias]: '',
+    [FIELD_MAP.ferias.qtd_dias_abono]: '',
+  });
+
+  const [rescisao, setRescisao] = useState({
+    [FIELD_MAP.rescisao.tipo_aviso]: '',
+    [FIELD_MAP.rescisao.dias_aviso]: '',
+    [FIELD_MAP.rescisao.data_ini]: '',
+    [FIELD_MAP.rescisao.tipo]: '',
+  });
+
+  const [admissao, setAdmissao] = useState({
+    [FIELD_MAP.admissao.tipo]: '',
+    [FIELD_MAP.admissao.data_ini]: '',
+    [FIELD_MAP.admissao.deslig_programado]: '',
+    [FIELD_MAP.admissao.preliminar]: '',
+  });
+
+  const [afast, setAfast] = useState({
+    [FIELD_MAP.afast.tipo]: '',
+    [FIELD_MAP.afast.dias]: '',
+    [FIELD_MAP.afast.ini]: '',
+    [FIELD_MAP.afast.pericia]: '',
+  });
+
+
+
+
 
   const CAMPOS_DATA_CORE = ['data_solicitacao', 'data_vencimento', 'data_para_resposta', 'data_conclusao'];
 
@@ -181,28 +214,73 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     const val = normalizarData(value);
     setForm((prev) => ({ ...prev, [name]: val }));
   };
-  // const handleServicoChange = (e) => {
-  //   const value = e?.target ? e.target.value : e;
-  //   if (!value) {
-  //     setForm((prev) => ({ ...prev, servico: '', data_vencimento: '' }));
-  //     if (errors.servico) setErrors((prev) => ({ ...prev, servico: undefined }));
-  //     return;
-  //   }
 
-  //   const servico = servicos.find((s) => String(s.id) === String(value));
-  //   const dataSolicBR = form.data_solicitacao || toBRHifen(new Date().toISOString().split('T')[0]);
-  //   const baseISO = toISO(dataSolicBR) || new Date().toISOString().split('T')[0];
 
-  //   const venc = new Date(`${baseISO}T00:00:00`);
-  //   const prazoDias = Number(servico?.prazo_dias || 0);
-  //   venc.setDate(venc.getDate() + prazoDias);
+  // ===== Handlers estáveis para blocos dinâmicos =====
+  // FÉRIAS
+  const handleFeriasChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFerias((prev) => ({ ...prev, [name]: value }));
+  }, []);
 
-  //   const vencISO = venc.toISOString().split('T')[0];
-  //   const vencBR = toBRHifen(vencISO);
+  const handleFeriasDateChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFerias((prev) => ({ ...prev, [name]: value.replace(/[^\d-]/g, '') }));
+  }, []);
 
-  //   setForm((prev) => ({ ...prev, servico: String(value), data_vencimento: vencBR }));
-  //   if (errors.servico) setErrors((prev) => ({ ...prev, servico: undefined }));
-  // };
+  const handleFeriasDateBlur = useCallback((e) => {
+    const { name, value } = e.target;
+    setFerias((prev) => ({ ...prev, [name]: normalizarData(value) }));
+  }, []);
+
+  // RESCISÃO
+  const handleRescisaoChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setRescisao((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleRescisaoDateChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setRescisao((prev) => ({ ...prev, [name]: value.replace(/[^\d-]/g, '') }));
+  }, []);
+
+  const handleRescisaoDateBlur = useCallback((e) => {
+    const { name, value } = e.target;
+    setRescisao((prev) => ({ ...prev, [name]: normalizarData(value) }));
+  }, []);
+
+  // ADMISSÃO
+  const handleAdmissaoChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setAdmissao((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleAdmissaoDateChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setAdmissao((prev) => ({ ...prev, [name]: value.replace(/[^\d-]/g, '') }));
+  }, []);
+
+  const handleAdmissaoDateBlur = useCallback((e) => {
+    const { name, value } = e.target;
+    setAdmissao((prev) => ({ ...prev, [name]: normalizarData(value) }));
+  }, []);
+
+  // AFASTAMENTO
+  const handleAfastChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setAfast((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleAfastDateChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setAfast((prev) => ({ ...prev, [name]: value.replace(/[^\d-]/g, '') }));
+  }, []);
+
+  const handleAfastDateBlur = useCallback((e) => {
+    const { name, value } = e.target;
+    setAfast((prev) => ({ ...prev, [name]: normalizarData(value) }));
+  }, []);
+
 
   const handleServicoChange = (e) => {
   const value = e?.target ? e.target.value : e;
@@ -242,20 +320,6 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
 
     setForm((prev) => ({ ...prev, servico: String(value), data_vencimento: vencBR }));
     if (errors.servico) setErrors((prev) => ({ ...prev, servico: undefined }));
-  };
-
-  // binds para blocos
-  const bind = (setter) => (campo) => (e) => {
-    const v = e?.target?.value ?? e;
-    setter((prev) => ({ ...prev, [campo]: String(v ?? '') }));
-  };
-  const bindMaskDate = (setter) => (campo) => (e) => {
-    const v = mascararData(e.target.value);
-    setter((prev) => ({ ...prev, [campo]: v }));
-  };
-  const bindBlurNormDate = (setter) => (campo) => (e) => {
-    const v = normalizarData(e.target.value);
-    setter((prev) => ({ ...prev, [campo]: v }));
   };
 
   // ===== Validação (leve) =====
@@ -394,129 +458,473 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
       />
     </div>
   );
-  const renderMaskedDate = (state, setter, field, label, classe = 'campo-curto') => (
-    <div className={`campo ${classe}`} key={field}>
-      <label>
-        {label}{' '}
-        {errors[field] && <span style={{ color: 'red', fontWeight: 600, fontSize: 11 }}>({errors[field]})</span>}
-      </label>
-      <input
-        type="text"
-        value={state[field] || ''}
-        onChange={bindMaskDate(setter)(field)}
-        onBlur={bindBlurNormDate(setter)(field)}
-        placeholder="dd-mm-aaaa"
-        maxLength={10}
-        inputMode="numeric"
-        autoComplete="off"
-        style={errors[field] ? { borderColor: 'red' } : undefined}
-      />
-    </div>
-  );
-
+  
   // ===== Blocos Dinâmicos =====
-  const BlocoFerias = () => (
-    <div className="bloco">
-      <h4>Férias</h4>
-      <div className="linha">
-        <div className="campo campo-curto">
-          <label>Abono</label>
-          <select
-            value={ferias[FIELD_MAP.ferias.abono] || ''}
-            onChange={bind(setFerias)(FIELD_MAP.ferias.abono)}
-          >
-            <option value="">--</option>
-            <option value="SIM">SIM</option>
-            <option value="NAO">NÃO</option>
-          </select>
-        </div>
-        {renderMaskedDate(ferias, setFerias, FIELD_MAP.ferias.data_ini, 'Início (dd-mm-aaaa)')}
-      </div>
-    </div>
-  );
+  // const BlocoFerias = () => (
+  //   <div className="bloco">
+  //     <h4>Férias</h4>
+  //     <div className="linha">
+  //       <div className="campo campo-curto">
+  //         <label>Abono</label>
+  //         <select
+  //           name={FIELD_MAP.ferias.abono}
+  //           value={ferias[FIELD_MAP.ferias.abono] || ''}
+  //           onChange={handleFeriasChange}
+  //         >
+  //           <option value="">--</option>
+  //           <option value="SIM">SIM</option>
+  //           <option value="NÃO">NÃO</option>
+  //         </select>
+  //       </div>
 
-  const BlocoRescisao = () => (
-    <div className="bloco">
-      <h4>Rescisão</h4>
-      <div className="linha">
-        <div className="campo campo-curto">
-          <label>Tipo Aviso</label>
-          <input
-            value={rescisao[FIELD_MAP.rescisao.tipo_aviso] || ''}
-            onChange={bind(setRescisao)(FIELD_MAP.rescisao.tipo_aviso)}
-          />
-        </div>
-        <div className="campo campo-curto">
-          <label>Dias Aviso</label>
-          <input
-            value={rescisao[FIELD_MAP.rescisao.dias_aviso] || ''}
-            onChange={bind(setRescisao)(FIELD_MAP.rescisao.dias_aviso)}
-          />
-        </div>
-        {renderMaskedDate(rescisao, setRescisao, FIELD_MAP.rescisao.data_ini, 'Data Início (dd-mm-aaaa)')}
-        <div className="campo campo-medio">
-          <label>Tipo</label>
-          <input
-            value={rescisao[FIELD_MAP.rescisao.tipo] || ''}
-            onChange={bind(setRescisao)(FIELD_MAP.rescisao.tipo)}
-          />
-        </div>
-      </div>
-    </div>
-  );
+  //       <div className="campo campo-curto">
+  //         <label>Início (dd-mm-aaaa)</label>
+  //         <input
+  //           type="text"
+  //           name={FIELD_MAP.ferias.data_ini}
+  //           value={ferias[FIELD_MAP.ferias.data_ini] || ''}
+  //           onChange={handleFeriasDateChange}
+  //           onBlur={handleFeriasDateBlur}
+  //           placeholder="dd-mm-aaaa"
+  //           maxLength={10}
+  //           inputMode="numeric"
+  //           autoComplete="off"
+  //         />
+  //       </div>
 
-  const BlocoAdmissao = () => (
-    <div className="bloco">
-      <h4>Admissão</h4>
-      <div className="linha">
-        <div className="campo campo-medio">
-          <label>Tipo</label>
-          <input
-            value={admissao[FIELD_MAP.admissao.tipo] || ''}
-            onChange={bind(setAdmissao)(FIELD_MAP.admissao.tipo)}
-          />
-        </div>
-        {renderMaskedDate(admissao, setAdmissao, FIELD_MAP.admissao.data_ini, 'Data Início (dd-mm-aaaa)')}
-        <div className="campo campo-medio">
-          <label>Deslig. Programado</label>
-          <input
-            value={admissao[FIELD_MAP.admissao.deslig_programado] || ''}
-            onChange={bind(setAdmissao)(FIELD_MAP.admissao.deslig_programado)}
-          />
-        </div>
-      </div>
-    </div>
-  );
+  //       <div className="campo campo-medio">
+  //         <label>Tipo</label>
+  //         <select
+  //           name={FIELD_MAP.ferias.tipo}
+  //           value={ferias[FIELD_MAP.ferias.tipo] || ''}
+  //           onChange={handleFeriasChange}
+  //         >
+  //           <option value="">--</option>
+  //           <option value="COLETIVA">COLETIVA</option>
+  //           <option value="INDIVIDUAL">INDIVIDUAL</option>
+  //         </select>
+  //       </div>
 
-  const BlocoAfastamento = () => (
-    <div className="bloco">
-      <h4>Afastamento</h4>
-      <div className="linha">
-        <div className="campo campo-medio">
-          <label>Tipo</label>
-          <input
-            value={afast[FIELD_MAP.afast.tipo] || ''}
-            onChange={bind(setAfast)(FIELD_MAP.afast.tipo)}
-          />
-        </div>
-        <div className="campo campo-curto">
-          <label>Dias</label>
-          <input
-            value={afast[FIELD_MAP.afast.dias] || ''}
-            onChange={bind(setAfast)(FIELD_MAP.afast.dias)}
-          />
-        </div>
-        {renderMaskedDate(afast, setAfast, FIELD_MAP.afast.ini, 'Início (dd-mm-aaaa)')}
-        <div className="campo campo-curto">
-          <label>Perícia</label>
-          <input
-            value={afast[FIELD_MAP.afast.pericia] || ''}
-            onChange={bind(setAfast)(FIELD_MAP.afast.pericia)}
-          />
-        </div>
+  //       <div className="campo campo-curto">
+  //         <label>Qtd Dias</label>
+  //         <input
+  //           type="number"
+  //           name={FIELD_MAP.ferias.qtd_dias}
+  //           value={ferias[FIELD_MAP.ferias.qtd_dias] || ''}
+  //           onChange={handleFeriasChange}
+  //         />
+  //       </div>
+
+  //       <div className="campo campo-curto">
+  //         <label>Qtd Dias Abono</label>
+  //         <input
+  //           type="number"
+  //           name={FIELD_MAP.ferias.qtd_dias_abono}
+  //           value={ferias[FIELD_MAP.ferias.qtd_dias_abono] || ''}
+  //           onChange={handleFeriasChange}
+  //         />
+  //       </div>
+  //     </div>
+  //   </div>
+  // );
+
+  // const BlocoRescisao = () => (
+  //   <div className="bloco">
+  //     <h4>Rescisão</h4>
+  //     <div className="linha">
+  //       <div className="campo campo-curto">
+  //         <label>Tipo Aviso</label>
+  //         <input
+  //           type="text"
+  //           name={FIELD_MAP.rescisao.tipo_aviso}
+  //           value={rescisao[FIELD_MAP.rescisao.tipo_aviso] || ''}
+  //           onChange={handleRescisaoChange}
+  //         />
+  //       </div>
+
+  //       <div className="campo campo-curto">
+  //         <label>Dias Aviso</label>
+  //         <input
+  //           type="text"
+  //           name={FIELD_MAP.rescisao.dias_aviso}
+  //           value={rescisao[FIELD_MAP.rescisao.dias_aviso] || ''}
+  //           onChange={handleRescisaoChange}
+  //         />
+  //       </div>
+
+  //       <div className="campo campo-curto">
+  //         <label>Data Início (dd-mm-aaaa)</label>
+  //         <input
+  //           type="text"
+  //           name={FIELD_MAP.rescisao.data_ini}
+  //           value={rescisao[FIELD_MAP.rescisao.data_ini] || ''}
+  //           onChange={handleRescisaoDateChange}
+  //           onBlur={handleRescisaoDateBlur}
+  //           placeholder="dd-mm-aaaa"
+  //           maxLength={10}
+  //           inputMode="numeric"
+  //           autoComplete="off"
+  //         />
+  //       </div>
+
+  //       <div className="campo campo-medio">
+  //         <label>Aviso Descontado</label>
+  //         <select
+  //           name={FIELD_MAP.rescisao.tipo}
+  //           value={rescisao[FIELD_MAP.rescisao.tipo] || ''}
+  //           onChange={handleRescisaoChange}
+  //         >
+  //           <option value="">--</option>
+  //           <option value="SIM">SIM</option>
+  //           <option value="NÃO">NÃO</option>
+  //         </select>
+  //       </div>
+  //     </div>
+  //   </div>
+  // );
+
+  // const BlocoAdmissao = () => (
+  //   <div className="bloco">
+  //     <h4>Admissão</h4>
+  //     <div className="linha">
+  //       <div className="campo campo-medio">
+  //         <label>Tipo</label>
+  //         <input
+  //           type="text"
+  //           name={FIELD_MAP.admissao.tipo}
+  //           value={admissao[FIELD_MAP.admissao.tipo] || ''}
+  //           onChange={handleAdmissaoChange}
+  //         />
+  //       </div>
+
+  //       <div className="campo campo-curto">
+  //         <label>Data Início (dd-mm-aaaa)</label>
+  //         <input
+  //           type="text"
+  //           name={FIELD_MAP.admissao.data_ini}
+  //           value={admissao[FIELD_MAP.admissao.data_ini] || ''}
+  //           onChange={handleAdmissaoDateChange}
+  //           onBlur={handleAdmissaoDateBlur}
+  //           placeholder="dd-mm-aaaa"
+  //           maxLength={10}
+  //           inputMode="numeric"
+  //           autoComplete="off"
+  //         />
+  //       </div>
+
+  //       <div className="campo campo-medio">
+  //         <label>Deslig. Programado</label>
+  //         <input
+  //           type="text"
+  //           name={FIELD_MAP.admissao.deslig_programado}
+  //           value={admissao[FIELD_MAP.admissao.deslig_programado] || ''}
+  //           onChange={handleAdmissaoChange}
+  //         />
+  //       </div>
+
+  //       <div className="campo campo-curto">
+  //         <label>Preliminar</label>
+  //         <select
+  //           name={FIELD_MAP.admissao.preliminar}
+  //           value={admissao[FIELD_MAP.admissao.preliminar] || ''}
+  //           onChange={handleAdmissaoChange}
+  //         >
+  //           <option value="">--</option>
+  //           <option value="SIM">SIM</option>
+  //           <option value="NÃO">NÃO</option>
+  //         </select>
+  //       </div>
+  //     </div>
+  //   </div>
+  // );
+
+  // const BlocoAfastamento = () => (
+  //   <div className="bloco">
+  //     <h4>Afastamento</h4>
+  //     <div className="linha">
+  //       <div className="campo campo-medio">
+  //         <label>Tipo</label>
+  //         <input
+  //           type="text"
+  //           name={FIELD_MAP.afast.tipo}
+  //           value={afast[FIELD_MAP.afast.tipo] || ''}
+  //           onChange={handleAfastChange}
+  //         />
+  //       </div>
+
+  //       <div className="campo campo-curto">
+  //         <label>Dias</label>
+  //         <input
+  //           type="text"
+  //           name={FIELD_MAP.afast.dias}
+  //           value={afast[FIELD_MAP.afast.dias] || ''}
+  //           onChange={handleAfastChange}
+  //         />
+  //       </div>
+
+  //       <div className="campo campo-curto">
+  //         <label>Início (dd-mm-aaaa)</label>
+  //         <input
+  //           type="text"
+  //           name={FIELD_MAP.afast.ini}
+  //           value={afast[FIELD_MAP.afast.ini] || ''}
+  //           onChange={handleAfastDateChange}
+  //           onBlur={handleAfastDateBlur}
+  //           placeholder="dd-mm-aaaa"
+  //           maxLength={10}
+  //           inputMode="numeric"
+  //           autoComplete="off"
+  //         />
+  //       </div>
+
+  //       <div className="campo campo-curto">
+  //         <label>Perícia</label>
+  //         <input
+  //           type="text"
+  //           name={FIELD_MAP.afast.pericia}
+  //           value={afast[FIELD_MAP.afast.pericia] || ''}
+  //           onChange={handleAfastChange}
+  //         />
+  //       </div>
+  //     </div>
+  //   </div>
+  // );
+
+  // === FÉRIAS ===
+const renderBlocoFerias = () => (
+  <div className="bloco">
+    <h4>Férias</h4>
+    <div className="linha">
+      <div className="campo campo-curto">
+        <label>Abono</label>
+        <select
+          name={FIELD_MAP.ferias.abono}
+          value={ferias[FIELD_MAP.ferias.abono] || ''}
+          onChange={handleFeriasChange}
+        >
+          <option value="">--</option>
+          <option value="SIM">SIM</option>
+          <option value="NÃO">NÃO</option>
+        </select>
+      </div>
+
+      <div className="campo campo-curto">
+        <label>Início (dd-mm-aaaa)</label>
+        <input
+          type="text"
+          name={FIELD_MAP.ferias.data_ini}
+          value={ferias[FIELD_MAP.ferias.data_ini] || ''}
+          onChange={handleFeriasDateChange}
+          onBlur={handleFeriasDateBlur}
+          placeholder="dd-mm-aaaa"
+          maxLength={10}
+          inputMode="numeric"
+          autoComplete="off"
+        />
+      </div>
+
+      <div className="campo campo-medio">
+        <label>Tipo</label>
+        <select
+          name={FIELD_MAP.ferias.tipo}
+          value={ferias[FIELD_MAP.ferias.tipo] || ''}
+          onChange={handleFeriasChange}
+        >
+          <option value="">--</option>
+          <option value="COLETIVA">COLETIVA</option>
+          <option value="INDIVIDUAL">INDIVIDUAL</option>
+        </select>
+      </div>
+
+      <div className="campo campo-curto">
+        <label>Qtd Dias</label>
+        <input
+          type="number"
+          name={FIELD_MAP.ferias.qtd_dias}
+          value={ferias[FIELD_MAP.ferias.qtd_dias] || ''}
+          onChange={handleFeriasChange}
+        />
+      </div>
+
+      <div className="campo campo-curto">
+        <label>Qtd Dias Abono</label>
+        <input
+          type="number"
+          name={FIELD_MAP.ferias.qtd_dias_abono}
+          value={ferias[FIELD_MAP.ferias.qtd_dias_abono] || ''}
+          onChange={handleFeriasChange}
+        />
       </div>
     </div>
-  );
+  </div>
+);
+
+// === RESCISÃO ===
+const renderBlocoRescisao = () => (
+  <div className="bloco">
+    <h4>Rescisão</h4>
+    <div className="linha">
+      <div className="campo campo-curto">
+        <label>Tipo Aviso</label>
+        <input
+          type="text"
+          name={FIELD_MAP.rescisao.tipo_aviso}
+          value={rescisao[FIELD_MAP.rescisao.tipo_aviso] || ''}
+          onChange={handleRescisaoChange}
+        />
+      </div>
+
+      <div className="campo campo-curto">
+        <label>Dias Aviso</label>
+        <input
+          type="text"
+          name={FIELD_MAP.rescisao.dias_aviso}
+          value={rescisao[FIELD_MAP.rescisao.dias_aviso] || ''}
+          onChange={handleRescisaoChange}
+        />
+      </div>
+
+      <div className="campo campo-curto">
+        <label>Data Início (dd-mm-aaaa)</label>
+        <input
+          type="text"
+          name={FIELD_MAP.rescisao.data_ini}
+          value={rescisao[FIELD_MAP.rescisao.data_ini] || ''}
+          onChange={handleRescisaoDateChange}
+          onBlur={handleRescisaoDateBlur}
+          placeholder="dd-mm-aaaa"
+          maxLength={10}
+          inputMode="numeric"
+          autoComplete="off"
+        />
+      </div>
+
+      <div className="campo campo-medio">
+        <label>Aviso Descontado</label>
+        <select
+          name={FIELD_MAP.rescisao.tipo}
+          value={rescisao[FIELD_MAP.rescisao.tipo] || ''}
+          onChange={handleRescisaoChange}
+        >
+          <option value="">--</option>
+          <option value="SIM">SIM</option>
+          <option value="NÃO">NÃO</option>
+        </select>
+      </div>
+    </div>
+  </div>
+);
+
+// === ADMISSÃO ===
+const renderBlocoAdmissao = () => (
+  <div className="bloco">
+    <h4>Admissão</h4>
+    <div className="linha">
+      <div className="campo campo-medio">
+        <label>Tipo</label>
+        <input
+          type="text"
+          name={FIELD_MAP.admissao.tipo}
+          value={admissao[FIELD_MAP.admissao.tipo] || ''}
+          onChange={handleAdmissaoChange}
+        />
+      </div>
+
+      <div className="campo campo-curto">
+        <label>Data Início (dd-mm-aaaa)</label>
+        <input
+          type="text"
+          name={FIELD_MAP.admissao.data_ini}
+          value={admissao[FIELD_MAP.admissao.data_ini] || ''}
+          onChange={handleAdmissaoDateChange}
+          onBlur={handleAdmissaoDateBlur}
+          placeholder="dd-mm-aaaa"
+          maxLength={10}
+          inputMode="numeric"
+          autoComplete="off"
+        />
+      </div>
+
+      <div className="campo campo-medio">
+        <label>Deslig. Programado</label>
+        <input
+          type="text"
+          name={FIELD_MAP.admissao.deslig_programado}
+          value={admissao[FIELD_MAP.admissao.deslig_programado] || ''}
+          onChange={handleAdmissaoChange}
+        />
+      </div>
+
+      <div className="campo campo-curto">
+        <label>Preliminar</label>
+        <select
+          name={FIELD_MAP.admissao.preliminar}
+          value={admissao[FIELD_MAP.admissao.preliminar] || ''}
+          onChange={handleAdmissaoChange}
+        >
+          <option value="">--</option>
+          <option value="SIM">SIM</option>
+          <option value="NÃO">NÃO</option>
+        </select>
+      </div>
+    </div>
+  </div>
+);
+
+// === AFASTAMENTO ===
+const renderBlocoAfastamento = () => (
+  <div className="bloco">
+    <h4>Afastamento</h4>
+    <div className="linha">
+      <div className="campo campo-medio">
+        <label>Tipo</label>
+        <input
+          type="text"
+          name={FIELD_MAP.afast.tipo}
+          value={afast[FIELD_MAP.afast.tipo] || ''}
+          onChange={handleAfastChange}
+        />
+      </div>
+
+      <div className="campo campo-curto">
+        <label>Dias</label>
+        <input
+          type="text"
+          name={FIELD_MAP.afast.dias}
+          value={afast[FIELD_MAP.afast.dias] || ''}
+          onChange={handleAfastChange}
+        />
+      </div>
+
+      <div className="campo campo-curto">
+        <label>Início (dd-mm-aaaa)</label>
+        <input
+          type="text"
+          name={FIELD_MAP.afast.ini}
+          value={afast[FIELD_MAP.afast.ini] || ''}
+          onChange={handleAfastDateChange}
+          onBlur={handleAfastDateBlur}
+          placeholder="dd-mm-aaaa"
+          maxLength={10}
+          inputMode="numeric"
+          autoComplete="off"
+        />
+      </div>
+
+      <div className="campo campo-curto">
+        <label>Perícia</label>
+        <input
+          type="text"
+          name={FIELD_MAP.afast.pericia}
+          value={afast[FIELD_MAP.afast.pericia] || ''}
+          onChange={handleAfastChange}
+        />
+      </div>
+    </div>
+  </div>
+);
+
+
 
   return (
     <div className="modal-overlay">
@@ -580,15 +988,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
               </select>
             </div>
 
-            <div className="campo campo-curto">
-              <label>STATUS</label>
-              <select name="status" value={form.status || 'PENDENTE'} onChange={handleChange}>
-                <option value="PENDENTE">Pendente</option>
-                <option value="PAUSADO">Pausado</option>
-                <option value="CONCLUIDO">Concluído</option>
-              </select>
-            </div>
-
+            {renderInput('id_acessorias', 'ID ACESSÓRIAS', 'text', 'campo-curto')}  
             {renderInput('competencia', 'COMPETÊNCIA', 'text', 'campo-curto')}
             {renderInput('identificacao', 'IDENTIFICAÇÃO', 'text', 'campo-longo')}
             <div className="campo campo-longo">
@@ -603,10 +1003,15 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
           </div>
 
           {/* Dinâmico por tipo */}
-          {tipoServico === 'FERIAS' && <BlocoFerias />}
+          {/* {tipoServico === 'FERIAS' && <BlocoFerias />}
           {tipoServico === 'RESCISAO' && <BlocoRescisao />}
           {tipoServico === 'ADMISSAO' && <BlocoAdmissao />}
-          {tipoServico === 'AFASTAMENTO' && <BlocoAfastamento />}
+          {tipoServico === 'AFASTAMENTO' && <BlocoAfastamento />} */}
+          {tipoServico === 'FERIAS' && renderBlocoFerias()}
+          {tipoServico === 'RESCISAO' && renderBlocoRescisao()}
+          {tipoServico === 'ADMISSAO' && renderBlocoAdmissao()}
+          {tipoServico === 'AFASTAMENTO' && renderBlocoAfastamento()}
+
 
           <div className="linha">
             {renderInputData('data_solicitacao', 'SOLICITAÇÃO', 'campo-curto')}

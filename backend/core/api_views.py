@@ -17,7 +17,8 @@ from .models import (
     AgendaBase, Sistema, PeriodoEntrega, 
     CCT,
     PG_PLR,
-    Responsavel
+    Responsavel,
+    Permissao
 )
 from .serializers import (
     UserSerializer,
@@ -225,3 +226,15 @@ def me(request):
         })
     except Responsavel.DoesNotExist:
         return Response({"error": "Responsável não encontrado"}, status=404)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def minhas_permissoes(request):
+    try:
+        responsavel = Responsavel.objects.get(usuario=request.user.username)
+        perfil = responsavel.perfil
+    except Responsavel.DoesNotExist:
+        return Response({"error": "Responsável não encontrado"}, status=404)
+
+    permissoes = Permissao.objects.filter(perfil=perfil).values("tela", "aba", "campo", "pode_editar")
+    return Response(list(permissoes))

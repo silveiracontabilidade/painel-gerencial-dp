@@ -12,7 +12,8 @@ from .api_views import (
     CCTViewSet,
     PGPLRViewSet,
     UsuarioResponsavelViewSet,
-    me
+    me,
+    minhas_permissoes
 )
 from django.urls import path
 
@@ -33,5 +34,5 @@ router.register(r'usuarios-responsaveis', UsuarioResponsavelViewSet, basename='u
 
 
 urlpatterns = router.urls + [
-    path("me/", me, name="me")
-]
+    path("me/", me, name="me"),
+    path("permissoes/mine/", minhas_permissoes),]
