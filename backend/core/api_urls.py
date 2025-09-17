@@ -15,8 +15,8 @@ from .api_views import (
     me,
     minhas_permissoes
 )
-from django.urls import path
-
+from django.urls import path, include
+from django.conf import settings
 
 router = DefaultRouter()
 router.register(r'usuarios', UserViewSet)
@@ -35,4 +35,7 @@ router.register(r'usuarios-responsaveis', UsuarioResponsavelViewSet, basename='u
 
 urlpatterns = router.urls + [
     path("me/", me, name="me"),
-    path("permissoes/mine/", minhas_permissoes),]
+    path("permissoes/mine/", minhas_permissoes),
+    ]
+
+

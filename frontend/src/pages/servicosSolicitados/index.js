@@ -16,9 +16,11 @@ export default function ServicosSolicitados() {
 
   // Filtros
   const [filters, setFilters] = useState({
-    empresa: '',        // texto (código ou razão social)
-    responsavelId: '',  // id da tabela Responsavel
-    grupoId: '',        // id da tabela GrupoGerencial
+    empresa: '',
+    responsavelId: '',
+    grupoId: '',
+    status: 'todos', // todos | aberto | concluido
+    prazo: 'todos',  // todos | atrasados | no_prazo
   });
 
   useEffect(() => {
@@ -73,14 +75,14 @@ export default function ServicosSolicitados() {
   // Aplica filtros
   const solicitacoesFiltradas = useMemo(() => {
     const termoEmp = normalize(filters.empresa);
-
     const alvoRespNome = filters.responsavelId
       ? normalize(respById.get(String(filters.responsavelId))?.nome)
       : '';
-
     const alvoGrupoNome = filters.grupoId
       ? normalize(grupoById.get(String(filters.grupoId))?.nome)
       : '';
+
+    const hoje = new Date();
 
     return solicitacoes.filter((s) => {
       const cod = String(s.empresa ?? '');
@@ -91,14 +93,36 @@ export default function ServicosSolicitados() {
 
       const codNorm = normalize(emp.cod_folha);
       const razaoNorm = normalize(emp.razao_social);
-      const empRespNorm = normalize(emp.resp_dp); // texto do responsável na empresa
-      const empGrupoNorm = normalize(emp.grupo);  // texto do grupo na empresa
+      const empRespNorm = normalize(emp.resp_dp);
+      const empGrupoNorm = normalize(emp.grupo);
 
       const passaEmpresa =
         !termoEmp || codNorm.includes(termoEmp) || razaoNorm.includes(termoEmp);
 
       const passaResp = !alvoRespNome || empRespNorm === alvoRespNome;
       const passaGrupo = !alvoGrupoNome || empGrupoNorm === alvoGrupoNome;
+
+      // filtro de status
+      if (filters.status === "aberto" && s.data_conclusao) return false;
+      if (filters.status === "concluido" && !s.data_conclusao) return false;
+
+      // filtro de prazo
+      if (filters.prazo !== "todos" && s.data_vencimento) {
+        const venc = new Date(s.data_vencimento.split("-").reverse().join("-"));
+        const concluido = !!s.data_conclusao;
+
+        if (filters.prazo === "atrasados" && (!concluido && venc < hoje)) {
+          // ok, fica
+        } else if (filters.prazo === "atrasados") {
+          return false;
+        }
+
+        if (filters.prazo === "no_prazo" && (!concluido && venc >= hoje)) {
+          // ok, fica
+        } else if (filters.prazo === "no_prazo") {
+          return false;
+        }
+      }
 
       return passaEmpresa && passaResp && passaGrupo;
     });
@@ -107,16 +131,10 @@ export default function ServicosSolicitados() {
   // Helpers
   const renderDetalhes = (s) => {
     let partes = [];
-
-    // Sempre começa com Identificação (se existir)
     if (s.identificacao) partes.push(s.identificacao);
-
-    // Admissão
     if (s.admissao_data_ini || s.admissao_tipo) {
       partes.push(`Admissão: ${s.admissao_data_ini || '-'} ${s.admissao_tipo || ''}`);
     }
-
-    // Rescisão
     if (s.rescisao_tipo_aviso || s.rescisao_data_ini || s.rescisao_dias_aviso) {
       partes.push(
         `Rescisão: ${s.rescisao_tipo_aviso || '-'}, ` +
@@ -124,35 +142,27 @@ export default function ServicosSolicitados() {
         `${s.rescisao_dias_aviso ? `Aviso ${s.rescisao_dias_aviso}` : ''}`
       );
     }
-
-    // Férias
-      if (s.ferias_data_ini || s.ferias_abono) {
-        partes.push(
-          `Férias: ${s.ferias_data_ini || '-'}, ` +
-          `${s.ferias_abono ? `${s.ferias_abono} abono` : ''}`
-        );
-      }
-
-      // Afastamento
-      if (s.afast_tipo || s.afast_ini) {
-        partes.push(`Afast.: ${s.afast_tipo || '-'} ${s.afast_ini || ''}`);
-      }
-
-      return partes.join(" | ");
-    };
-
+    if (s.ferias_data_ini || s.ferias_abono) {
+      partes.push(
+        `Férias: ${s.ferias_data_ini || '-'}, ` +
+        `${s.ferias_abono ? `${s.ferias_abono} abono` : ''}`
+      );
+    }
+    if (s.afast_tipo || s.afast_ini) {
+      partes.push(`Afast.: ${s.afast_tipo || '-'} ${s.afast_ini || ''}`);
+    }
+    return partes.join(" | ");
+  };
 
   const abrirModal = (solicitacao = null) => {
     setSolicitacaoSelecionada(solicitacao);
     setModalAberto(true);
   };
-
   const fecharModal = () => {
     setModalAberto(false);
     setSolicitacaoSelecionada(null);
     carregarSolicitacoes();
   };
-
   const excluir = async (id) => {
     if (window.confirm('Confirma a exclusão?')) {
       await api.delete(`/api/solicitacoes/${id}/`);
@@ -160,7 +170,6 @@ export default function ServicosSolicitados() {
     }
   };
 
-  // Helpers de exibição
   const renderEmpresa = (valorEmpresa) => {
     const cod = String(valorEmpresa ?? '');
     const emp = empresaByCodigo.get(cod);
@@ -183,7 +192,7 @@ export default function ServicosSolicitados() {
   };
 
   const limparFiltros = () =>
-    setFilters({ empresa: '', responsavelId: '', grupoId: '' });
+    setFilters({ empresa: '', responsavelId: '', grupoId: '', status: 'todos', prazo: 'todos' });
 
   return (
     <div className="servicos-container">
@@ -235,6 +244,24 @@ export default function ServicosSolicitados() {
           </select>
         </div>
 
+        <div className="campo">
+          <label>Status</label>
+          <select value={filters.status} onChange={handleFilterChange('status')}>
+            <option value="todos">Todos</option>
+            <option value="aberto">Em aberto</option>
+            <option value="concluido">Concluídos</option>
+          </select>
+        </div>
+
+        <div className="campo">
+          <label>Prazo</label>
+          <select value={filters.prazo} onChange={handleFilterChange('prazo')}>
+            <option value="todos">Todos</option>
+            <option value="atrasados">Atrasados</option>
+            <option value="no_prazo">No Prazo</option>
+          </select>
+        </div>
+
         <div>
           <button type="button" onClick={limparFiltros} title="Limpar filtros">
             Limpar
@@ -246,8 +273,8 @@ export default function ServicosSolicitados() {
         <thead>
           <tr>
             <th>Empresa</th>
-            <th>Responsável</th> {/* NOVA COLUNA */}
-            <th>Grupo</th>        {/* NOVA COLUNA */}
+            <th>Responsável</th>
+            <th>Grupo</th>
             <th>Serviço</th>
             <th>Detalhes</th>
             <th>Competência</th>
@@ -261,8 +288,8 @@ export default function ServicosSolicitados() {
           {solicitacoesFiltradas.map((s) => (
             <tr key={s.id}>
               <td>{renderEmpresa(s.empresa)}</td>
-              <td>{renderResp(s.empresa)}</td>   {/* NOVA CÉLULA */}
-              <td>{renderGrupo(s.empresa)}</td>  {/* NOVA CÉLULA */}
+              <td>{renderResp(s.empresa)}</td>
+              <td>{renderGrupo(s.empresa)}</td>
               <td>{s.servico_nome}</td>
               <td>{renderDetalhes(s)}</td>
               <td>{s.competencia}</td>
@@ -282,7 +309,7 @@ export default function ServicosSolicitados() {
 
           {solicitacoesFiltradas.length === 0 && (
             <tr>
-              <td colSpan={9} style={{ textAlign: 'center', opacity: 0.7, padding: '8px 0' }}>
+              <td colSpan={10} style={{ textAlign: 'center', opacity: 0.7, padding: '8px 0' }}>
                 Nenhum registro encontrado com os filtros atuais.
               </td>
             </tr>

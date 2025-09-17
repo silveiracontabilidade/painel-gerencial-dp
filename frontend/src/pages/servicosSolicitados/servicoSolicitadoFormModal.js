@@ -1,5 +1,6 @@
 // ServicoSolicitadoFormModal.js
 import React, { useEffect, useState, useMemo, useCallback  } from 'react';
+import {FileText} from 'lucide-react'
 import api from '../../api/axios';
 import './servicos-solicitados.css';
 import Select from 'react-select';
@@ -486,236 +487,6 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   );
   
   // ===== Blocos Dinâmicos =====
-  // const BlocoFerias = () => (
-  //   <div className="bloco">
-  //     <h4>Férias</h4>
-  //     <div className="linha">
-  //       <div className="campo campo-curto">
-  //         <label>Abono</label>
-  //         <select
-  //           name={FIELD_MAP.ferias.abono}
-  //           value={ferias[FIELD_MAP.ferias.abono] || ''}
-  //           onChange={handleFeriasChange}
-  //         >
-  //           <option value="">--</option>
-  //           <option value="SIM">SIM</option>
-  //           <option value="NÃO">NÃO</option>
-  //         </select>
-  //       </div>
-
-  //       <div className="campo campo-curto">
-  //         <label>Início (dd-mm-aaaa)</label>
-  //         <input
-  //           type="text"
-  //           name={FIELD_MAP.ferias.data_ini}
-  //           value={ferias[FIELD_MAP.ferias.data_ini] || ''}
-  //           onChange={handleFeriasDateChange}
-  //           onBlur={handleFeriasDateBlur}
-  //           placeholder="dd-mm-aaaa"
-  //           maxLength={10}
-  //           inputMode="numeric"
-  //           autoComplete="off"
-  //         />
-  //       </div>
-
-  //       <div className="campo campo-medio">
-  //         <label>Tipo</label>
-  //         <select
-  //           name={FIELD_MAP.ferias.tipo}
-  //           value={ferias[FIELD_MAP.ferias.tipo] || ''}
-  //           onChange={handleFeriasChange}
-  //         >
-  //           <option value="">--</option>
-  //           <option value="COLETIVA">COLETIVA</option>
-  //           <option value="INDIVIDUAL">INDIVIDUAL</option>
-  //         </select>
-  //       </div>
-
-  //       <div className="campo campo-curto">
-  //         <label>Qtd Dias</label>
-  //         <input
-  //           type="number"
-  //           name={FIELD_MAP.ferias.qtd_dias}
-  //           value={ferias[FIELD_MAP.ferias.qtd_dias] || ''}
-  //           onChange={handleFeriasChange}
-  //         />
-  //       </div>
-
-  //       <div className="campo campo-curto">
-  //         <label>Qtd Dias Abono</label>
-  //         <input
-  //           type="number"
-  //           name={FIELD_MAP.ferias.qtd_dias_abono}
-  //           value={ferias[FIELD_MAP.ferias.qtd_dias_abono] || ''}
-  //           onChange={handleFeriasChange}
-  //         />
-  //       </div>
-  //     </div>
-  //   </div>
-  // );
-
-  // const BlocoRescisao = () => (
-  //   <div className="bloco">
-  //     <h4>Rescisão</h4>
-  //     <div className="linha">
-  //       <div className="campo campo-curto">
-  //         <label>Tipo Aviso</label>
-  //         <input
-  //           type="text"
-  //           name={FIELD_MAP.rescisao.tipo_aviso}
-  //           value={rescisao[FIELD_MAP.rescisao.tipo_aviso] || ''}
-  //           onChange={handleRescisaoChange}
-  //         />
-  //       </div>
-
-  //       <div className="campo campo-curto">
-  //         <label>Dias Aviso</label>
-  //         <input
-  //           type="text"
-  //           name={FIELD_MAP.rescisao.dias_aviso}
-  //           value={rescisao[FIELD_MAP.rescisao.dias_aviso] || ''}
-  //           onChange={handleRescisaoChange}
-  //         />
-  //       </div>
-
-  //       <div className="campo campo-curto">
-  //         <label>Data Início (dd-mm-aaaa)</label>
-  //         <input
-  //           type="text"
-  //           name={FIELD_MAP.rescisao.data_ini}
-  //           value={rescisao[FIELD_MAP.rescisao.data_ini] || ''}
-  //           onChange={handleRescisaoDateChange}
-  //           onBlur={handleRescisaoDateBlur}
-  //           placeholder="dd-mm-aaaa"
-  //           maxLength={10}
-  //           inputMode="numeric"
-  //           autoComplete="off"
-  //         />
-  //       </div>
-
-  //       <div className="campo campo-medio">
-  //         <label>Aviso Descontado</label>
-  //         <select
-  //           name={FIELD_MAP.rescisao.tipo}
-  //           value={rescisao[FIELD_MAP.rescisao.tipo] || ''}
-  //           onChange={handleRescisaoChange}
-  //         >
-  //           <option value="">--</option>
-  //           <option value="SIM">SIM</option>
-  //           <option value="NÃO">NÃO</option>
-  //         </select>
-  //       </div>
-  //     </div>
-  //   </div>
-  // );
-
-  // const BlocoAdmissao = () => (
-  //   <div className="bloco">
-  //     <h4>Admissão</h4>
-  //     <div className="linha">
-  //       <div className="campo campo-medio">
-  //         <label>Tipo</label>
-  //         <input
-  //           type="text"
-  //           name={FIELD_MAP.admissao.tipo}
-  //           value={admissao[FIELD_MAP.admissao.tipo] || ''}
-  //           onChange={handleAdmissaoChange}
-  //         />
-  //       </div>
-
-  //       <div className="campo campo-curto">
-  //         <label>Data Início (dd-mm-aaaa)</label>
-  //         <input
-  //           type="text"
-  //           name={FIELD_MAP.admissao.data_ini}
-  //           value={admissao[FIELD_MAP.admissao.data_ini] || ''}
-  //           onChange={handleAdmissaoDateChange}
-  //           onBlur={handleAdmissaoDateBlur}
-  //           placeholder="dd-mm-aaaa"
-  //           maxLength={10}
-  //           inputMode="numeric"
-  //           autoComplete="off"
-  //         />
-  //       </div>
-
-  //       <div className="campo campo-medio">
-  //         <label>Deslig. Programado</label>
-  //         <input
-  //           type="text"
-  //           name={FIELD_MAP.admissao.deslig_programado}
-  //           value={admissao[FIELD_MAP.admissao.deslig_programado] || ''}
-  //           onChange={handleAdmissaoChange}
-  //         />
-  //       </div>
-
-  //       <div className="campo campo-curto">
-  //         <label>Preliminar</label>
-  //         <select
-  //           name={FIELD_MAP.admissao.preliminar}
-  //           value={admissao[FIELD_MAP.admissao.preliminar] || ''}
-  //           onChange={handleAdmissaoChange}
-  //         >
-  //           <option value="">--</option>
-  //           <option value="SIM">SIM</option>
-  //           <option value="NÃO">NÃO</option>
-  //         </select>
-  //       </div>
-  //     </div>
-  //   </div>
-  // );
-
-  // const BlocoAfastamento = () => (
-  //   <div className="bloco">
-  //     <h4>Afastamento</h4>
-  //     <div className="linha">
-  //       <div className="campo campo-medio">
-  //         <label>Tipo</label>
-  //         <input
-  //           type="text"
-  //           name={FIELD_MAP.afast.tipo}
-  //           value={afast[FIELD_MAP.afast.tipo] || ''}
-  //           onChange={handleAfastChange}
-  //         />
-  //       </div>
-
-  //       <div className="campo campo-curto">
-  //         <label>Dias</label>
-  //         <input
-  //           type="text"
-  //           name={FIELD_MAP.afast.dias}
-  //           value={afast[FIELD_MAP.afast.dias] || ''}
-  //           onChange={handleAfastChange}
-  //         />
-  //       </div>
-
-  //       <div className="campo campo-curto">
-  //         <label>Início (dd-mm-aaaa)</label>
-  //         <input
-  //           type="text"
-  //           name={FIELD_MAP.afast.ini}
-  //           value={afast[FIELD_MAP.afast.ini] || ''}
-  //           onChange={handleAfastDateChange}
-  //           onBlur={handleAfastDateBlur}
-  //           placeholder="dd-mm-aaaa"
-  //           maxLength={10}
-  //           inputMode="numeric"
-  //           autoComplete="off"
-  //         />
-  //       </div>
-
-  //       <div className="campo campo-curto">
-  //         <label>Perícia</label>
-  //         <input
-  //           type="text"
-  //           name={FIELD_MAP.afast.pericia}
-  //           value={afast[FIELD_MAP.afast.pericia] || ''}
-  //           onChange={handleAfastChange}
-  //         />
-  //       </div>
-  //     </div>
-  //   </div>
-  // );
-
   // === FÉRIAS ===
 const renderBlocoFerias = () => (
   <div className="bloco">
@@ -953,107 +724,144 @@ const renderBlocoAfastamento = () => (
 
 
   return (
-    <div className="modal-overlay">
-      <div className="modal">
-        <h3>{dados ? 'EDITAR SERVIÇO SOLICITADO' : 'NOVO SERVIÇO SOLICITADO'}</h3>
+  <div className="modal-overlay">
+    <div className="modal">
+      <h3>{dados ? 'EDITAR SERVIÇO SOLICITADO' : 'NOVO SERVIÇO SOLICITADO'}</h3>
 
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="linha">
-            <div className="campo campo-longo">
-              <label>
-                EMPRESA{' '}
-                {errors.empresa && <span style={{ color: 'red', fontWeight: 600, fontSize: 11 }}>({errors.empresa})</span>}
-              </label>
-              <Select
-                options={empresas.map((emp) => ({
+      <form onSubmit={handleSubmit} className="modal-form">
+        
+        {/* Empresa */}
+        <div className="linha">
+          <div className="campo campo-longo">
+            <label>
+              EMPRESA{' '}
+              {errors.empresa && <span style={{ color: 'red', fontWeight: 600, fontSize: 11 }}>({errors.empresa})</span>}
+            </label>
+            <Select
+              options={empresas.map((emp) => ({
+                value: emp.cod_folha,
+                label: `${emp.cod_folha} - ${emp.razao_social}`,
+              }))}
+              value={empresas
+                .map((emp) => ({
                   value: emp.cod_folha,
                   label: `${emp.cod_folha} - ${emp.razao_social}`,
-                }))}
-                value={empresas
-                  .map((emp) => ({
-                    value: emp.cod_folha,
-                    label: `${emp.cod_folha} - ${emp.razao_social}`,
-                  }))
-                  .find((opt) => String(opt.value) === String(form.empresa))}
-                onChange={(opt) => {
-                  setForm((prev) => ({ ...prev, empresa: opt?.value || '' }));
-                  if (errors.empresa) setErrors((prev) => ({ ...prev, empresa: undefined }));
-                }}
-                placeholder="Digite para buscar..."
-                isClearable
-                styles={{
-                  control: (base) => ({
-                    ...base,
-                    borderColor: errors.empresa ? 'red' : base.borderColor,
-                    minHeight: 30,
-                  }),
-                  indicatorsContainer: (base) => ({ ...base, height: 30 }),
-                }}
-              />
+                }))
+                .find((opt) => String(opt.value) === String(form.empresa))}
+              onChange={(opt) => {
+                setForm((prev) => ({ ...prev, empresa: opt?.value || '' }));
+                if (errors.empresa) setErrors((prev) => ({ ...prev, empresa: undefined }));
+              }}
+              placeholder="Digite para buscar..."
+              isClearable
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  borderColor: errors.empresa ? 'red' : base.borderColor,
+                  minHeight: 30,
+                }),
+                indicatorsContainer: (base) => ({ ...base, height: 30 }),
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Serviço + ID + Competência + Arquivos */}
+        <div className="linha linha-servico">
+          <div className="campo campo-medio">
+            <label>SERVIÇO</label>
+            <select
+              name="servico"
+              value={form.servico || ''}
+              onChange={handleServicoChange}
+              style={errors.servico ? { borderColor: 'red' } : undefined}
+            >
+              <option value="">--</option>
+              {servicos.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {renderInput('id_acessorias', 'ID ACESSÓRIAS', 'text', 'campo-curto')}  
+          {renderInput('competencia', 'COMPETÊNCIA', 'text', 'campo-curto')}
+
+          {/* Arquivos */}
+          {/* <div className="campo campo-arquivos"> */}
+            <div className="arquivo-item">
+              <label>CHECKLIST</label>
+              {servicoSelecionado?.checklist ? (
+                <a href={servicoSelecionado.checklist} target="_blank" rel="noopener noreferrer">
+                  <FileText size={18} />
+                </a>
+              ) : <span>-</span>}
             </div>
-          </div>
-
-          <div className="linha">
-            <div className="campo campo-medio">
-              <label>
-                SERVIÇO{' '}
-                {errors.servico && <span style={{ color: 'red', fontWeight: 600, fontSize: 11 }}>({errors.servico})</span>}
-              </label>
-              <select
-                name="servico"
-                value={form.servico || ''}
-                onChange={handleServicoChange}
-                style={errors.servico ? { borderColor: 'red' } : undefined}
-              >
-                <option value="">--</option>
-                {servicos.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nome}
-                  </option>
-                ))}
-              </select>
+            <div className="arquivo-item">
+              <label>INSTRUÇÃO</label>
+              {servicoSelecionado?.instrucao_trabalho ? (
+                <a href={servicoSelecionado.instrucao_trabalho} target="_blank" rel="noopener noreferrer">
+                  <FileText size={18} />
+                </a>
+              ) : <span>-</span>}
             </div>
-
-            {renderInput('id_acessorias', 'ID ACESSÓRIAS', 'text', 'campo-curto')}  
-            {renderInput('competencia', 'COMPETÊNCIA', 'text', 'campo-curto')}
-            {renderInput('identificacao', 'IDENTIFICAÇÃO', 'text', 'campo-longo')}
-            <div className="campo campo-longo">
-              <label>DESCRIÇÃO DO SERVIÇO</label>
-              <textarea
-                name="descricao_servico"
-                value={form.descricao_servico || ''}
-                onChange={handleChange}
-                placeholder="Detalhes da demanda..."
-              />
+            <div className="arquivo-item">
+              <label>VÍDEO</label>
+              {servicoSelecionado?.video_explicativo ? (
+                <a href={servicoSelecionado.video_explicativo} target="_blank" rel="noopener noreferrer">
+                  <FileText size={18} />
+                </a>
+              ) : <span>-</span>}
             </div>
+            <div className="arquivo-item">
+              <label>TÓPICO</label>
+              {servicoSelecionado?.topico_rapido ? (
+                <a href={servicoSelecionado.topico_rapido} target="_blank" rel="noopener noreferrer">
+                  <FileText size={18} />
+                </a>
+              ) : <span>-</span>}
+            {/* </div> */}
           </div>
+        </div>
 
-          {/* Dinâmico por tipo */}
-          {/* {tipoServico === 'FERIAS' && <BlocoFerias />}
-          {tipoServico === 'RESCISAO' && <BlocoRescisao />}
-          {tipoServico === 'ADMISSAO' && <BlocoAdmissao />}
-          {tipoServico === 'AFASTAMENTO' && <BlocoAfastamento />} */}
-          {tipoServico === 'FERIAS' && renderBlocoFerias()}
-          {tipoServico === 'RESCISAO' && renderBlocoRescisao()}
-          {tipoServico === 'ADMISSAO' && renderBlocoAdmissao()}
-          {tipoServico === 'AFASTAMENTO' && renderBlocoAfastamento()}
-
-
-          <div className="linha">
-            {renderInputData('data_solicitacao', 'SOLICITAÇÃO', 'campo-curto')}
-            {renderInputData('data_vencimento', 'VENCIMENTO', 'campo-curto', true)}
-            {renderInputData('data_para_resposta', 'DATA PARA RESPOSTA', 'campo-curto')}
-            {renderInputData('data_conclusao', 'CONCLUSÃO', 'campo-curto')}
+        {/* Descrição */}
+        <div className="linha">
+          <div className="campo campo-longo">
+            <label>DESCRIÇÃO DO SERVIÇO</label>
+            <textarea
+              name="descricao_servico"
+              value={form.descricao_servico || ''}
+              onChange={handleChange}
+              placeholder="Detalhes da demanda..."
+            />
           </div>
+        </div>
 
-          <div className="botoes">
-            <button type="submit">SALVAR</button>
-            <button type="button" className="cancelar" onClick={fechar}>
-              CANCELAR
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* Blocos dinâmicos */}
+        {tipoServico === 'FERIAS' && renderBlocoFerias()}
+        {tipoServico === 'RESCISAO' && renderBlocoRescisao()}
+        {tipoServico === 'ADMISSAO' && renderBlocoAdmissao()}
+        {tipoServico === 'AFASTAMENTO' && renderBlocoAfastamento()}
+
+        {/* Datas principais */}
+        <div className="linha">
+          {renderInputData('data_solicitacao', 'SOLICITAÇÃO', 'campo-curto')}
+          {renderInputData('data_vencimento', 'VENCIMENTO', 'campo-curto', true)}
+          {renderInputData('data_para_resposta', 'DATA PARA RESPOSTA', 'campo-curto')}
+          {renderInputData('data_conclusao', 'CONCLUSÃO', 'campo-curto')}
+        </div>
+
+        {/* Botões */}
+        <div className="botoes">
+          <button type="submit">SALVAR</button>
+          <button type="button" className="cancelar" onClick={fechar}>
+            CANCELAR
+          </button>
+        </div>
+      </form>
     </div>
-  );
+  </div>
+);
+
 }

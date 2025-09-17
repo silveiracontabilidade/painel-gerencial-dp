@@ -601,7 +601,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
               <h4>DADOS DO ANALISTA</h4>
               <div className="linha">
                 {renderSelect('grupo', 'GRUPO', grupos.map(g => g.nome.toUpperCase()),'campo-curto', empresa.grupo)}
-                {renderSelect('resp_dp', 'RESPONSÁVEL DP', responsaveis.map(r => r.nome.toUpperCase()), 'campo-curto', empresa.resp_dp)}
+                {renderSelect('resp_dp', 'RESPONSÁVEL DP', responsaveis.map(r => r.nome.toUpperCase()), 'campo-medio', empresa.resp_dp)}
                 {renderText('ramal', 'RAMAL', 'campo-curto','text',null, 'numeric')}
               </div>
             </div>
@@ -909,5 +909,4 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
     </div>
   </div>
 );
-
 }

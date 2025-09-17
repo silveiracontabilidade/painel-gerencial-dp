@@ -1,4 +1,5 @@
-import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
+// Servicos.js
+import { Plus, Pencil, Trash2, Check, X, FileText } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import './Servicos.css';
@@ -8,6 +9,9 @@ export default function Servicos() {
   const [editandoId, setEditandoId] = useState(null);
   const [dadosEditados, setDadosEditados] = useState({});
   const [perfilUsuario, setPerfilUsuario] = useState(null);
+  const [carregando, setCarregando] = useState(false);
+  const [carregandoArquivo, setCarregandoArquivo] = useState(false);
+
 
   useEffect(() => {
     async function fetchPerfil() {
@@ -21,7 +25,6 @@ export default function Servicos() {
     fetchPerfil();
   }, []);
 
-
   useEffect(() => {
     carregarServicos();
   }, []);
@@ -30,7 +33,7 @@ export default function Servicos() {
     const res = await api.get('/api/servicos/');
     const dadosFormatados = (res.data.results || res.data).map(s => ({
       ...s,
-      tempo_execucao: s.tempo_execucao || '00:00', // já vem "HH:MM"
+      tempo_execucao: s.tempo_execucao || '00:00',
     }));
     setServicos(dadosFormatados);
   };
@@ -46,25 +49,47 @@ export default function Servicos() {
   };
 
   const salvar = async (id) => {
-    let tempo = dadosEditados.tempo_execucao || "0:00";
+    setCarregando(true);
+    try {
+      const formData = new FormData();
+      formData.append("nome", dadosEditados.nome);
+      formData.append("prazo_dias", dadosEditados.prazo_dias);
+      formData.append("tempo_execucao", dadosEditados.tempo_execucao);
 
-    // garante sempre HH:MM
-    if (!tempo.includes(":")) tempo = `${tempo}:00`;
+      // checklist
+      if (dadosEditados.checklist === "") {
+        formData.append("checklist", "");
+      } else if (dadosEditados.checklist instanceof File) {
+        formData.append("checklist", dadosEditados.checklist);
+      }
+      // instrucao
+      if (dadosEditados.instrucao_trabalho === "") {
+        formData.append("instrucao_trabalho", "");
+      } else if (dadosEditados.instrucao_trabalho instanceof File) {
+        formData.append("instrucao_trabalho", dadosEditados.instrucao_trabalho);
+      }
+      // video
+      if (dadosEditados.video_explicativo === "") {
+        formData.append("video_explicativo", "");
+      } else if (dadosEditados.video_explicativo instanceof File) {
+        formData.append("video_explicativo", dadosEditados.video_explicativo);
+      }
+      // topico
+      if (dadosEditados.topico_rapido === "") {
+        formData.append("topico_rapido", "");
+      } else if (dadosEditados.topico_rapido instanceof File) {
+        formData.append("topico_rapido", dadosEditados.topico_rapido);
+      }
 
-    const [h, m] = tempo.split(":");
-    const hh = parseInt(h, 10) || 0;
-    const mm = parseInt(m, 10) || 0;
+      await api.put(`/api/servicos/${id}/`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-    const formatado = `${hh}:${mm.toString().padStart(2, "0")}`;
-
-    const payload = {
-      ...dadosEditados,
-      tempo_execucao: formatado, // sempre HH:MM:00
-    };
-
-    await api.put(`/api/servicos/${id}/`, payload);
-    cancelar();
-    carregarServicos();
+      cancelar();
+      carregarServicos();
+    } finally {
+      setCarregando(false);
+    }
   };
 
 
@@ -76,20 +101,83 @@ export default function Servicos() {
   };
 
   const novo = async () => {
-    const novoServico = { nome: "Novo Serviço", prazo_dias: 0, tempo_execucao: "0:00" };
+    const novoServico = { nome: "Novo Serviço", prazo_dias: 0, tempo_execucao: "00:00" };
 
-    const payload = {
-      ...novoServico,
-      tempo_execucao: "0:00",
-    };
-
-    const res = await api.post("/api/servicos/", payload);
+    const res = await api.post("/api/servicos/", novoServico);
     setEditandoId(res.data.id);
     setDadosEditados(novoServico);
     carregarServicos();
   };
 
+  // helper para renderizar cada campo de anexo
+  const renderAnexo = (servico, campo, accept) => {
+      // Valor que deve ser exibido: se está editando, usa dadosEditados; senão, usa servico
+      const valorAtual = editandoId === servico.id ? dadosEditados[campo] : servico[campo];
+
+      // Função helper para montar a URL corretamente
+      const getHref = (valor) => {
+        if (!valor) return "#";
+        return valor.startsWith("http") ? valor : `/media/${valor}`;
+      };
+
+      return editandoId === servico.id ? (
+        <>
+          <label className="file-upload">
+            ...
+            <input
+              type="file"
+              accept={accept}
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  setCarregandoArquivo(true);
+                  setDadosEditados({ ...dadosEditados, [campo]: file });
+                  setTimeout(() => setCarregandoArquivo(false), 300);
+                }
+              }}
+            />
+          </label>
+
+          {valorAtual && !(valorAtual instanceof File) && (
+            <>
+              <a href={getHref(valorAtual)} target="_blank" rel="noreferrer">
+                <FileText size={18} />
+              </a>
+              <button
+                type="button"
+                className="anexo-remover"
+                onClick={() => setDadosEditados({ ...dadosEditados, [campo]: "" })}
+                title="Remover"
+              >
+                <X size={14} />
+              </button>
+            </>
+          )}
+
+          {valorAtual instanceof File && (
+            <span className="file-name">{valorAtual.name}</span>
+          )}
+        </>
+      ) : (
+        valorAtual ? (
+          <a href={getHref(valorAtual)} target="_blank" rel="noreferrer">
+            <FileText size={18} />
+          </a>
+        ) : "-"
+      );
+    };
+
+
   return (
+     <>
+    {(carregando || carregandoArquivo) && (
+      <div className="modal-backdrop">
+        <div className="modal-content">
+          <div className="spinner"></div>
+          <p>Carregando arquivo, aguarde...</p>
+        </div>
+      </div>
+    )}
     <div className="servicos-container">
       <div className="servicos-header">
         <h2>Serviços</h2>
@@ -105,6 +193,10 @@ export default function Servicos() {
             <th className="col-nome">Nome</th>
             <th className="col-prazo">Prazo (dias)</th>
             <th className="col-tempo">Tempo Execução</th>
+            <th className="col-anexo">Checklist</th>
+            <th className="col-anexo">Instrução</th>
+            <th className="col-anexo">Vídeo</th>
+            <th className="col-anexo">Tópico Rápido</th>
             <th className="col-acoes">Ações</th>
           </tr>
         </thead>
@@ -138,33 +230,33 @@ export default function Servicos() {
                     type="text"
                     value={dadosEditados.tempo_execucao}
                     onChange={(e) => {
-                      let valor = e.target.value.replace(/\D/g, ""); // só dígitos
-
+                      let valor = e.target.value.replace(/\D/g, "");
                       if (valor.length === 0) {
                         setDadosEditados({ ...dadosEditados, tempo_execucao: "" });
                         return;
                       }
-
                       if (valor.length <= 2) {
-                        // Só horas ainda (ex: "5" → "5")
                         setDadosEditados({ ...dadosEditados, tempo_execucao: valor });
                       } else {
-                        const horas = valor.slice(0, -2); // tudo menos os 2 últimos
+                        const horas = valor.slice(0, -2);
                         let minutos = valor.slice(-2);
-
                         if (parseInt(minutos, 10) > 59) minutos = "59";
-
                         const formatado = `${parseInt(horas, 10)}:${minutos.padStart(2, "0")}`;
                         setDadosEditados({ ...dadosEditados, tempo_execucao: formatado });
                       }
                     }}
                     placeholder="HH:MM"
                   />
-
                 ) : (
                   servico.tempo_execucao
                 )}
               </td>
+
+              <td className="col-anexo">{renderAnexo(servico, "checklist", "application/pdf")}</td>
+              <td className="col-anexo">{renderAnexo(servico, "instrucao_trabalho", "application/pdf")}</td>
+              <td className="col-anexo">{renderAnexo(servico, "video_explicativo", "video/*")}</td>
+              <td className="col-anexo">{renderAnexo(servico, "topico_rapido", "application/pdf")}</td>
+
               <td className="acoes">
                 {(perfilUsuario === "admin" || perfilUsuario === "coordenador") ? (
                   editandoId === servico.id ? (
@@ -182,13 +274,14 @@ export default function Servicos() {
                   <span>-</span>
                 )}
               </td>
-
             </tr>
           ))}
         </tbody>
       </table>
     </div>
-  );
+  </>
+  );     
 }
+
 
 

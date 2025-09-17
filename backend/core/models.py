@@ -190,31 +190,7 @@ class Sistema(models.Model):
 
 
 
-#SERVIÇOS SOLICITADOS X EMPRESA 
-# class ServicoSolicitado(models.Model):
-#     data_solicitacao = models.DateField()
-#     empresa = models.IntegerField()  # cod_folha da empresa
-#     servico = models.ForeignKey('Servico', on_delete=models.CASCADE)  # FK para Servico
-#     competencia = models.CharField(max_length=6)
-#     identificacao = models.CharField(max_length=100, null=True, blank=True)
-#     descricao_servico = models.TextField(null=True, blank=True)
-#     data_vencimento = models.DateField(null=True, blank=True)
-#     data_para_resposta = models.DateField(null=True, blank=True)
-#     data_conclusao = models.DateField(null=True, blank=True)
-
-#     STATUS_CHOICES = [
-#         ("PENDENTE", "Pendente"),
-#         ("PAUSADO", "Pendente"),
-#         ("CONCLUIDO", "Concluído"),
-#     ]
-#     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDENTE")
-
-#     class Meta:
-#         db_table = 'pg_servicos_solicitados'
-
-#     def __str__(self):
-#         return f"Empresa {self.empresa} - {self.servico.nome} ({self.competencia})"
-    
+#SERVIÇOS SOLICITADOS X EMPRESA   
     
 class ServicoSolicitado(models.Model):
     data_solicitacao = models.DateField()
@@ -269,18 +245,25 @@ class ServicoSolicitado(models.Model):
         return f"Empresa {self.empresa} - {self.servico.nome} ({self.competencia})"
 
     
-#CADASTRO DE SERVIÇOS
+
+# CADASTRO DE SERVIÇOS
 class Servico(models.Model):
     nome = models.CharField(max_length=255)
-    prazo_dias = models.DecimalField(max_digits=5, decimal_places=2) 
+    prazo_dias = models.DecimalField(max_digits=5, decimal_places=2)
     tempo_execucao = models.DurationField(default=timedelta)
+
+    checklist = models.FileField(upload_to='servicos/checklists/', null=True, blank=True)
+    instrucao_trabalho = models.FileField(upload_to='servicos/instrucoes/', null=True, blank=True)
+    video_explicativo = models.FileField(upload_to='servicos/videos/', null=True, blank=True)
+    topico_rapido = models.FileField(upload_to='servicos/topicos/', null=True, blank=True)
 
     class Meta:
         db_table = 'pg_servicos'
+        managed = False   # 👈 não deixa o Django criar/alterar a tabela
 
     def __str__(self):
         return self.nome
-    
+
 
 #CADASTRO BASE DE AGENDA DE ATIVIDADES
 class AgendaBase(models.Model):

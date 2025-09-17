@@ -33,7 +33,7 @@
   background-color: #2B9FAE;
 }
 
-/* -------- Filtros (NOVO) -------- */
+/* -------- Filtros -------- */
 .servicos-filtros {
   display: flex;
   flex-wrap: wrap;
@@ -42,7 +42,7 @@
   border: 1px solid #ddd;
   border-radius: 6px;
   padding: 10px 12px;
-  background: #1a1f3a18; /* tom usado no restante do sistema */
+  background: #1a1f3a18;
   margin-bottom: 12px;
 }
 
@@ -228,9 +228,16 @@
   flex-direction: column;
 }
 
+/* ajustes de largura */
+.linha-servico {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
 .campo-curto {
-  flex: 1 1 100px;
-  min-width: 80px;
+  flex: 0 0 120px;
+  min-width: 100px;
 }
 
 .campo-medio {
@@ -243,6 +250,38 @@
   font-size: 12px;
 }
 
-td:nth-child(9) { /* ajuste índice conforme posição da coluna */
+td:nth-child(9) { 
   font-weight: bold;
 }
+
+/* Arquivos */
+.campo-arquivos {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-left: auto; /* joga os arquivos pro final da linha */
+}
+
+.arquivo-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 11px;
+  width: 60px; /* largura fixa para alinhamento */
+}
+
+.arquivo-item label {
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: #333;
+}
+
+.arquivo-item a {
+  color: #1a1f3a;
+  transition: color 0.2s;
+}
+
+.arquivo-item a:hover {
+  color: #C3996B;
+}
+

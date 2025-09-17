@@ -123,8 +123,15 @@ class PlanilhaGerencialSerializer(serializers.ModelSerializer):
 
 
 # ---------------------- Serviço ----------------------
+# ---------------------- Serviço ----------------------
 class ServicoSerializer(serializers.ModelSerializer):
     tempo_execucao = serializers.CharField()  # força string no payload
+
+    # novos campos de anexos
+    checklist = serializers.FileField(required=False, allow_null=True)
+    instrucao_trabalho = serializers.FileField(required=False, allow_null=True)
+    video_explicativo = serializers.FileField(required=False, allow_null=True)
+    topico_rapido = serializers.FileField(required=False, allow_null=True)
 
     class Meta:
         model = Servico
@@ -151,6 +158,7 @@ class ServicoSerializer(serializers.ModelSerializer):
             except Exception:
                 raise serializers.ValidationError({"tempo_execucao": "Formato inválido. Use HH:MM"})
         return ret
+
 
 # ---------------------- Serviço Solicitado ----------------------
 
