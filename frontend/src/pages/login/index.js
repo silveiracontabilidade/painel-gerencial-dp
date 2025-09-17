@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import api from '../../api/axios';
 import './Login.css';
+import logo from '../../assets/images/logo.png'; // mesmo logo do header
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -12,7 +13,7 @@ export default function Login() {
     try {
       const res = await api.post('/api/token/', {
         username,
-        password
+        password,
       });
 
       localStorage.setItem('token', res.data.access);
@@ -25,14 +26,29 @@ export default function Login() {
   };
 
   return (
-    <div className="login-container">
-      <h2>Login</h2>
-      {erro && <p className="erro">{erro}</p>}
-      <form onSubmit={handleSubmit}>
-        <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Usuário" required />
-        <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" required />
-        <button type="submit">Entrar</button>
-      </form>
+    <div className="login-page">
+      <div className="login-container">
+        <img src={logo} alt="Logo" className="login-logo" />
+        <h2>PAINEL GERENCIAL DP</h2>
+        {erro && <p className="erro">{erro}</p>}
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Usuário"
+            required
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Senha"
+            required
+          />
+          <button type="submit">Entrar</button>
+        </form>
+      </div>
     </div>
   );
 }

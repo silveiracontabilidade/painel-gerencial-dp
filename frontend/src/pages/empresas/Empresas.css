@@ -1,10 +1,10 @@
-.empresas-container {
+.empresas-container { 
   padding: 1rem;
   max-height: 85vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-}
+ }
 
 .empresas-titulo {
   display: flex;
@@ -24,11 +24,12 @@
   background-color: #C3996B;
 }
 
-
 .empresas-tabela-wrapper {
   flex: 1;
   overflow-y: auto;
   overflow-x: auto;
+  border: 1px solid #ccc;     /* borda cinza */
+  background-color: #fff;     /* fundo branco para destacar */
 }
 
 .empresas-table {

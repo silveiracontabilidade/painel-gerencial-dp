@@ -11,6 +11,7 @@ const toISO = (brOuBrHifen) => {
   if (!brOuBrHifen) return null;
   return paraISO(brOuBrHifen.replace(/\//g, '-'));
 };
+
 const mascararData = (valor) => {
   const d = String(valor || '').replace(/[^\d]/g, '').slice(0, 8);
   if (!d) return '';
@@ -18,6 +19,7 @@ const mascararData = (valor) => {
   if (d.length <= 4) return `${d.slice(0, 2)}-${d.slice(2)}`;
   return `${d.slice(0, 2)}-${d.slice(2, 4)}-${d.slice(4)}`;
 };
+
 const normalizarData = (valor) => {
   const d = String(valor || '').replace(/[^\d]/g, '');
   if (d.length < 8) return valor;
@@ -29,12 +31,33 @@ const normalizarData = (valor) => {
   const YYYY = String(ano).padStart(4, '0');
   return `${DD}-${MM}-${YYYY}`;
 };
+
 const normalize = (s) =>
   String(s || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .toUpperCase();
+
+const toBRSafe = (valor) => {
+  if (!valor) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    // ISO YYYY-MM-DD
+    const [y, m, d] = valor.split('-');
+    return `${d}-${m}-${y}`;
+  }
+  if (/^\d{4}\/\d{2}\/\d{2}$/.test(valor)) {
+    // ISO YYYY/MM/DD
+    const [y, m, d] = valor.split('/');
+    return `${d}-${m}-${y}`;
+  }
+  if (/^\d{2}-\d{2}-\d{4}$/.test(valor)) {
+    // já está em BR
+    return valor;
+  }
+  return valor; // fallback
+};
+
 
 const getTipoServico = (nome) => {
   const n = normalize(nome);
@@ -130,10 +153,6 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     [FIELD_MAP.afast.pericia]: '',
   });
 
-
-
-
-
   const CAMPOS_DATA_CORE = ['data_solicitacao', 'data_vencimento', 'data_para_resposta', 'data_conclusao'];
 
   useEffect(() => {
@@ -145,37 +164,44 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
         delete f.empresa_id;
 
         // Normaliza datas core para dd-mm-aaaa (inputs)
+        // CAMPOS_DATA_CORE.forEach((c) => {
+        //   f[c] = f[c] ? toBRHifen(f[c]) : '';
+        // });
         CAMPOS_DATA_CORE.forEach((c) => {
-          f[c] = f[c] ? toBRHifen(f[c]) : '';
+          f[c] = f[c] ? toBRSafe(f[c]) : '';
         });
 
         // Pré-preenche blocos dinâmicos a partir do back (1:1)
-        setFerias({
-          [FIELD_MAP.ferias.abono]: dados[FIELD_MAP.ferias.abono] || '',
-          [FIELD_MAP.ferias.data_ini]: dados[FIELD_MAP.ferias.data_ini] || '',
-        });
-        setRescisao({
-          [FIELD_MAP.rescisao.tipo_aviso]: dados[FIELD_MAP.rescisao.tipo_aviso] || '',
-          [FIELD_MAP.rescisao.dias_aviso]: dados[FIELD_MAP.rescisao.dias_aviso] || '',
-          [FIELD_MAP.rescisao.data_ini]: dados[FIELD_MAP.rescisao.data_ini] || '',
-          [FIELD_MAP.rescisao.tipo]: dados[FIELD_MAP.rescisao.tipo] || '',
-        });
-        setAdmissao({
-          [FIELD_MAP.admissao.tipo]: dados[FIELD_MAP.admissao.tipo] || '',
-          [FIELD_MAP.admissao.data_ini]: dados[FIELD_MAP.admissao.data_ini] || '',
-          [FIELD_MAP.admissao.deslig_programado]: dados[FIELD_MAP.admissao.deslig_programado] || '',
-        });
-        setAfast({
-          [FIELD_MAP.afast.tipo]: dados[FIELD_MAP.afast.tipo] || '',
-          [FIELD_MAP.afast.dias]: dados[FIELD_MAP.afast.dias] || '',
-          [FIELD_MAP.afast.ini]: dados[FIELD_MAP.afast.ini] || '',
-          [FIELD_MAP.afast.pericia]: dados[FIELD_MAP.afast.pericia] || '',
-        });
+       setFerias({
+        [FIELD_MAP.ferias.abono]: dados[FIELD_MAP.ferias.abono] || '',
+        [FIELD_MAP.ferias.data_ini]: dados[FIELD_MAP.ferias.data_ini] ? toBRSafe(dados[FIELD_MAP.ferias.data_ini]) : '',
+        [FIELD_MAP.ferias.tipo]: dados[FIELD_MAP.ferias.tipo] || '',
+        [FIELD_MAP.ferias.qtd_dias]: dados[FIELD_MAP.ferias.qtd_dias] || '',
+        [FIELD_MAP.ferias.qtd_dias_abono]: dados[FIELD_MAP.ferias.qtd_dias_abono] || '',
+      });
+      setRescisao({
+        [FIELD_MAP.rescisao.tipo_aviso]: dados[FIELD_MAP.rescisao.tipo_aviso] || '',
+        [FIELD_MAP.rescisao.dias_aviso]: dados[FIELD_MAP.rescisao.dias_aviso] || '',
+        [FIELD_MAP.rescisao.data_ini]: dados[FIELD_MAP.rescisao.data_ini] ? toBRSafe(dados[FIELD_MAP.rescisao.data_ini]) : '',
+        [FIELD_MAP.rescisao.tipo]: dados[FIELD_MAP.rescisao.tipo] || '',
+      });
+      setAdmissao({
+        [FIELD_MAP.admissao.tipo]: dados[FIELD_MAP.admissao.tipo] || '',
+        [FIELD_MAP.admissao.data_ini]: dados[FIELD_MAP.admissao.data_ini] ? toBRSafe(dados[FIELD_MAP.admissao.data_ini]) : '',
+        [FIELD_MAP.admissao.deslig_programado]: dados[FIELD_MAP.admissao.deslig_programado] || '',
+        [FIELD_MAP.admissao.preliminar]: dados[FIELD_MAP.admissao.preliminar] || '',
+      });
+      setAfast({
+        [FIELD_MAP.afast.tipo]: dados[FIELD_MAP.afast.tipo] || '',
+        [FIELD_MAP.afast.dias]: dados[FIELD_MAP.afast.dias] || '',
+        [FIELD_MAP.afast.ini]: dados[FIELD_MAP.afast.ini] ? toBRSafe(dados[FIELD_MAP.afast.ini]) : '',
+        [FIELD_MAP.afast.pericia]: dados[FIELD_MAP.afast.pericia] || '',
+      });
 
-        setForm(f);
+      setForm(f);
       } else {
         const hojeISO = new Date().toISOString().split('T')[0];
-        setForm((prev) => ({ ...prev, data_solicitacao: toBRHifen(hojeISO), status: 'PENDENTE' }));
+        setForm((prev) => ({ ...prev, data_solicitacao: toBRSafe(hojeISO), status: 'PENDENTE' }));
       }
     };
     init();
@@ -293,7 +319,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   const servico = servicos.find((s) => String(s.id) === String(value));
 
   // Base para a data: tentar usar a data_solicitacao do form; se for inválida, cair pra hoje
-  const dataSolicBR = form.data_solicitacao || toBRHifen(new Date().toISOString().split('T')[0]);
+  const dataSolicBR = form.data_solicitacao || toBRSafe(new Date().toISOString().split('T')[0]);
   const baseISO = toISO(dataSolicBR) || new Date().toISOString().split('T')[0];
 
   // Construção robusta da data base
@@ -316,7 +342,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
 
     // Formata YYYY-MM-DD sem depender de toISOString (evita "Invalid time value")
     const vencISO = isValidDate(base) ? formatISO(base) : new Date().toISOString().split('T')[0];
-    const vencBR = toBRHifen(vencISO);
+    const vencBR = toBRSafe(vencISO);
 
     setForm((prev) => ({ ...prev, servico: String(value), data_vencimento: vencBR }));
     if (errors.servico) setErrors((prev) => ({ ...prev, servico: undefined }));
