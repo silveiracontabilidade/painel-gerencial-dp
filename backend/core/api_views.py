@@ -20,7 +20,8 @@ from .models import (
     CCT,
     PG_PLR,
     Responsavel,
-    Permissao
+    Permissao,
+    MotivoRescisao
 )
 from .serializers import (
     UserSerializer,
@@ -34,7 +35,8 @@ from .serializers import (
     PeriodoEntregaSerializer,
     CCTSerializer,
     PGPLRSerializer,
-    UsuarioResponsavelSerializer
+    UsuarioResponsavelSerializer,
+    MotivoRescisaoSerializer
 )
 
 
@@ -96,6 +98,7 @@ class PlanilhaGerencialFilter(FilterSet):
     sci_report = CharFilter(lookup_expr='icontains')
     visitacao = CharFilter(lookup_expr='icontains')
     tempo_demandado = CharFilter(lookup_expr='icontains')
+    
 
     serv_prest = CharFilter(lookup_expr='exact')
     serv_tom = CharFilter(lookup_expr='exact')
@@ -123,6 +126,7 @@ class PlanilhaGerencialFilter(FilterSet):
 
     periodo_ponto = CharFilter(lookup_expr='icontains')
     tipo_ponto = CharFilter(lookup_expr='icontains')
+    ponto_entrega = CharFilter(lookup_expr='icontains')
     ponto_ini = CharFilter(lookup_expr='icontains')
     ponto_fim = CharFilter(lookup_expr='icontains')
     fecha_ponto = CharFilter(lookup_expr='icontains')
@@ -242,3 +246,12 @@ def minhas_permissoes(request):
 
     permissoes = Permissao.objects.filter(perfil=perfil).values("tela", "aba", "campo", "pode_editar")
     return Response(list(permissoes))
+
+
+class MotivoRescisaoViewSet(viewsets.ModelViewSet):
+    queryset = MotivoRescisao.objects.all()
+    serializer_class = MotivoRescisaoSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['descricao', 'mensagem']
+    ordering_fields = ['id', 'descricao']
+    ordering = ['descricao']

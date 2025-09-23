@@ -64,8 +64,7 @@ const Header = () => {
               {menuAberto === 'principal' && (
                 <ul className="submenu">
                   <li><NavLink to="/empresas">Empresas</NavLink></li>
-                  <li><NavLink to="/servicos-solicitados">Serviços Diários</NavLink></li>
-                  <li><NavLink to="/atividades">Atividades</NavLink></li>
+                  <li><NavLink to="/servicos-solicitados">To Do</NavLink></li>
                 </ul>
               )}
             </li>
@@ -81,13 +80,13 @@ const Header = () => {
               <span className="menu__title">Cadastros</span>
               {menuAberto === 'cadastros' && (
                 <ul className="submenu">
+                  <li><NavLink to="/agenda">Agenda</NavLink></li>
                   <li><NavLink to="/grupos">Grupos</NavLink></li>
+                  <li><NavLink to="/motivos-rescisao">Tipo Aviso Prévio</NavLink></li>
+                  <li><NavLink to="/periodos">Periodos</NavLink></li>
                   <li><NavLink to="/responsaveis">Responsáveis</NavLink></li>
                   <li><NavLink to="/servicos">Serviços</NavLink></li>
                   <li><NavLink to="/sistemas">Sistemas</NavLink></li>
-                  <li><NavLink to="/periodos">Periodos</NavLink></li>
-                  <li><NavLink to="/agenda">Agenda</NavLink></li>
-                  
                 </ul>
               )}
             </li>

@@ -12,7 +12,6 @@ export default function Servicos() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoArquivo, setCarregandoArquivo] = useState(false);
 
-
   useEffect(() => {
     async function fetchPerfil() {
       try {
@@ -101,13 +100,25 @@ export default function Servicos() {
   };
 
   const novo = async () => {
-    const novoServico = { nome: "Novo Serviço", prazo_dias: 0, tempo_execucao: "00:00" };
+    const formData = new FormData();
+    formData.append("nome", "Novo Serviço");
+    formData.append("prazo_dias", 0);
+    formData.append("tempo_execucao", "00:00");
 
-    const res = await api.post("/api/servicos/", novoServico);
+    const res = await api.post("/api/servicos/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
     setEditandoId(res.data.id);
-    setDadosEditados(novoServico);
+    setDadosEditados({
+      id: res.data.id,
+      nome: "Novo Serviço",
+      prazo_dias: 0,
+      tempo_execucao: "00:00",
+    });
     carregarServicos();
   };
+
 
   // helper para renderizar cada campo de anexo
   const renderAnexo = (servico, campo, accept) => {

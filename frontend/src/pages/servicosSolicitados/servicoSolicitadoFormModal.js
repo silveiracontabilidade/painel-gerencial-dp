@@ -66,8 +66,11 @@ const getTipoServico = (nome) => {
   if (n.includes('FERI')) return 'FERIAS';
   if (n.includes('RESCIS')) return 'RESCISAO';
   if (n.includes('AFAST')) return 'AFASTAMENTO';
+  if (n.includes('AVULSO')) return 'AVULSO';
+  if (n.includes('MULTA')) return 'MULTA';
   return null;
 };
+
 
 const isValidDate = (d) => d instanceof Date && !isNaN(d.getTime());
 const formatISO = (d) => {
@@ -115,6 +118,19 @@ const FIELD_MAP = {
     ini: 'afast_ini',
     pericia: 'afast_pericia',
   },
+
+    // AVULSO
+  avulso: {
+    valor: 'avulso_valor',
+    os: 'avulso_os',
+  },
+
+  // MULTA
+  multa: {
+    valor: 'multa_valor',
+    rnc: 'multa_rnc',
+  },
+
 };
 
 
@@ -123,6 +139,9 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   const [empresas, setEmpresas] = useState([]);
   const [servicos, setServicos] = useState([]);
   const [errors, setErrors] = useState({});
+  // Estado do Tipo de Aviso Prévio
+  const [motivosRescisao, setMotivosRescisao] = useState([]);
+
 
   // estados blocos dinâmicos (mantidos como strings; datas específicas ficam em dd-mm-aaaa)
   const [ferias, setFerias] = useState({
@@ -154,6 +173,17 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     [FIELD_MAP.afast.pericia]: '',
   });
 
+  const [avulso, setAvulso] = useState({
+    [FIELD_MAP.avulso.valor]: '',
+    [FIELD_MAP.avulso.os]: '',
+  });
+
+  const [multa, setMulta] = useState({
+    [FIELD_MAP.multa.valor]: '',
+    [FIELD_MAP.multa.rnc]: '',
+  });
+
+
   const CAMPOS_DATA_CORE = ['data_solicitacao', 'data_vencimento', 'data_para_resposta', 'data_conclusao'];
 
   useEffect(() => {
@@ -164,10 +194,6 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
         const f = { ...dados };
         delete f.empresa_id;
 
-        // Normaliza datas core para dd-mm-aaaa (inputs)
-        // CAMPOS_DATA_CORE.forEach((c) => {
-        //   f[c] = f[c] ? toBRHifen(f[c]) : '';
-        // });
         CAMPOS_DATA_CORE.forEach((c) => {
           f[c] = f[c] ? toBRSafe(f[c]) : '';
         });
@@ -198,6 +224,14 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
         [FIELD_MAP.afast.ini]: dados[FIELD_MAP.afast.ini] ? toBRSafe(dados[FIELD_MAP.afast.ini]) : '',
         [FIELD_MAP.afast.pericia]: dados[FIELD_MAP.afast.pericia] || '',
       });
+      setAvulso({
+        [FIELD_MAP.avulso.valor]: dados[FIELD_MAP.avulso.valor] || '',
+        [FIELD_MAP.avulso.os]: dados[FIELD_MAP.avulso.os] || '',
+      });
+      setMulta({
+        [FIELD_MAP.multa.valor]: dados[FIELD_MAP.multa.valor] || '',
+        [FIELD_MAP.multa.rnc]: dados[FIELD_MAP.multa.rnc] || '',
+      });
 
       setForm(f);
       } else {
@@ -210,13 +244,17 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   }, [dados]);
 
   const carregarDadosAuxiliares = async () => {
-    const [resEmp, resServ] = await Promise.all([
+    const [resEmp, resServ, resMotivos] = await Promise.all([
       api.get('/api/empresas/', { params: { page: 1, page_size: 2000 } }),
       api.get('/api/servicos/'),
+      api.get('/api/motivos-rescisao/'),
     ]);
     setEmpresas(resEmp.data.results || resEmp.data);
     setServicos(resServ.data.results || resServ.data);
+    setMotivosRescisao(resMotivos.data.results || resMotivos.data);
   };
+
+
 
   const servicoSelecionado = useMemo(
     () => servicos.find((s) => String(s.id) === String(form.servico)),
@@ -307,6 +345,20 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     const { name, value } = e.target;
     setAfast((prev) => ({ ...prev, [name]: normalizarData(value) }));
   }, []);
+
+  //AVULSO 
+  const handleAvulsoChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setAvulso((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
+
+  //MULTA
+  const handleMultaChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setMulta((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
 
 
   const handleServicoChange = (e) => {
@@ -411,6 +463,12 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     // === AFASTAMENTO (CharField) ===
     Object.entries(afast).forEach(([k, v]) => (payload[k] = toNull(v)));
 
+    // === AVULSO ===
+    Object.entries(avulso).forEach(([k, v]) => (payload[k] = toNull(v)));
+
+    // === MULTA ===
+    Object.entries(multa).forEach(([k, v]) => (payload[k] = toNull(v)));
+
     delete payload.empresa_id;
     return payload;
   };
@@ -492,34 +550,6 @@ const renderBlocoFerias = () => (
   <div className="bloco">
     <h4>Férias</h4>
     <div className="linha">
-      <div className="campo campo-curto">
-        <label>Abono</label>
-        <select
-          name={FIELD_MAP.ferias.abono}
-          value={ferias[FIELD_MAP.ferias.abono] || ''}
-          onChange={handleFeriasChange}
-        >
-          <option value="">--</option>
-          <option value="SIM">SIM</option>
-          <option value="NÃO">NÃO</option>
-        </select>
-      </div>
-
-      <div className="campo campo-curto">
-        <label>Início (dd-mm-aaaa)</label>
-        <input
-          type="text"
-          name={FIELD_MAP.ferias.data_ini}
-          value={ferias[FIELD_MAP.ferias.data_ini] || ''}
-          onChange={handleFeriasDateChange}
-          onBlur={handleFeriasDateBlur}
-          placeholder="dd-mm-aaaa"
-          maxLength={10}
-          inputMode="numeric"
-          autoComplete="off"
-        />
-      </div>
-
       <div className="campo campo-medio">
         <label>Tipo</label>
         <select
@@ -532,7 +562,6 @@ const renderBlocoFerias = () => (
           <option value="INDIVIDUAL">INDIVIDUAL</option>
         </select>
       </div>
-
       <div className="campo campo-curto">
         <label>Qtd Dias</label>
         <input
@@ -542,7 +571,34 @@ const renderBlocoFerias = () => (
           onChange={handleFeriasChange}
         />
       </div>
-
+      <div className="campo campo-curto">
+        <label> Data Início </label>
+        <input
+          type="text"
+          name={FIELD_MAP.ferias.data_ini}
+          value={ferias[FIELD_MAP.ferias.data_ini] || ''}
+          onChange={handleFeriasDateChange}
+          onBlur={handleFeriasDateBlur}
+          placeholder="dd-mm-aaaa"
+          maxLength={10}
+          inputMode="numeric"
+          autoComplete="off"
+        />
+      </div>
+ 
+      <div className="campo campo-curto">
+        <label>Abono</label>
+        <select
+          name={FIELD_MAP.ferias.abono}
+          value={ferias[FIELD_MAP.ferias.abono] || ''}
+          onChange={handleFeriasChange}
+        >
+          <option value="">--</option>
+          <option value="SIM, antes do inicio">SIM, antes do inicio</option>
+          <option value="SIM, após férias">SIM, após férias</option>
+          <option value="NÃO">NÃO</option>
+        </select>
+      </div>
       <div className="campo campo-curto">
         <label>Qtd Dias Abono</label>
         <input
@@ -557,18 +613,24 @@ const renderBlocoFerias = () => (
 );
 
 // === RESCISÃO ===
-const renderBlocoRescisao = () => (
+  const renderBlocoRescisao = () => (
   <div className="bloco">
     <h4>Rescisão</h4>
     <div className="linha">
-      <div className="campo campo-curto">
+      <div className="campo campo-medio">
         <label>Tipo Aviso</label>
-        <input
-          type="text"
+        <select
           name={FIELD_MAP.rescisao.tipo_aviso}
           value={rescisao[FIELD_MAP.rescisao.tipo_aviso] || ''}
           onChange={handleRescisaoChange}
-        />
+        >
+          <option value="">--</option>
+          {motivosRescisao.map((m) => (
+            <option key={m.id} value={m.descricao}>
+              {m.descricao}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="campo campo-curto">
@@ -606,11 +668,14 @@ const renderBlocoRescisao = () => (
           <option value="">--</option>
           <option value="SIM">SIM</option>
           <option value="NÃO">NÃO</option>
+          <option value="DISPENSADO">DISPENSADO</option>
         </select>
       </div>
     </div>
   </div>
 );
+
+
 
 // === ADMISSÃO ===
 const renderBlocoAdmissao = () => (
@@ -720,6 +785,63 @@ const renderBlocoAfastamento = () => (
     </div>
   </div>
 );
+
+// === AVULSO ===
+const renderBlocoAvulso = () => (
+  <div className="bloco">
+    <h4>Avulso</h4>
+    <div className="linha">
+      <div className="campo campo-medio">
+        <label>Valor</label>
+        <input
+          type="number"
+          step="0.01"
+          name={FIELD_MAP.avulso.valor}
+          value={avulso[FIELD_MAP.avulso.valor] || ''}
+          onChange={handleAvulsoChange}
+        />
+      </div>
+      <div className="campo campo-medio">
+        <label>OS</label>
+        <input
+          type="text"
+          name={FIELD_MAP.avulso.os}
+          value={avulso[FIELD_MAP.avulso.os] || ''}
+          onChange={handleAvulsoChange}
+        />
+      </div>
+    </div>
+  </div>
+);
+
+// === MULTA ===
+const renderBlocoMulta = () => (
+  <div className="bloco">
+    <h4>Multa</h4>
+    <div className="linha">
+      <div className="campo campo-medio">
+        <label>Valor</label>
+        <input
+          type="number"
+          step="0.01"
+          name={FIELD_MAP.multa.valor}
+          value={multa[FIELD_MAP.multa.valor] || ''}
+          onChange={handleMultaChange}
+        />
+      </div>
+      <div className="campo campo-medio">
+        <label>RNC</label>
+        <input
+          type="text"
+          name={FIELD_MAP.multa.rnc}
+          value={multa[FIELD_MAP.multa.rnc] || ''}
+          onChange={handleMultaChange}
+        />
+      </div>
+    </div>
+  </div>
+);
+
 
 
 
@@ -843,6 +965,8 @@ const renderBlocoAfastamento = () => (
         {tipoServico === 'RESCISAO' && renderBlocoRescisao()}
         {tipoServico === 'ADMISSAO' && renderBlocoAdmissao()}
         {tipoServico === 'AFASTAMENTO' && renderBlocoAfastamento()}
+        {tipoServico === 'AVULSO' && renderBlocoAvulso()}
+        {tipoServico === 'MULTA' && renderBlocoMulta()}
 
         {/* Datas principais */}
         <div className="linha">

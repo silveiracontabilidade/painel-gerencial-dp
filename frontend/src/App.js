@@ -10,6 +10,7 @@ import Sistemas from './pages/sistemas';
 import Login from './pages/login';
 import RequireAuth from './components/RequireAuth';
 import ServicosSolicitados from './pages/servicosSolicitados';
+import MotivosRescisao from './pages/motivosRescisao';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
             <Route path="periodos" element={<Periodos />} />
             <Route path="agenda" element={<AgendaBase />} />
             <Route path="servicos-solicitados" element={<ServicosSolicitados />} />
+            <Route path="motivos-rescisao" element={<MotivosRescisao />} />
           </Route>
         </Route>
       </Routes>

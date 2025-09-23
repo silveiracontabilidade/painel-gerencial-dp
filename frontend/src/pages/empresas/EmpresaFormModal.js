@@ -132,6 +132,13 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
   
   if (!visivel) return null;
 
+  //helper para validar email
+  const validarEmail = (email) => {
+    if (!email) return true; // se vazio, não bloqueia
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  };
+
   const opcoes = {
     status_do_cliente: ['ATIVO', 'INATIVO'],
     tributacao: ['LP', 'SN', 'LR', 'MEI', 'IMUNES', 'ISENTAS', 'DOM', 'CARNÊ LEÃO', 'RURAL PF', 'RURAL PJ', 'CAEPF', '1406', 'EXTERIOR', 'BPO FIN', 'BPO RH'],
@@ -561,20 +568,20 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
                     CATEGORIA
                   </span>,
                   opcoes.classificacao,
-                  'campo-curto',
+                  'campo-medio',
                   empresa.classificacao
                 )}
             {renderText(
               'cnpj_original',
               'CNPJ',
-              'campo-curto',
+              'campo-medio',
               'text',
               empresa.cnpj_formatado || empresa.cnpj_original || ''
             )}
           </div>
           <div className='linha'>
             {renderText('razao_social', 'RAZÃO SOCIAL', 'campo-medio')}
-            {renderText('forma_comunica', 'FORMA DE COMUNICAÇÃO', 'campo-curto')}
+            {renderText('forma_comunica', 'FORMA DE COMUNICAÇÃO', 'campo-curto-fixo')}
           </div>
         </div> 
 
@@ -628,7 +635,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
                 {renderSelect('data_pagto_salario', 'DATA PGTO SALÁRIO', periodos.map(p => p.descricao.toUpperCase()), 'campo-curto', empresa.data_pagto_salario)}
                 {renderSelect('classificacao2', 'TIPO', opcoes.classificacao2,  'campo-micro', empresa.classificacao2)}
                 {renderFlag('serv_prest', 'SERV. PRESTADOS',  empresa.serv_prest)}
-                {renderFlag('serv_TOM', 'SERV. TOMADOS',  empresa.serv_tom)}
+                {renderFlag('serv_tom', 'SERV. TOMADOS',  empresa.serv_tom)}
                 {renderFlag('deson', 'DESONERAÇÃO', empresa.deson)}
                 {renderFlag('secconci', 'SECONCI',  empresa.secconci)}
                 {renderFlag('planilha_folha', 'PLAN. FOLHA',  empresa.planilha_folha)}
@@ -652,7 +659,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
                 {renderText('perc_adiantamento', 'PERCENTUAL', 'campo-curto','text',null,'numeric')}
               </div>
               <div className='linha'>
-                {renderTextarea('obs_folha', 'OBS.')}
+                {renderTextarea('obs_adiantamento', 'OBS.')}
               </div>
             </div>
           </>
@@ -664,7 +671,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
 
             <div className="linha">
               {renderFlag('plr', 'Tem PLR?', empresa.plr)}
-              {renderTextarea('obs_plr', 'OBS.', 'campo-curto')}
+              {renderTextarea('obs_plr', 'OBS.', 'campo-medio')}
             </div>
 
             <h4 style={{marginTop: '12px'}}>LANÇAMENTOS DE PLR</h4>
@@ -738,12 +745,12 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
               <h4>DÉCIMO TERCEIRO</h4>
               <div className="linha">
                 {renderSelect('dt_13_adiantamento_entrega', 'DATA ADTO 13º', periodos.map(p => p.descricao.toUpperCase()), 'campo-micro', empresa.dt_13_adiantamento_entrega)}
-                {renderTextarea('obs_13_adiantamento', 'OBS.','campo-curto')}
+                {renderTextarea('obs_13_adiantamento', 'OBS.','campo-medio')}
               </div>
               <br></br>
               <div className="linha">
                 {renderSelect('dt_13_entrega', 'DATA 13º.', periodos.map(p => p.descricao.toUpperCase()), 'campo-micro', empresa.dt_13_entrega)}
-                {renderTextarea('obs_13', 'OBS.','campo-curto')}
+                {renderTextarea('obs_13', 'OBS.','campo-medio')}
               </div>
             </div>
           </>
@@ -758,8 +765,8 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
               {/* </div>
               <br></br>
               <div className="linha"> */}
-                {renderText('med_ocupa', 'MEDICINA OCUPACIONAL', 'campo-curto')}
-                {renderText('med_ocupa_proc_venc', 'VENC. PROC. MEDICINA', 'campo-micro', 'text',null, 'date')}
+                {renderText('med_ocupa', 'MEDICINA OCUPACIONAL', 'campo-medio')}
+                {renderText('med_ocupa_proc_venc', 'VENC. PROC. MEDICINA', 'campo-medio', 'text',null, 'date')}
               </div>
               <br></br>
               <div className="linha">
@@ -777,6 +784,13 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
               <h4>PONTO</h4>
               <div className="linha">
                 {renderFlag('envia_ponto', 'ENVIA', empresa.envia_ponto)}
+                {renderSelect(
+                  'ponto_entrega',
+                  'ENTREGA DO PONTO',
+                  periodos.map(p => p.descricao.toUpperCase()),
+                  'campo-curto',
+                  empresa.ponto_entrega
+                )}
                 {renderSelect('tipo_ponto', 'TIPO', opcoes.tipo_ponto,'campo-curto', empresa.tipo_ponto)}
                 {renderSelect('ponto_ini', 'PERÍODO INICIO', periodos.map(p => p.descricao.toUpperCase()), 'campo-curto', empresa.ponto_ini)}
                 {renderSelect('ponto_fim', 'PERÍODO FIM', periodos.map(p => p.descricao.toUpperCase()), 'campo-curto', empresa.ponto_fim)}
@@ -807,13 +821,13 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
                 {renderText('sen_pat', 'SENHA DO PAT', 'campo-micro')}
                 {renderText('sd_login', 'SD: LOGIN', 'campo-micro')}
                 {renderText('sd_senha', 'SD: SENHA', 'campo-micro')}
-                {renderText('sd_email', 'SD: EMAIL', 'campo-curto')}
+                {renderText('sd_email', 'SD: EMAIL', 'campo-medio')}
               </div>
               <br></br>
               <div className="linha">
-                {renderText('fgts_digital', 'VENCIMENTO FGTS DIGITAL', 'campo-curto', 'text',null,'date')}              
-                {renderText('dt_venc_conec_social', 'VENCIMENTO CONECTIVIDADE SOCIAL', 'campo-curto', 'text',null,'date')}
-                {renderText('venc_procuracao', 'VENCIMENTO PROCURAÇÃO E-CAC', 'campo-curto', 'text',null,'date')}
+                {renderText('fgts_digital', 'VENCIMENTO FGTS DIGITAL', 'campo-medio', 'text',null,'date')}              
+                {renderText('dt_venc_conec_social', 'VENCIMENTO CONECTIVIDADE SOCIAL', 'campo-medio', 'text',null,'date')}
+                {renderText('venc_procuracao', 'VENCIMENTO PROCURAÇÃO E-CAC', 'campo-medio', 'text',null,'date')}
               </div>
             </div>
           </>
@@ -900,11 +914,21 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
             </div>
           </>
         )}
-
       <div className="botoes">
-        <button onClick={() => aoSalvar({ ...empresa, ccts, plrs })}>SALVAR</button>
+        <button
+          onClick={() => {
+            if (!validarEmail(empresa.sd_email)) {
+              alert("Formato inválido para SD: EMAIL. Digite um e-mail válido.");
+              return;
+            }
+            aoSalvar({ ...empresa, ccts, plrs });
+          }}
+        >
+          SALVAR
+        </button>
         <button className="cancelar" onClick={aoFechar}>CANCELAR</button>
       </div>
+
       </div>
     </div>
   </div>

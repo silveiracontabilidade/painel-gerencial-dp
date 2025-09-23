@@ -83,6 +83,7 @@ class PlanilhaGerencial(models.Model):
     adiantamento = models.CharField(max_length=10, db_column='ADIANTAMENTO', null=True, blank=True)
     dt_adiantamento_entrega = models.CharField(max_length=50, db_column='DT_ADIANTAMENTO_ENTREGA', null=True, blank=True)
     dt_adiantamento_pagamento = models.CharField(max_length=100, db_column='DT_ADIANTAMENTO_PAGAMENTO', null=True, blank=True)
+    obs_adiantamento = models.TextField(db_column='OBS_ADIANTAMENTO', null=True, blank=True)
     perc_adiantamento = models.CharField(max_length=20, db_column='PERC_ADIANTAMENTO', null=True, blank=True)
     dt_13_entrega = models.CharField(max_length=50, db_column='DT_13_ENTREGA', null=True, blank=True)
     dt_13_adiantamento_entrega = models.CharField(max_length=50, db_column='DT_13_ADIANTAMENTO_ENTREGA', null=True, blank=True)
@@ -104,9 +105,11 @@ class PlanilhaGerencial(models.Model):
     tipo_ponto = models.CharField(max_length=50, db_column='TIPO_PONTO', null=True, blank=True)
     ponto_ini = models.CharField(max_length=50, db_column='PONTO_INI', null=True, blank=True)
     ponto_fim = models.CharField(max_length=50, db_column='PONTO_FIM', null=True, blank=True)
+    ponto_entrega = models.CharField(max_length=50, db_column='PONTO_ENTREGA', null=True, blank=True)
     obs_ponto = models.TextField(db_column='OBS_PONTO', null=True, blank=True)
     fecha_ponto = models.CharField(max_length=50, db_column='FECHA_PONTO', null=True, blank=True)
     envia_ponto = models.CharField(max_length=50, db_column='ENVIA_PONTO', null=True, blank=True)
+    
 
     # Honorários
     honorarios = models.DecimalField(max_digits=10, decimal_places=2, db_column='Honorarios', null=True, blank=True)
@@ -209,6 +212,8 @@ class ServicoSolicitado(models.Model):
     ferias_tipo = models.CharField(max_length=100, null=True, blank=True)
     ferias_qtd_dias = models.CharField(max_length=100, null=True, blank=True)
     ferias_qtd_dias_abono = models.CharField(max_length=100, null=True, blank=True)
+    ferias_data_ini_abono = models.CharField(max_length=100, null=True, blank=True)
+    ferias_adiantamento = models.CharField(max_length=100, null=True, blank=True)
 
     # RESCISÃO
     rescisao_tipo_aviso = models.CharField(max_length=100, null=True, blank=True)
@@ -227,6 +232,14 @@ class ServicoSolicitado(models.Model):
     afast_dias = models.CharField(max_length=100, null=True, blank=True)
     afast_ini = models.CharField(max_length=100, null=True, blank=True)
     afast_pericia = models.CharField(max_length=100, null=True, blank=True)
+    
+    #AVULSOS
+    avulso_valor = models.DecimalField(max_digits=10, decimal_places=2)
+    avulso_os = models.CharField(max_length=50, null=True, blank=True)
+    
+    #MULTAS
+    multa_valor = models.DecimalField(max_digits=10, decimal_places=2)
+    multa_rnc  = models.CharField(max_length=50, null=True, blank=True)
 
     # OUTROS
     id_acessorias = models.CharField(max_length=100, null=True, blank=True)
@@ -243,7 +256,6 @@ class ServicoSolicitado(models.Model):
 
     def __str__(self):
         return f"Empresa {self.empresa} - {self.servico.nome} ({self.competencia})"
-
     
 
 # CADASTRO DE SERVIÇOS
@@ -349,3 +361,15 @@ class Permissao(models.Model):
 
     def __str__(self):
         return f"{self.perfil} - {self.tela} - {self.aba or '-'} - {self.campo}"
+
+
+class MotivoRescisao(models.Model):
+    descricao = models.CharField(max_length=255, unique=True)
+    mensagem = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'pg_motivos_rescisao'
+        ordering = ['descricao']
+
+    def __str__(self):
+        return self.descricao

@@ -6,7 +6,8 @@ from .models import (
     PlanilhaGerencial,
     Servico,
     ServicoSolicitado,AgendaBase,Sistema, PeriodoEntrega, CCT, PG_PLR,
-    Responsavel
+    Responsavel,
+    MotivoRescisao
     )
 import math
 from decimal import Decimal
@@ -174,21 +175,39 @@ class ServicoSolicitadoSerializer(BaseSerializer):
             'id', 'data_solicitacao', 'empresa', 'empresa_razao_social',
             'servico', 'servico_nome', 'competencia', 'identificacao',
             'descricao_servico', 'data_vencimento', 'data_para_resposta', 'data_conclusao',
-            # --- NOVOS CAMPOS DINÂMICOS (mapeados 1:1) ---
+
             # FÉRIAS
-            'ferias_abono', 'ferias_data_ini',
+            'ferias_abono', 'ferias_data_ini', 'ferias_tipo',
+            'ferias_qtd_dias', 'ferias_qtd_dias_abono',
+            'ferias_data_ini_abono', 'ferias_adiantamento',
+
             # RESCISÃO
-            'rescisao_tipo_aviso', 'rescisao_dias_aviso', 'rescisao_data_ini', 'rescisao_tipo',
+            'rescisao_tipo_aviso', 'rescisao_dias_aviso',
+            'rescisao_data_ini', 'rescisao_tipo',
+
             # ADMISSÃO
-            'admissao_tipo', 'admissao_data_ini', 'admissao_deslig_programado',
+            'admissao_tipo', 'admissao_data_ini',
+            'admissao_deslig_programado', 'admissao_preliminar',
+
             # AFASTAMENTO
             'afast_tipo', 'afast_dias', 'afast_ini', 'afast_pericia',
+
+            # AVULSO
+            'avulso_valor', 'avulso_os',
+
+            # MULTA
+            'multa_valor', 'multa_rnc',
+
+            # OUTROS
+            'id_acessorias',
+
             # STATUS
             'status',
         ]
 
     def get_empresa_razao_social(self, obj):
         return getattr(obj.empresa, 'razao_social', None)
+
  
 
 # # # ---------------------- AGENDA BASE ----------------------
@@ -276,10 +295,6 @@ class CCTSerializer(serializers.ModelSerializer):
             return None
 
 
-
-
-
-
 # # # ---------------------- PLR ----------------------
 class PGPLRSerializer(serializers.ModelSerializer):
     data_entrega = serializers.DateField(required=False, allow_null=True,
@@ -334,3 +349,9 @@ class UsuarioResponsavelSerializer(serializers.Serializer):
             "perfil": instance.perfil,
             "grupo": instance.grupo_id,
         }
+        
+
+class MotivoRescisaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MotivoRescisao
+        fields = ['id', 'descricao', 'mensagem']

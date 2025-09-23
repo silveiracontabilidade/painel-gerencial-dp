@@ -1,5 +1,4 @@
 /* servicos-solicitados.css */
-
 .servicos-container {
   padding: 24px;
   font-family: Arial, sans-serif;
@@ -30,7 +29,7 @@
 }
 
 .servicos-header button:hover {
-  background-color: #2B9FAE;
+  background-color: #C3996B;
 }
 
 /* -------- Filtros -------- */
@@ -46,7 +45,7 @@
   margin-bottom: 12px;
 }
 
-.servicos-filtros .campo {
+.servicos-filtros .campo { 
   display: flex;
   flex-direction: column;
   min-width: 180px;
@@ -130,7 +129,7 @@
 }
 
 .acoes button:hover svg {
-  stroke: #2B9FAE;
+  stroke: #C3996B;
 }
 
 /* Modal */
@@ -285,3 +284,53 @@ td:nth-child(9) {
   color: #C3996B;
 }
 
+.materiais a {
+  margin-right: 6px;
+  color: #1a1f3a;
+}
+.materiais a:hover {
+  color: #C3996B;
+}
+
+/* ... seu CSS acima continua igual ... */
+
+/* Ajuste da coluna Ações */
+.servicos-container table th.acoes,
+.servicos-container table td.acoes {
+  min-width: 120px;    /* largura mínima para caber 3 ícones */
+  white-space: nowrap; /* não quebra linha */
+  text-align: center;
+}
+
+/* Coluna Vencimento */
+.servicos-container table th.vencimento,
+.servicos-container table td.vencimento {
+  background-color: #E6F0FA; /* azul claro */
+}
+
+/* Atividades atrasadas */
+.servicos-container table td.vencimento.atrasado {
+  color: red;
+  font-weight: bold;
+}
+
+
+/* Coluna Empresa */
+.servicos-container table th:nth-child(1),
+.servicos-container table td:nth-child(1) {
+  min-width: 220px;
+  max-width: 300px;
+  white-space: normal;   /* permite quebrar */
+  word-wrap: break-word; /* quebra em qualquer ponto */
+  line-height: 1.4;
+}
+
+/* Coluna Detalhes */
+.servicos-container table th:nth-child(4),
+.servicos-container table td:nth-child(4) {
+  min-width: 300px;
+  max-width: 500px;
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: 1.4;
+}

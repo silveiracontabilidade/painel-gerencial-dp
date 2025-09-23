@@ -92,6 +92,7 @@
 .campo-micro { min-width: 20px; }
 .campo-micro-flag { min-width: 20px; }
 .campo-curto { flex: 1 1 100px; min-width: 120px; }
+.campo-curto-fixo { width: 300px; }
 .campo-medio { flex: 2 1 200px; min-width: 180px; }
 .campo-longo { flex: 3 1 320px; min-width: 280px; }
 

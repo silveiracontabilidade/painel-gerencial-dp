@@ -28,7 +28,7 @@ const camposAvancados = [
   "periodo_ponto","tipo_ponto","ponto_ini","ponto_fim","fecha_ponto","envia_ponto",
   "honorarios_min","honorarios_max","dt_13_entrega_inicio","dt_13_entrega_fim",
   "dt_13_adiantamento_entrega_inicio","dt_13_adiantamento_entrega_fim",
-  "venc_procuracao_inicio","venc_procuracao_fim","venc_fgts_digital_inicio","venc_fgts_digital_fim"
+  "venc_procuracao_inicio","venc_procuracao_fim","venc_fgts_digital_inicio","venc_fgts_digital_fim", "ponto_entrega"
 ];
 
 useEffect(() => {
@@ -117,7 +117,8 @@ const [filters, setFilters] = useState({
     venc_procuracao_inicio: '',
     venc_procuracao_fim: '',
     venc_fgts_digital_inicio: '',
-    venc_fgts_digital_fim: ''
+    venc_fgts_digital_fim: '',
+    ponto_entrega: ''
   });
 
   // verifica se há filtros avançados preenchidos
@@ -300,7 +301,8 @@ const salvarEmpresa = async (empresa) => {
       'termino_contrato',
       'dt_envio_cct',
       'dt_venc_conec_social',
-      'venc_procuracao'
+      'venc_procuracao',
+      'med_ocupa_proc_venc'
     ];
 
     const payload = { ...empresa };
@@ -756,13 +758,6 @@ const salvarEmpresa = async (empresa) => {
           </div>
         </div>
       )}
-      {/* <EmpresaFormModal
-        visivel={modalAberto}
-        aoFechar={fecharModal}
-        aoSalvar={salvarEmpresa}
-        dados={empresaSelecionada}
-      /> */}
-
       <EmpresaFormModal
         visivel={modalAberto}
         aoFechar={fecharModal}

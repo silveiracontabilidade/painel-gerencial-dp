@@ -13,7 +13,8 @@ from .api_views import (
     PGPLRViewSet,
     UsuarioResponsavelViewSet,
     me,
-    minhas_permissoes
+    minhas_permissoes, 
+    MotivoRescisaoViewSet
 )
 from django.urls import path, include
 from django.conf import settings
@@ -30,6 +31,7 @@ router.register(r'sistemas', SistemaViewSet)
 router.register(r'periodos-entrega', PeriodoEntregaViewSet)
 router.register(r'ccts', CCTViewSet)   
 router.register(r'pg-plr', PGPLRViewSet, basename='pg-plr')
+router.register(r'motivos-rescisao', MotivoRescisaoViewSet)
 router.register(r'usuarios-responsaveis', UsuarioResponsavelViewSet, basename='usuarios-responsaveis')
 
 

@@ -1,6 +1,6 @@
 // ServicosSolicitados.js
-import React, { useEffect, useState, useMemo } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import React, { useEffect, useState, useMemo  } from 'react';
+import { Plus, Pencil, Trash2, FileText, CheckCircle } from 'lucide-react';
 import api from '../../api/axios';
 import ServicoSolicitadoFormModal from './servicoSolicitadoFormModal';
 import './servicos-solicitados.css';
@@ -13,6 +13,23 @@ export default function ServicosSolicitados() {
 
   const [modalAberto, setModalAberto] = useState(false);
   const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState(null);
+
+  const [servicos, setServicos] = useState([]);
+
+  //concluir
+  const concluir = async (id) => {
+    if (!window.confirm('Marcar esta solicitação como concluída?')) return;
+
+    const hojeISO = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    try {
+      await api.patch(`/api/solicitacoes/${id}/`, { data_conclusao: hojeISO });
+      carregarSolicitacoes();
+    } catch (err) {
+      console.error("Erro ao concluir solicitação:", err.response?.data || err);
+      alert("Erro ao concluir solicitação");
+    }
+  };
 
   // Filtros
   const [filters, setFilters] = useState({
@@ -29,6 +46,22 @@ export default function ServicosSolicitados() {
     carregarAuxiliares();
   }, []);
 
+  //retornar anexos em serviços
+  useEffect(() => {
+    api.get('/api/servicos/')
+      .then(res => setServicos(res.data.results || res.data))
+      .catch(err => console.error("Erro ao carregar serviços:", err));
+  }, []);
+
+  //lookup para consulta rápida  
+  const servicoById = useMemo(() => {
+    const m = new Map();
+    servicos.forEach(s => m.set(String(s.id), s));
+    return m;
+  }, [servicos]);
+
+
+  //carrega as solicitacoes
   const carregarSolicitacoes = async () => {
     const res = await api.get('/api/solicitacoes/');
     setSolicitacoes(res.data.results || res.data);
@@ -47,6 +80,42 @@ export default function ServicosSolicitados() {
     setResponsaveis(resResp.data);
     setGrupos(resGrupo.data);
   };
+
+  // mapa de cores para grupos
+  const GRUPO_CORES = {
+    "AZUL": "#1E90FF",
+    "VERDE": "#2E8B57",
+    "VERMELHO": "#DC143C",
+    "AMARELO": "#ebca14ff",
+    "ROXO": "#800080",
+    "ROSA": "#FF69B4",
+    "LILAS": "#C8A2C8",
+    "LARANJA": "#FF8C00",
+    "MARROM": "#412504ff",
+    "OURO": "#C3996B",   // se tiver
+    "PRATA": "#A9A9A9",  // se tiver
+    // adicione mais cores aqui
+  };
+
+  // Decide se o texto deve ser preto ou branco baseado na cor de fundo
+  function getContrastColor(hex) {
+    // Remove o "#" e expande formatos curtos tipo #FFF
+    hex = hex.replace('#', '');
+    if (hex.length === 3) {
+      hex = hex.split('').map(c => c + c).join('');
+    }
+
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    // Fórmula perceptual de luminância
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    return luminance > 0.6 ? '#000000' : '#FFFFFF'; // se fundo claro → preto
+  }
+
+
 
   // Mapas para lookup rápido
   const empresaByCodigo = useMemo(() => {
@@ -175,11 +244,34 @@ export default function ServicosSolicitados() {
     const emp = empresaByCodigo.get(cod);
     return emp ? `${emp.cod_folha} — ${emp.razao_social}` : cod;
   };
+  
+ 
   const renderResp = (valorEmpresa) => {
     const cod = String(valorEmpresa ?? '');
     const emp = empresaByCodigo.get(cod);
-    return emp?.resp_dp || '-';
+    if (!emp) return '-';
+
+    const nomeResp = emp.resp_dp || '-';
+    const nomeGrupo = String(emp.grupo || '').toUpperCase();
+    const corFundo = GRUPO_CORES[nomeGrupo] || '#000';
+    const corTexto = getContrastColor(corFundo);
+
+    return (
+      <span
+        style={{
+          display: 'inline-block',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          backgroundColor: corFundo,
+          color: corTexto,
+          fontWeight: 600,
+        }}
+      >
+        {nomeResp}
+      </span>
+    );
   };
+
   const renderGrupo = (valorEmpresa) => {
     const cod = String(valorEmpresa ?? '');
     const emp = empresaByCodigo.get(cod);
@@ -205,7 +297,7 @@ export default function ServicosSolicitados() {
 
       {/* Filtros */}
       <div className="servicos-filtros">
-        <div className="campo" style={{ minWidth: 260 }}>
+        <div className="campo" style={{ minWidth: 220 }}>
           <label>Empresa (código ou razão)</label>
           <input
             type="text"
@@ -274,7 +366,6 @@ export default function ServicosSolicitados() {
           <tr>
             <th>Empresa</th>
             <th>Responsável</th>
-            <th>Grupo</th>
             <th>Serviço</th>
             <th>Detalhes</th>
             <th>Competência</th>
@@ -282,6 +373,7 @@ export default function ServicosSolicitados() {
             <th>Vencimento</th>
             <th>Conclusão</th>
             <th>Ações</th>
+            <th>Materiais</th>
           </tr>
         </thead>
         <tbody>
@@ -289,12 +381,30 @@ export default function ServicosSolicitados() {
             <tr key={s.id}>
               <td>{renderEmpresa(s.empresa)}</td>
               <td>{renderResp(s.empresa)}</td>
-              <td>{renderGrupo(s.empresa)}</td>
               <td>{s.servico_nome}</td>
               <td>{renderDetalhes(s)}</td>
               <td>{s.competencia}</td>
               <td>{s.data_solicitacao}</td>
-              <td>{s.data_vencimento || '-'}</td>
+              {/* <td>{s.data_vencimento || '-'}</td> */}
+              <td
+                style={{
+                  backgroundColor: '#E6F0FA', // azul claro fixo no fundo
+                  color:
+                    s.data_vencimento &&
+                    !s.data_conclusao &&
+                    new Date(s.data_vencimento.split('-').reverse().join('-')) < new Date()
+                      ? 'red'
+                      : 'inherit',
+                  fontWeight:
+                    s.data_vencimento &&
+                    !s.data_conclusao &&
+                    new Date(s.data_vencimento.split('-').reverse().join('-')) < new Date()
+                      ? 'bold'
+                      : 'normal',
+                }}
+              >
+                {s.data_vencimento || '-'}
+              </td>
               <td>{s.data_conclusao || '-'}</td>
               <td className="acoes">
                 <button onClick={() => abrirModal(s)} title="Editar">
@@ -303,13 +413,40 @@ export default function ServicosSolicitados() {
                 <button onClick={() => excluir(s.id)} title="Excluir">
                   <Trash2 size={16} />
                 </button>
+                 {!s.data_conclusao && (
+                    <button onClick={() => concluir(s.id)} title="Concluir">
+                      <CheckCircle size={16} />
+                    </button>
+                  )}
               </td>
+              <td className="materiais">
+                  {servicoById.get(String(s.servico))?.checklist && (
+                    <a href={servicoById.get(String(s.servico)).checklist} target="_blank" rel="noopener noreferrer" title="Checklist">
+                      <FileText size={16} />
+                    </a>
+                  )}
+                  {servicoById.get(String(s.servico))?.instrucao_trabalho && (
+                    <a href={servicoById.get(String(s.servico)).instrucao_trabalho} target="_blank" rel="noopener noreferrer" title="Instrução de Trabalho">
+                      <FileText size={16} />
+                    </a>
+                  )}
+                  {servicoById.get(String(s.servico))?.video_explicativo && (
+                    <a href={servicoById.get(String(s.servico)).video_explicativo} target="_blank" rel="noopener noreferrer" title="Vídeo Explicativo">
+                      <FileText size={16} />
+                    </a>
+                  )}
+                  {servicoById.get(String(s.servico))?.topico_rapido && (
+                    <a href={servicoById.get(String(s.servico)).topico_rapido} target="_blank" rel="noopener noreferrer" title="Tópico Rápido">
+                      <FileText size={16} />
+                    </a>
+                  )}
+                </td>
             </tr>
           ))}
 
           {solicitacoesFiltradas.length === 0 && (
             <tr>
-              <td colSpan={10} style={{ textAlign: 'center', opacity: 0.7, padding: '8px 0' }}>
+              <td colSpan={11} style={{ textAlign: 'center', opacity: 0.7, padding: '8px 0' }}>
                 Nenhum registro encontrado com os filtros atuais.
               </td>
             </tr>
