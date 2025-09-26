@@ -115,8 +115,6 @@ export default function ServicosSolicitados() {
     return luminance > 0.6 ? '#000000' : '#FFFFFF'; // se fundo claro → preto
   }
 
-
-
   // Mapas para lookup rápido
   const empresaByCodigo = useMemo(() => {
     const m = new Map();
@@ -287,7 +285,7 @@ export default function ServicosSolicitados() {
     setFilters({ empresa: '', responsavelId: '', grupoId: '', status: 'todos', prazo: 'todos' });
 
   return (
-    <div className="servicos-container">
+    <div className="servicos-sol-container">
       <div className="servicos-header">
         <h2>Serviços Solicitados</h2>
         <button onClick={() => abrirModal()} title="Novo Serviço">

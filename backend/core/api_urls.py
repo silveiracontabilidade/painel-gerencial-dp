@@ -14,7 +14,8 @@ from .api_views import (
     UsuarioResponsavelViewSet,
     me,
     minhas_permissoes, 
-    MotivoRescisaoViewSet
+    MotivoRescisaoViewSet,
+    ChangePasswordView
 )
 from django.urls import path, include
 from django.conf import settings
@@ -38,6 +39,7 @@ router.register(r'usuarios-responsaveis', UsuarioResponsavelViewSet, basename='u
 urlpatterns = router.urls + [
     path("me/", me, name="me"),
     path("permissoes/mine/", minhas_permissoes),
+    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     ]
 
 

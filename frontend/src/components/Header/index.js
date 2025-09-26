@@ -4,12 +4,15 @@ import { User } from 'lucide-react';
 import api from '../../api/axios';
 import logoImg from '../../assets/images/logo.png';
 import './Header.css';
+import ChangePasswordModal from './ChangePasswordModal';
+
+// importe o modal
 
 const Header = () => {
   const [menuAberto, setMenuAberto] = useState(null);
   const [nomeUsuario, setNomeUsuario] = useState('Usuário');
   const [nomePessoa, setNomePessoa] = useState('');
-
+  const [modalSenhaAberto, setModalSenhaAberto] = useState(false);
 
   useEffect(() => {
     const carregarUsuario = async () => {
@@ -40,7 +43,6 @@ const Header = () => {
     localStorage.removeItem('refreshToken');
     window.location.href = '/login';
   };
-
 
   return (
     <header className="header">
@@ -95,14 +97,22 @@ const Header = () => {
               {menuAberto === 'usuario' && (
                 <ul className="submenu submenu-usuario">
                   <li className="info">{nomePessoa}</li>
+                  <li onClick={() => setModalSenhaAberto(true)}>Alterar Senha</li>
                   <li onClick={handleLogout}>Sair</li>
                 </ul>
               )}
             </li>
-
           </ul>
         </nav>
       </div>
+
+      {/* Modal de Alterar Senha */}
+      {modalSenhaAberto && (
+        <ChangePasswordModal
+          visivel={modalSenhaAberto}
+          aoFechar={() => setModalSenhaAberto(false)}
+        />
+      )}
     </header>
   );
 };

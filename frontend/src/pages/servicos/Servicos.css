@@ -33,6 +33,7 @@
 }
 
 .servicos-container table {
+  table-layout: fixed; 
   width: 100%; /* ocupa toda a largura */
   border-collapse: collapse;
   background-color: white;
@@ -84,13 +85,14 @@ td.acoes button:hover svg {
 th.col-nome  { width: 30%; }
 th.col-prazo { width: 8%; }
 th.col-tempo { width: 10%; }
-th.col-acoes { width: 8%; }
+th.col-acoes { width: 5%; }
 
 /* Largura fixa das colunas de anexo */
 th.col-anexo,
 td.col-anexo {
-  width: 50px;
-  max-width: 50px;
+  width: 30px;
+  min-width: 30px;
+  max-width: 30px;
   text-align: center;
   white-space: nowrap; /* evita quebra */
 }

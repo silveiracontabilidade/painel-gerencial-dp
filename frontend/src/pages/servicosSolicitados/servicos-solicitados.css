@@ -1,5 +1,5 @@
 /* servicos-solicitados.css */
-.servicos-container {
+.servicos-sol-container {
   padding: 24px;
   font-family: Arial, sans-serif;
 }
@@ -92,27 +92,27 @@
 }
 /* -------- Fim filtros -------- */
 
-.servicos-container table {
+.servicos-sol-container table {
   width: 100%;
   border-collapse: collapse;
   background-color: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.servicos-container th,
-.servicos-container td {
+.servicos-sol-container th,
+.servicos-sol-container td {
   border: 1px solid #ddd;
   padding: 6px 8px;
   text-align: left;
   font-size: 11px;
 }
 
-.servicos-container th {
+.servicos-sol-container th {
   background-color: #1a1f3a;
   color: white;
 }
 
-.servicos-container tr:nth-child(even) {
+.servicos-sol-container tr:nth-child(even) {
   background-color: #f9f9f9;
 }
 
@@ -295,29 +295,29 @@ td:nth-child(9) {
 /* ... seu CSS acima continua igual ... */
 
 /* Ajuste da coluna Ações */
-.servicos-container table th.acoes,
-.servicos-container table td.acoes {
+.servicos-sol-container table th.acoes,
+.servicos-sol-container table td.acoes {
   min-width: 120px;    /* largura mínima para caber 3 ícones */
   white-space: nowrap; /* não quebra linha */
   text-align: center;
 }
 
 /* Coluna Vencimento */
-.servicos-container table th.vencimento,
-.servicos-container table td.vencimento {
+.servicos-sol-container table th.vencimento,
+.servicos-sol-container table td.vencimento {
   background-color: #E6F0FA; /* azul claro */
 }
 
 /* Atividades atrasadas */
-.servicos-container table td.vencimento.atrasado {
+.servicos-sol-container table td.vencimento.atrasado {
   color: red;
   font-weight: bold;
 }
 
 
 /* Coluna Empresa */
-.servicos-container table th:nth-child(1),
-.servicos-container table td:nth-child(1) {
+.servicos-sol-container table th:nth-child(1),
+.servicos-sol-container table td:nth-child(1) {
   min-width: 220px;
   max-width: 300px;
   white-space: normal;   /* permite quebrar */
@@ -326,8 +326,8 @@ td:nth-child(9) {
 }
 
 /* Coluna Detalhes */
-.servicos-container table th:nth-child(4),
-.servicos-container table td:nth-child(4) {
+.servicos-sol-container table th:nth-child(4),
+.servicos-sol-container table td:nth-child(4) {
   min-width: 300px;
   max-width: 500px;
   white-space: normal;

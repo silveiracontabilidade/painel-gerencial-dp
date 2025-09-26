@@ -16,7 +16,6 @@ from .models import (
     AgendaBase
 )
 
-
 # ------------------------ AUTENTICAÇÃO ------------------------
 
 def teste_api(request):
@@ -202,3 +201,5 @@ class AgendaBaseDeleteView(DeleteView):
     model = AgendaBase
     template_name = 'agenda_base/confirmar_exclusao.html'
     success_url = reverse_lazy('agenda_base_listar')
+
+

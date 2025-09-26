@@ -13,6 +13,7 @@ import math
 from decimal import Decimal
 from rest_framework.fields import CharField
 from datetime import timedelta
+from django.contrib.auth.password_validation import validate_password
 
 
 # --------- Saneamento: NaN/"nan" -> "" na saída | "" -> None na entrada ----------
@@ -355,3 +356,15 @@ class MotivoRescisaoSerializer(serializers.ModelSerializer):
     class Meta:
         model = MotivoRescisao
         fields = ['id', 'descricao', 'mensagem']
+        
+        
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, validators=[validate_password])
+    new_password2 = serializers.CharField(required=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password2']:
+            raise serializers.ValidationError({"new_password": "As senhas não coincidem."})
+        return attrs
+        

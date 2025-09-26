@@ -1,4 +1,4 @@
-import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, KeyRound, Lock } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import './Responsaveis.css';
@@ -21,7 +21,6 @@ export default function Responsaveis() {
     }
     fetchPerfil();
   }, []);
-
 
   useEffect(() => {
     carregarDados();
@@ -53,28 +52,45 @@ export default function Responsaveis() {
     setDadosEditados({});
   };
 
-  // const salvar = async (id) => {
-  //   const payload = {
-  //     usuario: dadosEditados.usuario,
-  //     nome: dadosEditados.nome,
-  //     email: dadosEditados.email,
-  //     ramal: dadosEditados.ramal || null,
-  //     grupo: dadosEditados.grupo ? Number(dadosEditados.grupo) : null,
-  //     perfil: dadosEditados.perfil
-  //   };
-
-  //   if (id === 'novo') {
-  //     await api.post('/api/responsaveis/', payload);
-  //   } else {
-  //     await api.put(`/api/responsaveis/${id}/`, payload);
+  // 🔑 Reset de senha pelo admin (Mudar123)
+  // const resetarSenha = async (id) => {
+  //   if (!window.confirm("Confirma resetar a senha deste usuário para 'Mudar123'?")) return;
+  //   try {
+  //     await api.post(`/api/usuarios/${id}/reset-password/`);
+  //     alert("Senha redefinida para: Mudar123");
+  //   } catch (err) {
+  //     console.error("Erro ao resetar senha:", err.response?.data || err);
+  //     alert("Erro ao resetar senha.");
   //   }
-  //   setEditandoId(null);
-  //   setDadosEditados({});
-  //   carregarDados();
   // };
+  const resetarSenha = async (username) => {
+    if (!window.confirm("Confirma resetar a senha deste usuário para 'Mudar123'?")) return;
+    try {
+      await api.post(`/api/usuarios/${username}/reset-password/`);
+      alert("Senha redefinida para: Mudar123");
+    } catch (err) {
+      console.error("Erro ao resetar senha:", err.response?.data || err);
+      alert("Erro ao resetar senha.");
+    }
+  };
+
+  // 🔒 Troca de senha do usuário logado
+  const trocarMinhaSenha = async () => {
+    const old_password = prompt("Digite sua senha atual:");
+    if (!old_password) return;
+    const new_password = prompt("Digite a nova senha:");
+    if (!new_password) return;
+
+    try {
+      await api.put("/api/change-password/", { old_password, new_password });
+      alert("Senha alterada com sucesso!");
+    } catch (err) {
+      console.error("Erro ao alterar senha:", err.response?.data || err);
+      alert("Erro ao alterar senha.");
+    }
+  };
 
   const salvar = async (id) => {
-    // validação básica antes de enviar
     if (!dadosEditados.usuario || dadosEditados.usuario.trim() === "") {
       alert("O campo Usuário é obrigatório.");
       return;
@@ -87,7 +103,7 @@ export default function Responsaveis() {
       alert("O campo Email é obrigatório.");
       return;
     }
-    // regex simples para validar email
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(dadosEditados.email)) {
       alert("Informe um email válido.");
@@ -115,14 +131,12 @@ export default function Responsaveis() {
       } else {
         await api.put(`/api/responsaveis/${id}/`, payload);
       }
-
       setEditandoId(null);
       setDadosEditados({});
       carregarDados();
     } catch (err) {
       console.error("Erro ao salvar responsável:", err.response?.data || err);
       if (err.response?.data) {
-        // monta mensagens do backend
         const mensagens = Object.entries(err.response.data)
           .map(([campo, msgs]) => `${campo}: ${Array.isArray(msgs) ? msgs.join(", ") : msgs}`)
           .join("\n");
@@ -132,7 +146,6 @@ export default function Responsaveis() {
       }
     }
   };
-
 
   const excluir = async (id) => {
     if (window.confirm('Confirma a exclusão?')) {
@@ -155,12 +168,6 @@ export default function Responsaveis() {
 
   return (
     <div className="responsaveis-container">
-      {/* <div className="responsaveis-header">
-        <h2>Responsáveis</h2>
-        <button onClick={novo} disabled={editandoId !== null} title="Novo Responsável">
-          <Plus size={18} />
-        </button>
-      </div> */}
       <div className="responsaveis-header">
         <h2>Responsáveis</h2>
         {(perfilUsuario === "admin" || perfilUsuario === "coordenador") && (
@@ -168,6 +175,10 @@ export default function Responsaveis() {
             <Plus size={18} />
           </button>
         )}
+        {/* Botão para trocar a senha do usuário logado */}
+        <button onClick={trocarMinhaSenha} title="Trocar minha senha">
+          <Lock size={18} />
+        </button>
       </div>
       <table>
         <thead>
@@ -182,75 +193,29 @@ export default function Responsaveis() {
           </tr>
         </thead>
         <tbody>
-          {editandoId === 'novo' && (
-            <tr>
-              <td><input type="text" value={dadosEditados.usuario || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, usuario: e.target.value })} /></td>
-              <td><input type="text" value={dadosEditados.nome || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, nome: e.target.value })} /></td>
-              <td><input type="email" value={dadosEditados.email || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, email: e.target.value })} /></td>
-              <td><input type="text" value={dadosEditados.ramal || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, ramal: e.target.value })} /></td>
-              <td>
-                <select value={dadosEditados.grupo || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, grupo: e.target.value || null })}>
-                  <option value="">-- Nenhum --</option>
-                  {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
-                </select>
-              </td>
-              <td>
-                <select value={dadosEditados.perfil} onChange={(e) => setDadosEditados({ ...dadosEditados, perfil: e.target.value })}>
-                  <option value="admin">Administrador</option>
-                  <option value="especialista">Especialista</option>
-                  <option value="especialista_senior">Especialista Senior</option>
-                  <option value="coordenador">Coordenador</option>
-                </select>
-              </td>
-              <td className="acoes">
-                <button onClick={() => salvar('novo')} title="Salvar"><Check size={16} /></button>
-                <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
-              </td>
-            </tr>
-          )}
-
           {responsaveis.map((r) => (
             <tr key={r.id}>
-              <td>{editandoId === r.id ? <input type="text" value={dadosEditados.usuario || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, usuario: e.target.value })} /> : r.usuario}</td>
-              <td>{editandoId === r.id ? <input type="text" value={dadosEditados.nome || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, nome: e.target.value })} /> : r.nome}</td>
-              <td>{editandoId === r.id ? <input type="email" value={dadosEditados.email || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, email: e.target.value })} /> : r.email}</td>
-              <td>{editandoId === r.id ? <input type="text" value={dadosEditados.ramal || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, ramal: e.target.value })} /> : (r.ramal || '-')}</td>
-              <td>
-                {editandoId === r.id ? (
-                  <select value={dadosEditados.grupo || ''} onChange={(e) => setDadosEditados({ ...dadosEditados, grupo: e.target.value || null })}>
-                    <option value="">-- Nenhum --</option>
-                    {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
-                  </select>
-                ) : (r.grupo_nome || '-')}
-              </td>
-              <td>
-                {editandoId === r.id ? (
-                  <select value={dadosEditados.perfil} onChange={(e) => setDadosEditados({ ...dadosEditados, perfil: e.target.value })}>
-                    <option value="admin">Administrador</option>
-                    <option value="especialista">Especialista</option>
-                    <option value="especialista_senior">Especialista Senior</option>
-                    <option value="coordenador">Coordenador</option>
-                  </select>
-                ) : r.perfil}
-              </td>
+              <td>{r.usuario}</td>
+              <td>{r.nome}</td>
+              <td>{r.email}</td>
+              <td>{r.ramal || '-'}</td>
+              <td>{r.grupo_nome || '-'}</td>
+              <td>{r.perfil}</td>
               <td className="acoes">
                 {(perfilUsuario === "admin" || perfilUsuario === "coordenador") ? (
-                  editandoId === r.id ? (
-                    <>
-                      <button onClick={() => salvar(r.id)} title="Salvar"><Check size={16} /></button>
-                      <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
-                    </>
-                  ) : (
-                    <>
-                      <button onClick={() => editar(r)} title="Editar"><Pencil size={16} /></button>
-                      <button onClick={() => excluir(r.id)} title="Excluir"><Trash2 size={16} /></button>
-                    </>
-                  )
+                  <>
+                    <button onClick={() => editar(r)} title="Editar"><Pencil size={16} /></button>
+                    <button onClick={() => excluir(r.id)} title="Excluir"><Trash2 size={16} /></button>
+                    
+                    <button onClick={() => resetarSenha(r.usuario)} title="Resetar Senha">
+                      <KeyRound size={16} />
+                    </button>
+                    
+                  </>
                 ) : (
                   <span>-</span>
                 )}
               </td>
-
             </tr>
           ))}
         </tbody>

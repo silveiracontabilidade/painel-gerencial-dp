@@ -7,8 +7,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
-
-
+from rest_framework import generics, permissions
+from rest_framework import status
+from rest_framework.decorators import action
 
 from .models import (
     GrupoGerencial,
@@ -36,13 +37,13 @@ from .serializers import (
     CCTSerializer,
     PGPLRSerializer,
     UsuarioResponsavelSerializer,
-    MotivoRescisaoSerializer
+    MotivoRescisaoSerializer,
+    ChangePasswordSerializer
 )
 
-
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+# class UserViewSet(viewsets.ModelViewSet):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
 
 
 class GrupoGerencialViewSet(viewsets.ModelViewSet):
@@ -255,3 +256,57 @@ class MotivoRescisaoViewSet(viewsets.ModelViewSet):
     search_fields = ['descricao', 'mensagem']
     ordering_fields = ['id', 'descricao']
     ordering = ['descricao']
+
+
+#--------- ALTERAÇÃO DE SENHA ------------
+class ChangePasswordView(generics.UpdateAPIView):
+    serializer_class = ChangePasswordSerializer
+    model = User
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_object(self, queryset=None):
+        return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        user = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+
+        if serializer.is_valid():
+            if not user.check_password(serializer.data.get("old_password")):
+                return Response({"old_password": "Senha atual incorreta."}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.set_password(serializer.data.get("new_password"))
+            user.save()
+            return Response({"status": "Senha alterada com sucesso."}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+# ------------- RESET DE SENHA PELO ADMIN -------------
+
+# class UserViewSet(viewsets.ModelViewSet):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
+
+#     @action(detail=True, methods=['post'], url_path='reset-password')
+#     def reset_password(self, request, pk=None):
+#         user = self.get_object()
+#         user.set_password("Mudar123")
+#         user.save()
+#         return Response({"status": "Senha redefinida para Mudar123"}, status=status.HTTP_200_OK)
+    
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    lookup_field = 'username'  # 👈 força lookup pelo username
+    lookup_value_regex = '[^/]+'
+
+    @action(detail=True, methods=['post'], url_path='reset-password')
+    def reset_password(self, request, username=None):
+        user = self.get_object()
+        user.set_password("Mudar123")
+        user.save()
+        return Response({"status": "Senha redefinida para Mudar123"}, status=status.HTTP_200_OK)
+
