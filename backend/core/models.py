@@ -145,7 +145,7 @@ class PlanilhaGerencial(models.Model):
     med_ocupa_proc_venc = models.DateField(db_column='MED_OCUPA_PROC_VENC', null=True, blank=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'geral_planilha_gerencial'
 
 
