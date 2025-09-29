@@ -284,81 +284,73 @@ const fecharModal = () => {
 };
 
 
-// const abrirModal = (empresa = null) => {
-//   setEmpresaSelecionada(empresa);
-//   setModalAberto(true);
-// };
-
-// const fecharModal = () => {
-//   setModalAberto(false);
-//   setEmpresaSelecionada(null);
-// };
-
 const salvarEmpresa = async (empresa) => {
   try {
     const camposData = [
-      'inicio_contrato',
-      'termino_contrato',
-      'dt_envio_cct',
-      'dt_venc_conec_social',
-      'venc_procuracao',
-      'med_ocupa_proc_venc'
+      "inicio_contrato",
+      "termino_contrato",
+      "dt_envio_cct",
+      "dt_venc_conec_social",
+      "venc_procuracao",
+      "med_ocupa_proc_venc",
     ];
 
     const payload = { ...empresa };
 
     // normaliza datas da empresa
-    camposData.forEach(campo => {
-      if (payload[campo]) {
-        payload[campo] = paraISO(payload[campo]);
-      } else {
-        payload[campo] = null;
-      }
+    camposData.forEach((campo) => {
+      payload[campo] = payload[campo] ? paraISO(payload[campo]) : null;
     });
+
+    // normaliza honorários (DecimalField no backend)
+    if (payload.honorarios !== undefined && payload.honorarios !== null && payload.honorarios !== "") {
+      payload.honorarios = String(payload.honorarios)
+        .replace(/\./g, "")
+        .replace(",", ".");
+    } else {
+      payload.honorarios = null;
+    }
 
     delete payload.cnpj_formatado;
     delete payload.id;
 
     // salva empresa
     let novaEmpresa;
-    if (payload.cod_folha) {
+    if (empresaSelecionada) {
+      // EDITAR (já existia)
       const res = await api.put(`/api/empresas/${payload.cod_folha}/`, payload);
       novaEmpresa = res.data;
-      setEmpresas(prev =>
-        prev.map(e => e.cod_folha === payload.cod_folha ? novaEmpresa : e)
+      setEmpresas((prev) =>
+        prev.map((e) => (e.cod_folha === payload.cod_folha ? novaEmpresa : e))
       );
     } else {
-      const res = await api.post('/api/empresas/', payload);
+      // NOVA EMPRESA
+      const res = await api.post("/api/empresas/", payload);
       novaEmpresa = res.data;
-      setEmpresas(prev => [...prev, novaEmpresa]);
+      setEmpresas((prev) => [...prev, novaEmpresa]);
     }
 
     // 🔥 sincroniza os CCTs (PUT com fallback para POST) + data_envio em ISO
     if (empresa.ccts && empresa.ccts.length > 0) {
       for (const cct of empresa.ccts) {
-        // monta payload do CCT
         const payloadCCT = {
           ...cct,
           cod_folha: novaEmpresa.cod_folha,
-          // se vier "dd-mm-aaaa", converte; se já vier ISO, mantém
           data_envio: cct.data_envio ? paraISO(cct.data_envio) : null,
         };
 
         if (cct.id) {
           try {
-            // tenta atualizar
             await api.put(`/api/ccts/${cct.id}/`, payloadCCT);
           } catch (e) {
-            // se não existir, cria
             if (e?.response?.status === 404) {
               const { id, ...semId } = payloadCCT;
               await api.post(`/api/ccts/`, semId);
             } else {
-              throw e; // propaga outros erros
+              throw e;
             }
           }
         } else {
-          // sem id → cria
           const { id, ...semId } = payloadCCT;
           await api.post(`/api/ccts/`, semId);
         }
@@ -372,13 +364,13 @@ const salvarEmpresa = async (empresa) => {
           ...plr,
           cod_folha: novaEmpresa.cod_folha,
           data_entrega: plr.data_entrega ? paraISO(plr.data_entrega) : null,
-          // normaliza valor: "1.234,56" → "1234.56"
-          valor: plr.valor === '' || plr.valor === null || plr.valor === undefined
-            ? null
-            : String(plr.valor).replace(/\./g, '').replace(',', '.'),
+          valor:
+            plr.valor === "" || plr.valor === null || plr.valor === undefined
+              ? null
+              : String(plr.valor).replace(/\./g, "").replace(",", "."),
         };
 
-        if (plr.id && !String(plr.id).startsWith('tmp-')) {
+        if (plr.id && !String(plr.id).startsWith("tmp-")) {
           try {
             await api.put(`/api/pg-plr/${plr.id}/`, payloadPLR);
           } catch (e) {
@@ -397,11 +389,12 @@ const salvarEmpresa = async (empresa) => {
     }
 
     fecharModal();
-      } catch (err) {
-        console.error("Erro ao salvar empresa:", err.response?.data || err);
-        alert("Erro ao salvar empresa");
-      }
-    };
+  } catch (err) {
+    console.error("Erro ao salvar empresa:", err.response?.data || err);
+    alert("Erro ao salvar empresa");
+  }
+};
+
 
   return (
     <div className="empresas-container">
