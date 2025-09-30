@@ -33,6 +33,12 @@ const normalizarData = (valor) => {
   return `${DD}-${MM}-${YYYY}`;
 };
 
+// Normaliza numéricos: se vazio → 0
+const toNumberOrZero = (v) => {
+  if (v === '' || v === null || v === undefined) return 0;
+  return Number(v);
+};
+
 const normalize = (s) =>
   String(s || '')
     .normalize('NFD')
@@ -452,10 +458,22 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     if (FIELD_MAP.status) payload[FIELD_MAP.status] = payload.status || 'PENDENTE';
 
     // === FÉRIAS (CharField -> mantemos dd-mm-aaaa) ===
-    Object.entries(ferias).forEach(([k, v]) => (payload[k] = toNull(v)));
+    Object.entries(ferias).forEach(([k, v]) => {
+        if (['ferias_qtd_dias', 'ferias_qtd_dias_abono'].includes(k)) {
+          payload[k] = toNumberOrZero(v);
+        } else {
+          payload[k] = toNull(v);
+        }
+      });
 
-    // === RESCISÃO (CharField) ===
-    Object.entries(rescisao).forEach(([k, v]) => (payload[k] = toNull(v)));
+    // === RESCISÃO ===
+    Object.entries(rescisao).forEach(([k, v]) => {
+      if (['rescisao_dias_aviso'].includes(k)) {
+        payload[k] = toNumberOrZero(v);
+      } else {
+        payload[k] = toNull(v);
+      }
+    });
 
     // === ADMISSÃO (CharField) ===
     Object.entries(admissao).forEach(([k, v]) => (payload[k] = toNull(v)));
@@ -464,14 +482,26 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     Object.entries(afast).forEach(([k, v]) => (payload[k] = toNull(v)));
 
     // === AVULSO ===
-    Object.entries(avulso).forEach(([k, v]) => (payload[k] = toNull(v)));
+    Object.entries(avulso).forEach(([k, v]) => {
+      if (['avulso_valor'].includes(k)) {
+        payload[k] = toNumberOrZero(v);
+      } else {
+        payload[k] = toNull(v);
+      }
+    });
 
     // === MULTA ===
-    Object.entries(multa).forEach(([k, v]) => (payload[k] = toNull(v)));
+    Object.entries(multa).forEach(([k, v]) => {
+      if (['multa_valor'].includes(k)) {
+        payload[k] = toNumberOrZero(v);
+      } else {
+        payload[k] = toNull(v);
+      }
+    });
 
-    delete payload.empresa_id;
-    return payload;
-  };
+        delete payload.empresa_id;
+        return payload;
+      };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
