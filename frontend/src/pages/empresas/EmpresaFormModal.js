@@ -634,15 +634,19 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
                 {renderSelect('data_entrega_folha', 'ENTREGA AO CLIENTE', periodos.map(p => p.descricao.toUpperCase()), 'campo-curto', empresa.data_entrega_folha)}
                 {renderSelect('data_pagto_salario', 'DATA PGTO SALÁRIO', periodos.map(p => p.descricao.toUpperCase()), 'campo-curto', empresa.data_pagto_salario)}
                 {renderSelect('classificacao2', 'TIPO', opcoes.classificacao2,  'campo-micro', empresa.classificacao2)}
-                {renderFlag('serv_prest', 'SERV. PRESTADOS',  empresa.serv_prest)}
-                {renderFlag('serv_tom', 'SERV. TOMADOS',  empresa.serv_tom)}
+              </div>
+              <br></br>
+              <div className="linha">
+                {renderFlag('folha_tom', 'FOLHA TOMADOR',  empresa.folha_tom)}
+                {renderFlag('serv_tom', 'TOMADOS',  empresa.serv_tom)}
+                {renderFlag('serv_prest', 'PRESTADOS',  empresa.serv_prest)}
                 {renderFlag('deson', 'DESONERAÇÃO', empresa.deson)}
                 {renderFlag('secconci', 'SECONCI',  empresa.secconci)}
                 {renderFlag('planilha_folha', 'PLAN. FOLHA',  empresa.planilha_folha)}
                 {renderFlag('planilha_convenio', 'PLAN. CONVÊNIO',  empresa.planilha_convenio)}
                 {renderFlag('apura_vt', 'APURA VT', empresa.apura_vt)}
                 {renderFlag('fecha_ponto', 'FECHA PONTO', empresa.fecha_ponto)}
-                {renderTextarea('obs_folha', 'OBS. FOLHA', 'campo-longo','textarea-grande')}
+                {renderTextarea('obs_folha', 'OBS. FOLHA', 'campo-longo','textarea-gigante')}
               </div>
             </div>
           </>

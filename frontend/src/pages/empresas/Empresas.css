@@ -260,6 +260,7 @@
 /* Cores específicas */
 .empresas-table td.classificacao2.FOLHA-COM-DADOS {
   background-color: #1e471e; /* verde escuro */
+  color: #ffffff;
 }
 
 .empresas-table td.classificacao2.FOLHA-SEM-DADOS {

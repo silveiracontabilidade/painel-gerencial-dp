@@ -568,9 +568,7 @@ const salvarEmpresa = async (empresa) => {
                   {options.resp_dp.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </th>
-              {/* <th className="col-texto-curto">
-                <input type="text" value={filters.ramal} onChange={handleFilterChange('ramal')} className={filters.ramal ? 'filtro-ativo' : ''} />
-              </th> */}
+              
               <th className="col-data">
                 <select
                   value={filters.data_pagto_salario_inicio}
@@ -639,13 +637,6 @@ const salvarEmpresa = async (empresa) => {
                       onChange={() => toggleSelecionado(emp)}
                     />
                 </td>
-                {/* <td
-                  onClick={() => abrirModal(emp)}
-                  style={{ cursor: 'pointer', color: '#2B9FAE', fontWeight: 'bold', width:'30px' }}
-                  title="Clique para editar"
-                >
-                  {emp.cod_folha}
-                </td> */}
                 <td
                   onClick={() => {
                     if (perfilUsuario === 'admin' || perfilUsuario === 'coordenador') {

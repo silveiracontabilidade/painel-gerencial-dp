@@ -30,6 +30,7 @@ class Responsavel(models.Model):
     ramal = models.CharField(max_length=20, null=True, blank=True)
     grupo = models.ForeignKey('GrupoGerencial', on_delete=models.SET_NULL, null=True, blank=True, related_name='membros')
     perfil = models.CharField(max_length=100, choices=PERFIL_CHOICES)
+    status = models.CharField(max_length=10, null=True, blank=True)
 
     class Meta:
         db_table = 'pg_responsaveis'
@@ -71,6 +72,7 @@ class PlanilhaGerencial(models.Model):
     # --- campos folha e operacionais ---
     serv_prest = models.CharField(max_length=10, db_column='SERV_PREST', null=True, blank=True)
     serv_tom = models.CharField(max_length=10, db_column='SERV_TOM', null=True, blank=True)
+    folha_tom = models.CharField(max_length=10, db_column='FOLHA_TOM', null=True, blank=True)
     deson = models.CharField(max_length=50, db_column='DESON', null=True, blank=True)
     secconci = models.CharField(max_length=50, db_column='SECCONCI', null=True, blank=True)
     planilha_folha = models.CharField(max_length=50, db_column='PLANILHA_FOLHA', null=True, blank=True)
@@ -232,6 +234,7 @@ class ServicoSolicitado(models.Model):
     afast_dias = models.CharField(max_length=100, null=True, blank=True)
     afast_ini = models.CharField(max_length=100, null=True, blank=True)
     afast_pericia = models.CharField(max_length=100, null=True, blank=True)
+    afast_retorno = models.CharField(max_length=100, null=True, blank=True)
     
     #AVULSOS
     avulso_valor = models.DecimalField(max_digits=10, decimal_places=2)
@@ -263,6 +266,7 @@ class Servico(models.Model):
     nome = models.CharField(max_length=255)
     prazo_dias = models.DecimalField(max_digits=5, decimal_places=2)
     tempo_execucao = models.DurationField(default=timedelta)
+    mensagem = models.CharField(max_length=250, null=True, blank=True)
 
     checklist = models.FileField(upload_to='servicos/checklists/', null=True, blank=True)
     instrucao_trabalho = models.FileField(upload_to='servicos/instrucoes/', null=True, blank=True)

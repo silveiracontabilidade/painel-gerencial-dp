@@ -10,7 +10,6 @@ export default function Responsaveis() {
   const [dadosEditados, setDadosEditados] = useState({});
   const [perfilUsuario, setPerfilUsuario] = useState(null);
 
-  // filtro + ordenação
   const [filtro, setFiltro] = useState('');
   const [ordenacao, setOrdenacao] = useState({ campo: 'nome', direcao: 'asc' });
 
@@ -47,7 +46,8 @@ export default function Responsaveis() {
       email: r.email,
       ramal: r.ramal,
       grupo: r.grupo,
-      perfil: r.perfil
+      perfil: r.perfil,
+      status: r.status || 'SIM'
     });
   };
 
@@ -67,6 +67,19 @@ export default function Responsaveis() {
     }
   };
 
+  const alternarStatus = async (r) => {
+    const novoStatus = r.status === "SIM" ? "NÃO" : "SIM";
+    if (!window.confirm(`Confirma ${novoStatus === "NÃO" ? "inativar" : "reativar"} este responsável?`)) return;
+
+    try {
+      await api.put(`/api/responsaveis/${r.id}/`, { ...r, status: novoStatus });
+      carregarDados();
+    } catch (err) {
+      console.error("Erro ao atualizar status:", err.response?.data || err);
+      alert("Erro ao atualizar status do responsável.");
+    }
+  };
+
   const salvar = async (id) => {
     const payload = {
       usuario: dadosEditados.usuario.trim(),
@@ -74,7 +87,8 @@ export default function Responsaveis() {
       email: dadosEditados.email.trim(),
       ramal: dadosEditados.ramal?.trim() || null,
       grupo: dadosEditados.grupo ? Number(dadosEditados.grupo) : null,
-      perfil: dadosEditados.perfil
+      perfil: dadosEditados.perfil,
+      status: dadosEditados.status || 'SIM'
     };
 
     try {
@@ -93,13 +107,6 @@ export default function Responsaveis() {
     }
   };
 
-  const excluir = async (id) => {
-    if (window.confirm('Confirma a exclusão?')) {
-      await api.delete(`/api/responsaveis/${id}/`);
-      carregarDados();
-    }
-  };
-
   const novo = () => {
     setEditandoId('novo');
     setDadosEditados({
@@ -108,7 +115,8 @@ export default function Responsaveis() {
       email: '',
       ramal: '',
       grupo: null,
-      perfil: 'especialista'
+      perfil: 'especialista',
+      status: 'SIM'
     });
   };
 
@@ -119,7 +127,6 @@ export default function Responsaveis() {
     }));
   };
 
-  // aplica filtro + ordenação
   const responsaveisVisiveis = useMemo(() => {
     const novos = responsaveis.filter(r => r.__novo);
     let lista = responsaveis.filter(r => !r.__novo);
@@ -170,17 +177,19 @@ export default function Responsaveis() {
       <table>
         <thead>
           <tr>
-            <th onClick={() => handleOrdenar("usuario")}>Usuário</th>
-            <th onClick={() => handleOrdenar("nome")}>Nome</th>
-            <th onClick={() => handleOrdenar("email")}>Email</th>
-            <th onClick={() => handleOrdenar("ramal")}>Ramal</th>
-            <th onClick={() => handleOrdenar("grupo_nome")}>Grupo</th>
-            <th onClick={() => handleOrdenar("perfil")}>Perfil</th>
-            <th>Ações</th>
+            <th className="col-usuario" onClick={() => handleOrdenar("usuario")}>Usuário</th>
+            <th className="col-nome" onClick={() => handleOrdenar("nome")}>Nome</th>
+            <th className="col-email" onClick={() => handleOrdenar("email")}>Email</th>
+            <th className="col-ramal" onClick={() => handleOrdenar("ramal")}>Ramal</th>
+            <th className="col-grupo" onClick={() => handleOrdenar("grupo_nome")}>Grupo</th>
+            <th className="col-status" onClick={() => handleOrdenar("status")}>Ativo</th>
+            <th className="col-perfil" onClick={() => handleOrdenar("perfil")}>Perfil</th>
+            <th className="col-acoes">Ações</th>
           </tr>
         </thead>
         <tbody>
-          {editandoId === 'novo' && (
+          {/* linha de novo */}
+          {editandoId === "novo" && (
             <tr>
               <td><input value={dadosEditados.usuario} onChange={e => setDadosEditados({ ...dadosEditados, usuario: e.target.value })} /></td>
               <td><input value={dadosEditados.nome} onChange={e => setDadosEditados({ ...dadosEditados, nome: e.target.value })} /></td>
@@ -193,6 +202,12 @@ export default function Responsaveis() {
                 </select>
               </td>
               <td>
+                <select value={dadosEditados.status} onChange={e => setDadosEditados({ ...dadosEditados, status: e.target.value })}>
+                  <option value="SIM">SIM</option>
+                  <option value="NÃO">NÃO</option>
+                </select>
+              </td>
+              <td>
                 <select value={dadosEditados.perfil} onChange={e => setDadosEditados({ ...dadosEditados, perfil: e.target.value })}>
                   <option value="admin">admin</option>
                   <option value="especialista">especialista</option>
@@ -201,31 +216,104 @@ export default function Responsaveis() {
                 </select>
               </td>
               <td className="acoes">
-                <button onClick={() => salvar('novo')}><Check size={16} /></button>
+                <button onClick={() => salvar("novo")}><Check size={16} /></button>
                 <button onClick={cancelar}><X size={16} /></button>
               </td>
             </tr>
           )}
 
+          {/* linhas existentes */}
           {responsaveisVisiveis.map(r => (
             <tr key={r.id}>
-              <td>{r.usuario}</td>
-              <td>{r.nome}</td>
-              <td>{r.email}</td>
-              <td>{r.ramal || '-'}</td>
-              <td>{r.grupo_nome || '-'}</td>
-              <td>{r.perfil}</td>
-              <td className="acoes">
-                {(perfilUsuario === "admin" || perfilUsuario === "coordenador") ? (
-                  <>
-                    <button onClick={() => editar(r)} title="Editar"><Pencil size={16} /></button>
-                    <button onClick={() => excluir(r.id)} title="Excluir"><Trash2 size={16} /></button>
-                    <button onClick={() => resetarSenha(r.usuario)} title="Resetar Senha"><KeyRound size={16} /></button>
-                  </>
-                ) : (
-                  <span>-</span>
-                )}
-              </td>
+              {editandoId === r.id ? (
+                <>
+                  <td className="col-usuario">
+                    <input
+                      value={dadosEditados.usuario}
+                      onChange={e => setDadosEditados({ ...dadosEditados, usuario: e.target.value })}
+                    />
+                  </td>
+                  <td className="col-nome">
+                    <input
+                      value={dadosEditados.nome}
+                      onChange={e => setDadosEditados({ ...dadosEditados, nome: e.target.value })}
+                    />
+                  </td>
+                  <td className="col-email">
+                    <input
+                      value={dadosEditados.email}
+                      onChange={e => setDadosEditados({ ...dadosEditados, email: e.target.value })}
+                    />
+                  </td>
+                  <td className="col-ramal">
+                    <input
+                      value={dadosEditados.ramal || ''}
+                      onChange={e => setDadosEditados({ ...dadosEditados, ramal: e.target.value })}
+                    />
+                  </td>
+                  <td className="col-grupo">
+                    <select
+                      value={dadosEditados.grupo || ''}
+                      onChange={e => setDadosEditados({ ...dadosEditados, grupo: e.target.value })}
+                    >
+                      <option value="">--</option>
+                      {grupos.map(g => (
+                        <option key={g.id} value={g.id}>
+                          {g.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="col-status">
+                    <select
+                      value={dadosEditados.status}
+                      onChange={e => setDadosEditados({ ...dadosEditados, status: e.target.value })}
+                    >
+                      <option value="SIM">SIM</option>
+                      <option value="NÃO">NÃO</option>
+                    </select>
+                  </td>
+                  <td className="col-perfil">
+                    <select
+                      value={dadosEditados.perfil}
+                      onChange={e => setDadosEditados({ ...dadosEditados, perfil: e.target.value })}
+                    >
+                      <option value="admin">admin</option>
+                      <option value="especialista">especialista</option>
+                      <option value="especialista_senior">especialista_senior</option>
+                      <option value="coordenador">coordenador</option>
+                    </select>
+                  </td>
+                  <td className="acoes">
+                    <button onClick={() => salvar(r.id)}><Check size={16} /></button>
+                    <button onClick={cancelar}><X size={16} /></button>
+                  </td>
+                </>
+
+              ) : (
+                <>
+                  <td>{r.usuario}</td>
+                  <td className='col-nome'>{r.nome}</td>
+                  <td>{r.email}</td>
+                  <td>{r.ramal || '-'}</td>
+                  <td>{r.grupo_nome || '-'}</td>
+                  <td>{r.status || '-'}</td>
+                  <td>{r.perfil}</td>
+                  <td className="acoes">
+                    {(perfilUsuario === "admin" || perfilUsuario === "coordenador") ? (
+                      <>
+                        <button onClick={() => editar(r)} title="Editar"><Pencil size={16} /></button>
+                        <button onClick={() => alternarStatus(r)} title={r.status === "SIM" ? "Inativar" : "Reativar"}>
+                          {r.status === "SIM" ? <Trash2 size={16} /> : <Check size={16} />}
+                        </button>
+                        <button onClick={() => resetarSenha(r.usuario)} title="Resetar Senha"><KeyRound size={16} /></button>
+                      </>
+                    ) : (
+                      <span>-</span>
+                    )}
+                  </td>
+                </>
+              )}
             </tr>
           ))}
         </tbody>

@@ -119,10 +119,10 @@ const FIELD_MAP = {
 
   // AFASTAMENTO
   afast: {
-    tipo: 'afast_tipo',
     dias: 'afast_dias',
     ini: 'afast_ini',
     pericia: 'afast_pericia',
+    retorno: 'afast_retorno'
   },
 
     // AVULSO
@@ -173,10 +173,10 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   });
 
   const [afast, setAfast] = useState({
-    [FIELD_MAP.afast.tipo]: '',
     [FIELD_MAP.afast.dias]: '',
     [FIELD_MAP.afast.ini]: '',
     [FIELD_MAP.afast.pericia]: '',
+    [FIELD_MAP.afast.retorno]: '',
   });
 
   const [avulso, setAvulso] = useState({
@@ -225,10 +225,11 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
         [FIELD_MAP.admissao.preliminar]: dados[FIELD_MAP.admissao.preliminar] || '',
       });
       setAfast({
-        [FIELD_MAP.afast.tipo]: dados[FIELD_MAP.afast.tipo] || '',
+        // [FIELD_MAP.afast.tipo]: dados[FIELD_MAP.afast.tipo] || '',
         [FIELD_MAP.afast.dias]: dados[FIELD_MAP.afast.dias] || '',
         [FIELD_MAP.afast.ini]: dados[FIELD_MAP.afast.ini] ? toBRSafe(dados[FIELD_MAP.afast.ini]) : '',
         [FIELD_MAP.afast.pericia]: dados[FIELD_MAP.afast.pericia] || '',
+        [FIELD_MAP.afast_retorno]: dados[FIELD_MAP.afast_retorno] || '',
       });
       setAvulso({
         [FIELD_MAP.avulso.valor]: dados[FIELD_MAP.avulso.valor] || '',
@@ -767,16 +768,6 @@ const renderBlocoAfastamento = () => (
   <div className="bloco">
     <h4>Afastamento</h4>
     <div className="linha">
-      <div className="campo campo-medio">
-        <label>Tipo</label>
-        <input
-          type="text"
-          name={FIELD_MAP.afast.tipo}
-          value={afast[FIELD_MAP.afast.tipo] || ''}
-          onChange={handleAfastChange}
-        />
-      </div>
-
       <div className="campo campo-curto">
         <label>Dias</label>
         <input
@@ -811,6 +802,20 @@ const renderBlocoAfastamento = () => (
           onChange={handleAfastChange}
         />
       </div>
+      <div className="campo campo-curto">
+          <label>Retorno (dd-mm-aaaa)</label>
+          <input
+            type="text"
+            name={FIELD_MAP.afast.retorno}
+            value={afast[FIELD_MAP.afast.retorno] || ''}
+            onChange={handleAfastDateChange}
+            onBlur={handleAfastDateBlur}
+            placeholder="dd-mm-aaaa"
+            maxLength={10}
+            inputMode="numeric"
+            autoComplete="off"
+          />
+        </div>
     </div>
   </div>
 );
@@ -870,9 +875,6 @@ const renderBlocoMulta = () => (
     </div>
   </div>
 );
-
-
-
 
   return (
   <div className="modal-overlay">
@@ -972,7 +974,6 @@ const renderBlocoMulta = () => (
                   <FileText size={18} />
                 </a>
               ) : <span>-</span>}
-            {/* </div> */}
           </div>
         </div>
 
@@ -1004,6 +1005,12 @@ const renderBlocoMulta = () => (
           {renderInputData('data_para_resposta', 'DATA PARA RESPOSTA', 'campo-curto')}
           {renderInputData('data_conclusao', 'CONCLUSÃO', 'campo-curto')}
         </div>
+
+        {servicoSelecionado?.mensagem && (
+          <div className="mensagem-informativa">
+            <strong>MENSAGEM:</strong> {servicoSelecionado.mensagem}
+          </div>
+        )}        
 
         {/* Botões */}
         <div className="botoes">

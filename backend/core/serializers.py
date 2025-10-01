@@ -78,7 +78,7 @@ class ResponsavelSerializer(serializers.ModelSerializer):
         model = Responsavel
         fields = [
             'id',
-            'usuario',   # FK para User
+            'usuario',
             'nome',
             'email',
             'voip',
@@ -86,10 +86,12 @@ class ResponsavelSerializer(serializers.ModelSerializer):
             'grupo',
             'grupo_nome',
             'perfil',
+            'status',   # 👈 faltava aqui
         ]
         extra_kwargs = {
-            'usuario': {'read_only': True},  # não deixa escolher manualmente
+            'usuario': {'read_only': True},
         }
+
 
     def create(self, validated_data):
         # cria User com senha padrão
@@ -124,7 +126,6 @@ class PlanilhaGerencialSerializer(serializers.ModelSerializer):
         return obj.cnpj  # fallback se não tiver 14 dígitos
 
 
-# ---------------------- Serviço ----------------------
 # ---------------------- Serviço ----------------------
 class ServicoSerializer(serializers.ModelSerializer):
     tempo_execucao = serializers.CharField()  # força string no payload
@@ -310,9 +311,6 @@ class PGPLRSerializer(serializers.ModelSerializer):
             'mes_pagamento':    {'required': False, 'allow_blank': True},
         }
 
-
-
-
 # usuario e responsável
 class UsuarioResponsavelSerializer(serializers.Serializer):
     username = serializers.CharField()
@@ -321,6 +319,7 @@ class UsuarioResponsavelSerializer(serializers.Serializer):
     nome = serializers.CharField()
     grupo = serializers.IntegerField()   # id do GrupoGerencial
     perfil = serializers.CharField()
+    status = serializers.CharField()
 
     def create(self, validated_data):
         # cria User
@@ -332,24 +331,14 @@ class UsuarioResponsavelSerializer(serializers.Serializer):
 
         # cria Responsavel vinculado
         responsavel = Responsavel.objects.create(
-            usuario=user,
+            usuario=validated_data['username'],   # 👈 grava como string
             nome=validated_data['nome'],
             email=validated_data['email'],
             grupo_id=validated_data['grupo'],
-            perfil=validated_data['perfil']
+            perfil=validated_data['perfil'],
+            status=validated_data['status'].upper()  # 👈 garante "SIM"/"NÃO"
         )
         return responsavel
-
-    def to_representation(self, instance):
-        return {
-            "id": instance.id,
-            "usuario_id": instance.usuario.id,
-            "username": instance.usuario.username,
-            "email": instance.email,
-            "nome": instance.nome,
-            "perfil": instance.perfil,
-            "grupo": instance.grupo_id,
-        }
         
 
 class MotivoRescisaoSerializer(serializers.ModelSerializer):

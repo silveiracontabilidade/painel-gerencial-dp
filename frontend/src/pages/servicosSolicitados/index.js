@@ -18,18 +18,33 @@ export default function ServicosSolicitados() {
 
   //concluir
   const concluir = async (id) => {
-    if (!window.confirm('Marcar esta solicitação como concluída?')) return;
+      const solicitacao = solicitacoes.find(s => s.id === id);
+      if (!solicitacao) return;
 
-    const hojeISO = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      // verifica se é afastamento
+      const servico = servicoById.get(String(solicitacao.servico));
+      const nomeServico = servico?.nome?.toUpperCase() || "";
 
-    try {
-      await api.patch(`/api/solicitacoes/${id}/`, { data_conclusao: hojeISO });
-      carregarSolicitacoes();
-    } catch (err) {
-      console.error("Erro ao concluir solicitação:", err.response?.data || err);
-      alert("Erro ao concluir solicitação");
-    }
-  };
+      if (nomeServico.includes("AFAST")) {
+        if (!solicitacao.afast_retorno) {
+          alert("Não é possível concluir: informe a data de retorno do afastamento.");
+          return;
+        }
+      }
+
+      if (!window.confirm('Marcar esta solicitação como concluída?')) return;
+
+      const hojeISO = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+      try {
+        await api.patch(`/api/solicitacoes/${id}/`, { data_conclusao: hojeISO });
+        carregarSolicitacoes();
+      } catch (err) {
+        console.error("Erro ao concluir solicitação:", err.response?.data || err);
+        alert("Erro ao concluir solicitação");
+      }
+    };
+
 
   // Filtros
   const [filters, setFilters] = useState({

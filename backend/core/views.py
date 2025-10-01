@@ -17,7 +17,6 @@ from .models import (
 )
 
 # ------------------------ AUTENTICAÇÃO ------------------------
-
 def teste_api(request):
     return JsonResponse({'msg': 'API Django respondendo com sucesso!'})
 

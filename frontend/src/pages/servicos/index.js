@@ -67,6 +67,7 @@ export default function Servicos() {
       formData.append("nome", dadosEditados.nome);
       formData.append("prazo_dias", dadosEditados.prazo_dias);
       formData.append("tempo_execucao", dadosEditados.tempo_execucao);
+      formData.append("mensagem", dadosEditados.mensagem);
 
       // anexos
       const campos = ["checklist","instrucao_trabalho","video_explicativo","topico_rapido"];
@@ -228,7 +229,7 @@ export default function Servicos() {
         <table>
           <thead>
             <tr>
-              <th onClick={() => handleOrdenar("nome")} style={{cursor:"pointer"}}>
+              <th onClick={() => handleOrdenar("nome")} style={{cursor:"pointer"}} className='col-nome'>
                 Nome {ordenacao.campo==="nome" && (ordenacao.direcao==="asc"?"▲":"▼")}
               </th>
               <th onClick={() => handleOrdenar("prazo_dias")} style={{cursor:"pointer"}}>
@@ -237,6 +238,7 @@ export default function Servicos() {
               <th onClick={() => handleOrdenar("tempo_execucao")} style={{cursor:"pointer"}}>
                 Tempo Execução {ordenacao.campo==="tempo_execucao" && (ordenacao.direcao==="asc"?"▲":"▼")}
               </th>
+              <th className='col-mensagem'>Mensagem</th>
               <th>Checklist</th>
               <th>Instrução</th>
               <th>Vídeo</th>
@@ -278,6 +280,17 @@ export default function Servicos() {
                     />
                   ) : (
                     servico.tempo_execucao
+                  )}
+                </td>
+                <td>
+                  {editandoId === servico.id ? (
+                    <input
+                      type="text"
+                      value={dadosEditados.mensagem}
+                      onChange={(e) => setDadosEditados({ ...dadosEditados, mensagem: e.target.value })}
+                    />
+                  ) : (
+                    servico.mensagem
                   )}
                 </td>
 
