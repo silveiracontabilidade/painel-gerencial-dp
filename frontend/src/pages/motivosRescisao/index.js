@@ -1,5 +1,4 @@
-// MotivosRescisao.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import api from "../../api/axios";
 import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import "./MotivosRescisao.css";
@@ -8,8 +7,12 @@ export default function MotivosRescisao() {
   const [motivos, setMotivos] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
   const [novo, setNovo] = useState({ descricao: "", mensagem: "" });
-  const [adicionando, setAdicionando] = useState(false); // controla linha de inclusão
+  const [adicionando, setAdicionando] = useState(false);
   const [carregando, setCarregando] = useState(false);
+
+  // filtro + ordenação
+  const [filtro, setFiltro] = useState("");
+  const [ordenacao, setOrdenacao] = useState({ campo: "descricao", direcao: "asc" });
 
   const carregar = async () => {
     try {
@@ -54,6 +57,38 @@ export default function MotivosRescisao() {
     }
   };
 
+  // alterna ordenação
+  const handleOrdenar = (campo) => {
+    setOrdenacao((prev) => ({
+      campo,
+      direcao: prev.campo === campo && prev.direcao === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  // aplica filtro + ordenação
+  const motivosVisiveis = useMemo(() => {
+    let lista = [...motivos];
+
+    if (filtro) {
+      const f = filtro.toUpperCase();
+      lista = lista.filter((m) =>
+        (m.descricao || "").toUpperCase().includes(f)
+      );
+    }
+
+    if (ordenacao.campo) {
+      lista.sort((a, b) => {
+        const valA = (a[ordenacao.campo] || "").toString().toUpperCase();
+        const valB = (b[ordenacao.campo] || "").toString().toUpperCase();
+        if (valA < valB) return ordenacao.direcao === "asc" ? -1 : 1;
+        if (valA > valB) return ordenacao.direcao === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return lista;
+  }, [motivos, filtro, ordenacao]);
+
   return (
     <div className="motivos-container">
       <div className="motivos-header">
@@ -63,10 +98,20 @@ export default function MotivosRescisao() {
             setAdicionando(true);
             setNovo({ descricao: "", mensagem: "" });
           }}
-          disabled={adicionando} // evita abrir várias linhas
+          disabled={adicionando}
         >
           <Plus size={16} /> Adicionar
         </button>
+      </div>
+
+      {/* filtro */}
+      <div className="filtro-nome">
+        <input
+          type="text"
+          placeholder="Filtrar por descrição..."
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+        />
       </div>
 
       {carregando ? (
@@ -76,13 +121,37 @@ export default function MotivosRescisao() {
           <thead>
             <tr>
               <th style={{ width: "50px" }}>#</th>
-              <th style={{ width: "250px" }}>Descrição</th>
-              <th style={{ minWidth: "400px" }}>Mensagem</th>
+              <th
+                style={{ width: "250px", cursor: "pointer" }}
+                onClick={() => handleOrdenar("descricao")}
+                className={
+                  ordenacao.campo === "descricao"
+                    ? ordenacao.direcao === "asc"
+                      ? "ordenado-asc"
+                      : "ordenado-desc"
+                    : ""
+                }
+              >
+                Descrição
+              </th>
+              <th
+                style={{ minWidth: "400px", cursor: "pointer" }}
+                onClick={() => handleOrdenar("mensagem")}
+                className={
+                  ordenacao.campo === "mensagem"
+                    ? ordenacao.direcao === "asc"
+                      ? "ordenado-asc"
+                      : "ordenado-desc"
+                    : ""
+                }
+              >
+                Mensagem
+              </th>
               <th className="acoes">Ações</th>
             </tr>
           </thead>
           <tbody>
-            {/* Linha de inclusão aparece só quando clicado em "Adicionar" */}
+            {/* Linha de inclusão no topo */}
             {adicionando && (
               <tr>
                 <td>—</td>
@@ -127,7 +196,7 @@ export default function MotivosRescisao() {
             )}
 
             {/* Listagem normal */}
-            {motivos.map((m) => (
+            {motivosVisiveis.map((m) => (
               <tr key={m.id}>
                 <td>{m.id}</td>
                 <td>
@@ -197,3 +266,4 @@ export default function MotivosRescisao() {
     </div>
   );
 }
+

@@ -1,5 +1,5 @@
-import { Plus, Pencil, Trash2, Check, X, KeyRound, Lock } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { Plus, Pencil, Trash2, Check, X, KeyRound } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
 import api from '../../api/axios';
 import './Responsaveis.css';
 
@@ -10,13 +10,17 @@ export default function Responsaveis() {
   const [dadosEditados, setDadosEditados] = useState({});
   const [perfilUsuario, setPerfilUsuario] = useState(null);
 
+  // filtro + ordenação
+  const [filtro, setFiltro] = useState('');
+  const [ordenacao, setOrdenacao] = useState({ campo: 'nome', direcao: 'asc' });
+
   useEffect(() => {
     async function fetchPerfil() {
       try {
-        const { data } = await api.get("/api/me");
+        const { data } = await api.get('/api/me');
         setPerfilUsuario(data.perfil);
       } catch (err) {
-        console.error("Erro ao buscar perfil:", err);
+        console.error('Erro ao buscar perfil:', err);
       }
     }
     fetchPerfil();
@@ -52,17 +56,6 @@ export default function Responsaveis() {
     setDadosEditados({});
   };
 
-  // 🔑 Reset de senha pelo admin (Mudar123)
-  // const resetarSenha = async (id) => {
-  //   if (!window.confirm("Confirma resetar a senha deste usuário para 'Mudar123'?")) return;
-  //   try {
-  //     await api.post(`/api/usuarios/${id}/reset-password/`);
-  //     alert("Senha redefinida para: Mudar123");
-  //   } catch (err) {
-  //     console.error("Erro ao resetar senha:", err.response?.data || err);
-  //     alert("Erro ao resetar senha.");
-  //   }
-  // };
   const resetarSenha = async (username) => {
     if (!window.confirm("Confirma resetar a senha deste usuário para 'Mudar123'?")) return;
     try {
@@ -74,48 +67,7 @@ export default function Responsaveis() {
     }
   };
 
-  // 🔒 Troca de senha do usuário logado
-  const trocarMinhaSenha = async () => {
-    const old_password = prompt("Digite sua senha atual:");
-    if (!old_password) return;
-    const new_password = prompt("Digite a nova senha:");
-    if (!new_password) return;
-
-    try {
-      await api.put("/api/change-password/", { old_password, new_password });
-      alert("Senha alterada com sucesso!");
-    } catch (err) {
-      console.error("Erro ao alterar senha:", err.response?.data || err);
-      alert("Erro ao alterar senha.");
-    }
-  };
-
   const salvar = async (id) => {
-    if (!dadosEditados.usuario || dadosEditados.usuario.trim() === "") {
-      alert("O campo Usuário é obrigatório.");
-      return;
-    }
-    if (!dadosEditados.nome || dadosEditados.nome.trim() === "") {
-      alert("O campo Nome é obrigatório.");
-      return;
-    }
-    if (!dadosEditados.email || dadosEditados.email.trim() === "") {
-      alert("O campo Email é obrigatório.");
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(dadosEditados.email)) {
-      alert("Informe um email válido.");
-      return;
-    }
-
-    const perfisValidos = ["admin", "especialista", "especialista_senior", "coordenador"];
-    if (!perfisValidos.includes(dadosEditados.perfil)) {
-      alert("Perfil inválido. Selecione uma opção válida.");
-      return;
-    }
-
     const payload = {
       usuario: dadosEditados.usuario.trim(),
       nome: dadosEditados.nome.trim(),
@@ -127,7 +79,8 @@ export default function Responsaveis() {
 
     try {
       if (id === 'novo') {
-        await api.post('/api/responsaveis/', payload);
+        const res = await api.post('/api/responsaveis/', payload);
+        setResponsaveis(prev => [{ ...res.data, __novo: true }, ...prev]);
       } else {
         await api.put(`/api/responsaveis/${id}/`, payload);
       }
@@ -136,14 +89,7 @@ export default function Responsaveis() {
       carregarDados();
     } catch (err) {
       console.error("Erro ao salvar responsável:", err.response?.data || err);
-      if (err.response?.data) {
-        const mensagens = Object.entries(err.response.data)
-          .map(([campo, msgs]) => `${campo}: ${Array.isArray(msgs) ? msgs.join(", ") : msgs}`)
-          .join("\n");
-        alert(`Erro ao salvar:\n${mensagens}`);
-      } else {
-        alert("Erro inesperado ao salvar.");
-      }
+      alert("Erro ao salvar responsável.");
     }
   };
 
@@ -166,6 +112,40 @@ export default function Responsaveis() {
     });
   };
 
+  const handleOrdenar = (campo) => {
+    setOrdenacao(prev => ({
+      campo,
+      direcao: prev.campo === campo && prev.direcao === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  // aplica filtro + ordenação
+  const responsaveisVisiveis = useMemo(() => {
+    const novos = responsaveis.filter(r => r.__novo);
+    let lista = responsaveis.filter(r => !r.__novo);
+
+    if (filtro) {
+      const f = filtro.toUpperCase();
+      lista = lista.filter(r =>
+        (r.usuario || '').toUpperCase().includes(f) ||
+        (r.nome || '').toUpperCase().includes(f) ||
+        (r.email || '').toUpperCase().includes(f)
+      );
+    }
+
+    if (ordenacao.campo) {
+      lista.sort((a, b) => {
+        const valA = (a[ordenacao.campo] || '').toString().toUpperCase();
+        const valB = (b[ordenacao.campo] || '').toString().toUpperCase();
+        if (valA < valB) return ordenacao.direcao === 'asc' ? -1 : 1;
+        if (valA > valB) return ordenacao.direcao === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return [...novos, ...lista];
+  }, [responsaveis, filtro, ordenacao]);
+
   return (
     <div className="responsaveis-container">
       <div className="responsaveis-header">
@@ -175,25 +155,59 @@ export default function Responsaveis() {
             <Plus size={18} />
           </button>
         )}
-        {/* Botão para trocar a senha do usuário logado */}
-        <button onClick={trocarMinhaSenha} title="Trocar minha senha">
-          <Lock size={18} />
-        </button>
       </div>
+
+      {/* filtro */}
+      <div className="filtro-nome">
+        <input
+          type="text"
+          placeholder="Filtrar por usuário, nome ou email..."
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+        />
+      </div>
+
       <table>
         <thead>
           <tr>
-            <th className="col-usuario">Usuário</th>
-            <th className="col-nome">Nome</th>
-            <th className="col-email">Email</th>
-            <th className="col-ramal">Ramal</th>
-            <th className="col-grupo">Grupo</th>
-            <th className="col-perfil">Perfil</th>
-            <th className="col-acoes">Ações</th>
+            <th onClick={() => handleOrdenar("usuario")}>Usuário</th>
+            <th onClick={() => handleOrdenar("nome")}>Nome</th>
+            <th onClick={() => handleOrdenar("email")}>Email</th>
+            <th onClick={() => handleOrdenar("ramal")}>Ramal</th>
+            <th onClick={() => handleOrdenar("grupo_nome")}>Grupo</th>
+            <th onClick={() => handleOrdenar("perfil")}>Perfil</th>
+            <th>Ações</th>
           </tr>
         </thead>
         <tbody>
-          {responsaveis.map((r) => (
+          {editandoId === 'novo' && (
+            <tr>
+              <td><input value={dadosEditados.usuario} onChange={e => setDadosEditados({ ...dadosEditados, usuario: e.target.value })} /></td>
+              <td><input value={dadosEditados.nome} onChange={e => setDadosEditados({ ...dadosEditados, nome: e.target.value })} /></td>
+              <td><input value={dadosEditados.email} onChange={e => setDadosEditados({ ...dadosEditados, email: e.target.value })} /></td>
+              <td><input value={dadosEditados.ramal} onChange={e => setDadosEditados({ ...dadosEditados, ramal: e.target.value })} /></td>
+              <td>
+                <select value={dadosEditados.grupo || ''} onChange={e => setDadosEditados({ ...dadosEditados, grupo: e.target.value })}>
+                  <option value="">--</option>
+                  {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
+                </select>
+              </td>
+              <td>
+                <select value={dadosEditados.perfil} onChange={e => setDadosEditados({ ...dadosEditados, perfil: e.target.value })}>
+                  <option value="admin">admin</option>
+                  <option value="especialista">especialista</option>
+                  <option value="especialista_senior">especialista_senior</option>
+                  <option value="coordenador">coordenador</option>
+                </select>
+              </td>
+              <td className="acoes">
+                <button onClick={() => salvar('novo')}><Check size={16} /></button>
+                <button onClick={cancelar}><X size={16} /></button>
+              </td>
+            </tr>
+          )}
+
+          {responsaveisVisiveis.map(r => (
             <tr key={r.id}>
               <td>{r.usuario}</td>
               <td>{r.nome}</td>
@@ -206,11 +220,7 @@ export default function Responsaveis() {
                   <>
                     <button onClick={() => editar(r)} title="Editar"><Pencil size={16} /></button>
                     <button onClick={() => excluir(r.id)} title="Excluir"><Trash2 size={16} /></button>
-                    
-                    <button onClick={() => resetarSenha(r.usuario)} title="Resetar Senha">
-                      <KeyRound size={16} />
-                    </button>
-                    
+                    <button onClick={() => resetarSenha(r.usuario)} title="Resetar Senha"><KeyRound size={16} /></button>
                   </>
                 ) : (
                   <span>-</span>

@@ -1,3 +1,7 @@
+.filtro-nome {
+  width: 80%;
+}
+
 .motivos-container {
   padding: 24px;
   font-family: Arial, sans-serif;
@@ -26,10 +30,10 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
-}
+} 
 
 .motivos-header button:hover {
-  background-color: #2B9FAE;
+  background-color: #C3996B;
 }
 
 .motivos-container table {
@@ -81,5 +85,5 @@ td.acoes button {
 }
 
 td.acoes button:hover svg {
-  stroke: #2B9FAE;
+  stroke: #C3996B;
 }

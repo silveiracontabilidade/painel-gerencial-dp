@@ -3,6 +3,7 @@
   font-family: Arial, sans-serif;
 }
 
+/* ===== Header ===== */
 .responsaveis-header {
   display: flex;
   width: 100%;
@@ -34,6 +35,31 @@
   background-color: #C3996B;
 }
 
+/* ===== Filtro ===== */
+.filtro-nome {
+  margin: -10px 0 16px 0;
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.filtro-nome input {
+  width: 280px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.filtro-nome input:focus {
+  border-color: #1a1f3a;
+  box-shadow: 0 0 4px rgba(26, 31, 58, 0.3);
+}
+
+/* ===== Tabela ===== */
 .responsaveis-container table {
   width: 100%;
   max-width: 1200px;
@@ -58,20 +84,42 @@
   text-transform: uppercase;
   font-size: 12px;
   letter-spacing: 0.5px;
+  cursor: pointer;
+  user-select: none;
 }
 
+.responsaveis-container th:hover {
+  background-color: #2b2f50;
+}
+
+/* Indicadores de ordenação */
+.responsaveis-container th.ordenado-asc::after {
+  content: "▲";
+  margin-left: 6px;
+  font-size: 10px;
+  color: #C3996B;
+}
+.responsaveis-container th.ordenado-desc::after {
+  content: "▼";
+  margin-left: 6px;
+  font-size: 10px;
+  color: #C3996B;
+}
+
+/* ===== Colunas ===== */
 .col-usuario { width: 120px; }
-.col-nome    { width: 220px; }
-.col-email   { width: 320px; min-width: 300px;}
-.col-ramal   { width: 150px; min-width: 60px;}
+.col-nome    { width: 200px; }
+.col-email   { width: 300px; min-width: 280px; }
+.col-ramal   { width: 150px; min-width: 60px; }
 .col-grupo   { width: 150px; min-width: 110px; }
 .col-perfil  { width: 180px; min-width: 150px; }
-.col-acoes   { width: 100px; min-width: 90px; text-align: center; }
+.col-acoes   {  min-width: 140px; text-align: center; }
 
 .responsaveis-container tr:nth-child(even) {
   background-color: #fafafa;
 }
 
+/* ===== Inputs ===== */
 .responsaveis-container input[type="text"],
 .responsaveis-container input[type="email"],
 .responsaveis-container select {
@@ -90,7 +138,10 @@
   box-shadow: 0 0 0 2px rgba(26, 31, 58, 0.15);
 }
 
+/* ===== Ações ===== */
 .responsaveis-container td.acoes {
+  text-align: center;
+  min-width: 140px; 
   text-align: center;
 }
 

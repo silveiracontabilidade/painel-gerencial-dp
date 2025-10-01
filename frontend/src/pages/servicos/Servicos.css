@@ -3,12 +3,13 @@
   font-family: Arial, sans-serif;
 }
 
+/* ===== Header ===== */
 .servicos-header {
   display: flex;
-  width: 40%;
   justify-content: space-between;
   align-items: center;
-  margin: 30px 0 16px 0;
+  margin: 30px 0 12px 0;
+  width: 100%;
 }
 
 .servicos-header h2 {
@@ -32,9 +33,33 @@
   background-color: #C3996B;
 }
 
+/* ===== Filtro ===== */
+.filtro-nome {
+  margin: -10px 0 16px 0;
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.filtro-nome input {
+  width: 250px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.filtro-nome input:focus {
+  border-color: #1a1f3a;
+  box-shadow: 0 0 4px rgba(26, 31, 58, 0.3);
+}
+
+/* ===== Tabela ===== */
 .servicos-container table {
-  table-layout: fixed; 
-  width: 100%; /* ocupa toda a largura */
+  table-layout: fixed;
+  width: 100%;
   border-collapse: collapse;
   background-color: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -51,8 +76,29 @@
 
 .servicos-container th {
   background-color: #1a1f3a;
-  color: #ddd;
+  color: #fff;
   height: 20px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+.servicos-container th:hover {
+  background-color: #2b2f50;
+}
+
+/* Indicadores de ordenação */
+.servicos-container th.ordenado-asc::after {
+  content: "▲";
+  margin-left: 6px;
+  font-size: 10px;
+  color: #C3996B;
+}
+.servicos-container th.ordenado-desc::after {
+  content: "▼";
+  margin-left: 6px;
+  font-size: 10px;
+  color: #C3996B;
 }
 
 .servicos-container tr:nth-child(even) {
@@ -69,6 +115,7 @@
   box-sizing: border-box;
 }
 
+/* ===== Botões de ação (ícones dentro da tabela) ===== */
 td.acoes button {
   background: none;
   border: none;
@@ -81,23 +128,22 @@ td.acoes button:hover svg {
   stroke: #C3996B;
 }
 
-/* Largura das colunas principais */
+/* ===== Largura das colunas ===== */
 th.col-nome  { width: 30%; }
 th.col-prazo { width: 8%; }
 th.col-tempo { width: 10%; }
 th.col-acoes { width: 5%; }
 
-/* Largura fixa das colunas de anexo */
+/* ===== Colunas de anexos ===== */
 th.col-anexo,
 td.col-anexo {
   width: 30px;
   min-width: 30px;
   max-width: 30px;
   text-align: center;
-  white-space: nowrap; /* evita quebra */
+  white-space: nowrap;
 }
 
-/* Ícones de anexo */
 td.col-anexo a,
 td.col-anexo button {
   display: inline-block;
@@ -111,12 +157,11 @@ td.col-anexo a:hover {
   color: #C3996B;
 }
 
-/* Oculta input nativo */
+/* ===== Upload de arquivo ===== */
 .file-upload input[type="file"] {
   display: none;
 }
 
-/* Botão fake para upload */
 .file-upload {
   display: inline-block;
   padding: 2px 6px;
@@ -131,14 +176,13 @@ td.col-anexo a:hover {
   background-color: #966b3d;
 }
 
-/* Nome do arquivo selecionado (se for exibido fora da célula estreita) */
 .file-name {
   margin-left: 4px;
   font-size: 11px;
   color: #333;
 }
 
-/* Modal de carregamento */
+/* ===== Modal de carregamento ===== */
 .modal-backdrop {
   position: fixed;
   top: 0;

@@ -3,6 +3,11 @@
   font-family: Arial, sans-serif;
 }
 
+.filtro-nome {
+  width: 30%;
+  
+}
+
 .sistemas-header {
   display: flex;
   width: 50%;
@@ -29,7 +34,7 @@
 }
 
 .sistemas-header button:hover {
-  background-color: #2B9FAE;
+  background-color: #C3996B;
 }
 
 .sistemas-container table {
@@ -59,7 +64,7 @@
 }
 
 .sistemas-container input[type="text"] {
-  width: 100%;
+  width: 63%;
   padding: 4px 6px;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -80,5 +85,7 @@ td.acoes button {
 }
 
 td.acoes button:hover svg {
-  stroke: #2B9FAE;
+  stroke: #C3996B;
 }
+
+

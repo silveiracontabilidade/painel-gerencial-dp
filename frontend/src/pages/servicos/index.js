@@ -1,6 +1,6 @@
 // Servicos.js
 import { Plus, Pencil, Trash2, Check, X, FileText } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import api from '../../api/axios';
 import './Servicos.css';
 
@@ -11,6 +11,19 @@ export default function Servicos() {
   const [perfilUsuario, setPerfilUsuario] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoArquivo, setCarregandoArquivo] = useState(false);
+  // estado da ordenação
+  // novos estados p/ filtro + ordenação
+  const [filtroNome, setFiltroNome] = useState("");
+  const [ordenacao, setOrdenacao] = useState({ campo: "nome", direcao: "asc" });
+
+  // função para alternar ordenação
+  const handleOrdenar = (campo) => {
+    setOrdenacao((prev) => ({
+      campo,
+      direcao: prev.campo === campo && prev.direcao === "asc" ? "desc" : "asc",
+    }));
+  };
+
 
   useEffect(() => {
     async function fetchPerfil() {
@@ -31,7 +44,7 @@ export default function Servicos() {
   const carregarServicos = async () => {
     const res = await api.get('/api/servicos/');
     const dadosFormatados = (res.data.results || res.data).map(s => ({
-      ...s,
+        ...s,
       tempo_execucao: s.tempo_execucao || '00:00',
     }));
     setServicos(dadosFormatados);
@@ -55,30 +68,13 @@ export default function Servicos() {
       formData.append("prazo_dias", dadosEditados.prazo_dias);
       formData.append("tempo_execucao", dadosEditados.tempo_execucao);
 
-      // checklist
-      if (dadosEditados.checklist === "") {
-        formData.append("checklist", "");
-      } else if (dadosEditados.checklist instanceof File) {
-        formData.append("checklist", dadosEditados.checklist);
-      }
-      // instrucao
-      if (dadosEditados.instrucao_trabalho === "") {
-        formData.append("instrucao_trabalho", "");
-      } else if (dadosEditados.instrucao_trabalho instanceof File) {
-        formData.append("instrucao_trabalho", dadosEditados.instrucao_trabalho);
-      }
-      // video
-      if (dadosEditados.video_explicativo === "") {
-        formData.append("video_explicativo", "");
-      } else if (dadosEditados.video_explicativo instanceof File) {
-        formData.append("video_explicativo", dadosEditados.video_explicativo);
-      }
-      // topico
-      if (dadosEditados.topico_rapido === "") {
-        formData.append("topico_rapido", "");
-      } else if (dadosEditados.topico_rapido instanceof File) {
-        formData.append("topico_rapido", dadosEditados.topico_rapido);
-      }
+      // anexos
+      const campos = ["checklist","instrucao_trabalho","video_explicativo","topico_rapido"];
+      campos.forEach(campo=>{
+        const val = dadosEditados[campo];
+        if (val === "") formData.append(campo,"");
+        else if (val instanceof File) formData.append(campo,val);
+      });
 
       await api.put(`/api/servicos/${id}/`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -91,7 +87,6 @@ export default function Servicos() {
     }
   };
 
-
   const excluir = async (id) => {
     if (window.confirm('Confirma a exclusão?')) {
       await api.delete(`/api/servicos/${id}/`);
@@ -100,199 +95,228 @@ export default function Servicos() {
   };
 
   const novo = async () => {
-    const formData = new FormData();
-    formData.append("nome", "Novo Serviço");
-    formData.append("prazo_dias", 0);
-    formData.append("tempo_execucao", "00:00");
+  const formData = new FormData();
+  formData.append("nome", "Novo Serviço");
+  formData.append("prazo_dias", 0);
+  formData.append("tempo_execucao", "00:00");
 
-    const res = await api.post("/api/servicos/", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+  const res = await api.post("/api/servicos/", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
 
-    setEditandoId(res.data.id);
-    setDadosEditados({
-      id: res.data.id,
-      nome: "Novo Serviço",
-      prazo_dias: 0,
-      tempo_execucao: "00:00",
-    });
-    carregarServicos();
+  const novoServico = {
+    id: res.data.id,
+    nome: "Novo Serviço",
+    prazo_dias: 0,
+    tempo_execucao: "00:00",
+    __novo: true, // 🔥 marca como novo
   };
 
+  setEditandoId(res.data.id);
+  setDadosEditados(novoServico);
 
-  // helper para renderizar cada campo de anexo
+  setServicos(prev => [novoServico, ...prev]);
+};
+
+  // helper renderiza anexos
   const renderAnexo = (servico, campo, accept) => {
-      // Valor que deve ser exibido: se está editando, usa dadosEditados; senão, usa servico
-      const valorAtual = editandoId === servico.id ? dadosEditados[campo] : servico[campo];
+    const valorAtual = editandoId === servico.id ? dadosEditados[campo] : servico[campo];
+    const getHref = (valor) => (!valor ? "#" : valor.startsWith("http") ? valor : `/media/${valor}`);
 
-      // Função helper para montar a URL corretamente
-      const getHref = (valor) => {
-        if (!valor) return "#";
-        return valor.startsWith("http") ? valor : `/media/${valor}`;
-      };
+    return editandoId === servico.id ? (
+      <>
+        <label className="file-upload">
+          ...
+          <input
+            type="file"
+            accept={accept}
+            onChange={(e) => {
+              const file = e.target.files[0];
+              if (file) {
+                setCarregandoArquivo(true);
+                setDadosEditados({ ...dadosEditados, [campo]: file });
+                setTimeout(() => setCarregandoArquivo(false), 300);
+              }
+            }}
+          />
+        </label>
 
-      return editandoId === servico.id ? (
-        <>
-          <label className="file-upload">
-            ...
-            <input
-              type="file"
-              accept={accept}
-              onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) {
-                  setCarregandoArquivo(true);
-                  setDadosEditados({ ...dadosEditados, [campo]: file });
-                  setTimeout(() => setCarregandoArquivo(false), 300);
-                }
-              }}
-            />
-          </label>
+        {valorAtual && !(valorAtual instanceof File) && (
+          <>
+            <a href={getHref(valorAtual)} target="_blank" rel="noreferrer">
+              <FileText size={18} />
+            </a>
+            <button
+              type="button"
+              className="anexo-remover"
+              onClick={() => setDadosEditados({ ...dadosEditados, [campo]: "" })}
+              title="Remover"
+            >
+              <X size={14} />
+            </button>
+          </>
+        )}
 
-          {valorAtual && !(valorAtual instanceof File) && (
-            <>
-              <a href={getHref(valorAtual)} target="_blank" rel="noreferrer">
-                <FileText size={18} />
-              </a>
-              <button
-                type="button"
-                className="anexo-remover"
-                onClick={() => setDadosEditados({ ...dadosEditados, [campo]: "" })}
-                title="Remover"
-              >
-                <X size={14} />
-              </button>
-            </>
-          )}
+        {valorAtual instanceof File && <span className="file-name">{valorAtual.name}</span>}
+      </>
+    ) : valorAtual ? (
+      <a href={getHref(valorAtual)} target="_blank" rel="noreferrer">
+        <FileText size={18} />
+      </a>
+    ) : (
+      "-"
+    );
+  };
 
-          {valorAtual instanceof File && (
-            <span className="file-name">{valorAtual.name}</span>
-          )}
-        </>
-      ) : (
-        valorAtual ? (
-          <a href={getHref(valorAtual)} target="_blank" rel="noreferrer">
-            <FileText size={18} />
-          </a>
-        ) : "-"
-      );
-    };
+  // aplica filtro + ordenação
+  const servicosVisiveis = useMemo(() => {
+    // separa novos dos outros
+    const novos = servicos.filter(s => s.__novo);
+    let lista = servicos.filter(s => !s.__novo);
 
+    // aplica filtro
+    if (filtroNome) {
+      const f = filtroNome.toUpperCase();
+      lista = lista.filter(s => (s.nome || "").toUpperCase().includes(f));
+    }
+
+    // aplica ordenação
+    if (ordenacao.campo) {
+      lista.sort((a, b) => {
+        const valA = (a[ordenacao.campo] || "").toString().toUpperCase();
+        const valB = (b[ordenacao.campo] || "").toString().toUpperCase();
+        if (valA < valB) return ordenacao.direcao === "asc" ? -1 : 1;
+        if (valA > valB) return ordenacao.direcao === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    // sempre devolve novos primeiro
+    return [...novos, ...lista];
+  }, [servicos, filtroNome, ordenacao]);
 
   return (
-     <>
-    {(carregando || carregandoArquivo) && (
-      <div className="modal-backdrop">
-        <div className="modal-content">
-          <div className="spinner"></div>
-          <p>Carregando arquivo, aguarde...</p>
+    <>
+      {(carregando || carregandoArquivo) && (
+        <div className="modal-backdrop">
+          <div className="modal-content">
+            <div className="spinner"></div>
+            <p>Carregando arquivo, aguarde...</p>
+          </div>
         </div>
-      </div>
-    )}
-    <div className="servicos-container">
-      <div className="servicos-header">
-        <h2>Serviços</h2>
-        {(perfilUsuario === "admin" || perfilUsuario === "coordenador") && (
-          <button onClick={novo} disabled={editandoId !== null} title="Novo Serviço">
-            <Plus size={18} />
-          </button>
-        )}
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th className="col-nome">Nome</th>
-            <th className="col-prazo">Prazo (dias)</th>
-            <th className="col-tempo">Tempo Execução</th>
-            <th className="col-anexo">Checklist</th>
-            <th className="col-anexo">Instrução</th>
-            <th className="col-anexo">Vídeo</th>
-            <th className="col-anexo">Tópico Rápido</th>
-            <th className="col-acoes">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {servicos.map(servico => (
-            <tr key={servico.id}>
-              <td>
-                {editandoId === servico.id ? (
-                  <input
-                    value={dadosEditados.nome}
-                    onChange={(e) => setDadosEditados({ ...dadosEditados, nome: e.target.value })}
-                  />
-                ) : (
-                  servico.nome
-                )}
-              </td>
-              <td>
-                {editandoId === servico.id ? (
-                  <input
-                    type="number"
-                    value={dadosEditados.prazo_dias}
-                    onChange={(e) => setDadosEditados({ ...dadosEditados, prazo_dias: e.target.value })}
-                  />
-                ) : (
-                  servico.prazo_dias
-                )}
-              </td>
-              <td>
-                {editandoId === servico.id ? (
-                  <input
-                    type="text"
-                    value={dadosEditados.tempo_execucao}
-                    onChange={(e) => {
-                      let valor = e.target.value.replace(/\D/g, "");
-                      if (valor.length === 0) {
-                        setDadosEditados({ ...dadosEditados, tempo_execucao: "" });
-                        return;
-                      }
-                      if (valor.length <= 2) {
-                        setDadosEditados({ ...dadosEditados, tempo_execucao: valor });
-                      } else {
-                        const horas = valor.slice(0, -2);
-                        let minutos = valor.slice(-2);
-                        if (parseInt(minutos, 10) > 59) minutos = "59";
-                        const formatado = `${parseInt(horas, 10)}:${minutos.padStart(2, "0")}`;
-                        setDadosEditados({ ...dadosEditados, tempo_execucao: formatado });
-                      }
-                    }}
-                    placeholder="HH:MM"
-                  />
-                ) : (
-                  servico.tempo_execucao
-                )}
-              </td>
+      )}
+      <div className="servicos-container">
+        <div className="servicos-header">
+          <h2>Serviços</h2>
+          {(perfilUsuario === "admin" || perfilUsuario === "coordenador") && (
+            <button onClick={novo} disabled={editandoId !== null} title="Novo Serviço">
+              <Plus size={18} />
+            </button>
+          )}
+        </div>
 
-              <td className="col-anexo">{renderAnexo(servico, "checklist", "application/pdf")}</td>
-              <td className="col-anexo">{renderAnexo(servico, "instrucao_trabalho", "application/pdf")}</td>
-              <td className="col-anexo">{renderAnexo(servico, "video_explicativo", "video/*")}</td>
-              <td className="col-anexo">{renderAnexo(servico, "topico_rapido", "application/pdf")}</td>
+        {/* Campo filtro */}
+        <div className="filtro-nome">
+          <input
+            type="text"
+            placeholder="Filtrar por nome..."
+            value={filtroNome}
+            onChange={(e) => setFiltroNome(e.target.value)}
+          />
+        </div>
 
-              <td className="acoes">
-                {(perfilUsuario === "admin" || perfilUsuario === "coordenador") ? (
-                  editandoId === servico.id ? (
-                    <>
-                      <button onClick={() => salvar(servico.id)}><Check size={16} /></button>
-                      <button onClick={cancelar}><X size={16} /></button>
-                    </>
-                  ) : (
-                    <>
-                      <button onClick={() => editar(servico)}><Pencil size={16} /></button>
-                      <button onClick={() => excluir(servico.id)}><Trash2 size={16} /></button>
-                    </>
-                  )
-                ) : (
-                  <span>-</span>
-                )}
-              </td>
+        <table>
+          <thead>
+            <tr>
+              <th onClick={() => handleOrdenar("nome")} style={{cursor:"pointer"}}>
+                Nome {ordenacao.campo==="nome" && (ordenacao.direcao==="asc"?"▲":"▼")}
+              </th>
+              <th onClick={() => handleOrdenar("prazo_dias")} style={{cursor:"pointer"}}>
+                Prazo (dias) {ordenacao.campo==="prazo_dias" && (ordenacao.direcao==="asc"?"▲":"▼")}
+              </th>
+              <th onClick={() => handleOrdenar("tempo_execucao")} style={{cursor:"pointer"}}>
+                Tempo Execução {ordenacao.campo==="tempo_execucao" && (ordenacao.direcao==="asc"?"▲":"▼")}
+              </th>
+              <th>Checklist</th>
+              <th>Instrução</th>
+              <th>Vídeo</th>
+              <th>Tópico Rápido</th>
+              <th>Ações</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </>
-  );     
+          </thead>
+          <tbody>
+            {servicosVisiveis.map(servico => (
+              <tr key={servico.id}>
+                <td>
+                  {editandoId === servico.id ? (
+                    <input
+                      value={dadosEditados.nome}
+                      onChange={(e) => setDadosEditados({ ...dadosEditados, nome: e.target.value })}
+                    />
+                  ) : (
+                    servico.nome
+                  )}
+                </td>
+                <td>
+                  {editandoId === servico.id ? (
+                    <input
+                      type="number"
+                      value={dadosEditados.prazo_dias}
+                      onChange={(e) => setDadosEditados({ ...dadosEditados, prazo_dias: e.target.value })}
+                    />
+                  ) : (
+                    servico.prazo_dias
+                  )}
+                </td>
+                <td>
+                  {editandoId === servico.id ? (
+                    <input
+                      type="text"
+                      value={dadosEditados.tempo_execucao}
+                      onChange={(e) => setDadosEditados({ ...dadosEditados, tempo_execucao: e.target.value })}
+                      placeholder="HH:MM"
+                    />
+                  ) : (
+                    servico.tempo_execucao
+                  )}
+                </td>
+
+                <td>{renderAnexo(servico,"checklist","application/pdf")}</td>
+                <td>{renderAnexo(servico,"instrucao_trabalho","application/pdf")}</td>
+                <td>{renderAnexo(servico,"video_explicativo","video/*")}</td>
+                <td>{renderAnexo(servico,"topico_rapido","application/pdf")}</td>
+
+                <td className="acoes">
+                  {(perfilUsuario === "admin" || perfilUsuario === "coordenador") ? (
+                    editandoId === servico.id ? (
+                      <>
+                        <button className="btn-salvar" onClick={() => salvar(servico.id)}>
+                          <Check size={16} />
+                        </button>
+                        <button className="btn-cancelar" onClick={cancelar}>
+                          <X size={16} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button className="btn-editar" onClick={() => editar(servico)}>
+                          <Pencil size={16} />
+                        </button>
+                        <button className="btn-excluir" onClick={() => excluir(servico.id)}>
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )
+                  ) : (
+                    <span>-</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
 }
-
-
 

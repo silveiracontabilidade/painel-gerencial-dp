@@ -140,7 +140,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
   };
 
   const opcoes = {
-    status_do_cliente: ['ATIVO', 'INATIVO'],
+    status_do_cliente: ['ATIVO', 'INATIVO', 'EM PROPOSTA'],
     tributacao: ['LP', 'SN', 'LR', 'MEI', 'IMUNES', 'ISENTAS', 'DOM', 'CARNÊ LEÃO', 'RURAL PF', 'RURAL PJ', 'CAEPF', '1406', 'EXTERIOR', 'BPO FIN', 'BPO RH'],
     classificacao: ['BRONZE', 'PRATA', 'OURO', 'DIAMANTE'],
     sci_report: ['SIM', 'NÃO'],
@@ -192,7 +192,8 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
       { id: 'ADIANTAMENTO', label: 'Adiantamento' },
       { id: 'PLR', label: 'PLR' }, 
       { id: 'DECIMOTERC', label: 'Décimo terceiro' }, 
-      { id: 'SERVICOS', label: 'Serviços' }, 
+      { id: 'ADMISSAO', label: 'Admissão' }, 
+      { id: 'FERIAS_RESCISAO', label: 'Férias/Rescisão' },
       { id: 'PONTO', label: 'Ponto' }, 
       { id: 'PROCURACOES', label: 'Procurações e Acessos' }, 
       { id: 'CCT', label: 'CCT' }, 
@@ -254,7 +255,6 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
     const MM = String(m).padStart(2, "0");
     return `${HH}:${MM}`;
   };
-
 
   // Valida/mascara hora no formato HH:MM (00–23 : 00–59)
   const validarHora = (valor) => {
@@ -756,23 +756,30 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
           </>
         )}
 
-        {aba === 'SERVICOS' && (
+        {aba === 'ADMISSAO' && (
           <>
             <div className='bloco'>
-              <h4>SERVIÇOS</h4>
+              <h4>ADMISSÃO</h4>
               <div className="linha">
                 {renderText('aprendizes', 'APRENDIZES', 'campo-curto')}
-              {/* </div>
-              <br></br>
-              <div className="linha"> */}
                 {renderText('med_ocupa', 'MEDICINA OCUPACIONAL', 'campo-medio')}
                 {renderText('med_ocupa_proc_venc', 'VENC. PROC. MEDICINA', 'campo-medio', 'text',null, 'date')}
               </div>
               <br></br>
               <div className="linha">
-                {renderTextarea('obs_admissao', 'OBSERVAÇÕES ADMISSÃO','campo-longo','textarea-medio')}
-                {renderTextarea('obs_ferias', 'OBSERVAÇÕES FÉRIAS')}
-                {renderTextarea('obs_rescisao', 'OBSERVAÇÕES RESCISÃO','campo-longo','textarea-medio')}
+                {renderTextarea('obs_admissao', 'OBSERVAÇÕES ADMISSÃO','campo-longo','textarea-gigante')}
+              </div>
+            </div>
+          </>
+        )}
+
+        {aba === 'FERIAS_RESCISAO' && (
+          <>
+            <div className='bloco'>
+              <h4>FÉRIAS / RESCISÃO</h4>
+              <div className="linha">
+                {renderTextarea('obs_ferias', 'OBSERVAÇÕES FÉRIAS','campo-longo','textarea-gigante')}
+                {renderTextarea('obs_rescisao', 'OBSERVAÇÕES RESCISÃO','campo-longo','textarea-gigante')}
               </div>
             </div>
           </>

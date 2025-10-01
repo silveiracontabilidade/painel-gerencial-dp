@@ -55,8 +55,6 @@ useEffect(() => {
   fetchPerfil();
 }, []);
 
-
-
 const [filters, setFilters] = useState({
     cod_folha: '',
     razao_social: '',
@@ -172,9 +170,19 @@ const [filters, setFilters] = useState({
     // Aplica ordenação, se houver campo definido
     if (ordenacao.campo) {
       filtradas.sort((a, b) => {
-        const valA = (a[ordenacao.campo] || '').toString().toUpperCase();
-        const valB = (b[ordenacao.campo] || '').toString().toUpperCase();
+        let valA = a[ordenacao.campo] || '';
+        let valB = b[ordenacao.campo] || '';
 
+        // 👉 Se for cod_folha, compara como número
+        if (ordenacao.campo === 'cod_folha') {
+          const numA = parseInt(valA, 10) || 0;
+          const numB = parseInt(valB, 10) || 0;
+          return ordenacao.direcao === 'asc' ? numA - numB : numB - numA;
+        }
+
+        // Comparação normal (texto)
+        valA = valA.toString().toUpperCase();
+        valB = valB.toString().toUpperCase();
         if (valA < valB) return ordenacao.direcao === 'asc' ? -1 : 1;
         if (valA > valB) return ordenacao.direcao === 'asc' ? 1 : -1;
         return 0;
@@ -729,13 +737,42 @@ const salvarEmpresa = async (empresa) => {
                 if (!window.confirm(`Confirma delegar ${selecionadas.length} empresas para ${novoResponsavel}?`)) return;
 
                 try {
-                  const promises = selecionadas.map(e =>
-                    api.put(`/api/empresas/${e.cod_folha}/`, { ...e, resp_dp: novoResponsavel })
+                  // const promises = selecionadas.map(e =>
+                  //   api.put(`/api/empresas/${e.cod_folha}/`, { ...e, resp_dp: novoResponsavel })
 
-                  );
+                  // );
+
+                  const promises = selecionadas.map(e => {
+                    const camposData = [
+                      "inicio_contrato",
+                      "termino_contrato",
+                      "dt_envio_cct",
+                      "dt_venc_conec_social",
+                      "venc_procuracao",
+                      "med_ocupa_proc_venc",
+                    ];
+
+                    const payload = { ...e, resp_dp: novoResponsavel };
+
+                    // normaliza datas
+                    camposData.forEach(campo => {
+                      if (payload[campo]) {
+                        payload[campo] = paraISO(payload[campo]);
+                      }
+                    });
+
+                    // limpa campos que não pertencem ao modelo
+                    delete payload.cnpj_formatado;
+                    delete payload.selecionado;
+                    delete payload.id;
+
+                    return api.put(`/api/empresas/${e.cod_folha}/`, payload);
+                  });
+
+
                   await Promise.all(promises);
                   alert("Delegação concluída.");
-                  const { data } = await api.get('api/empresas/', { params: { page: 1, page_size: 2000 } });
+                  const { data } = await api.get('api/empresas/', { params: { page: 1, page_size: 20000 } });
                   setEmpresas(data.results);
                   setModalDelegarAberto(false);
                   setNovoResponsavel('');

@@ -498,7 +498,6 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
         payload[k] = toNull(v);
       }
     });
-
         delete payload.empresa_id;
         return payload;
       };
@@ -1017,5 +1016,4 @@ const renderBlocoMulta = () => (
     </div>
   </div>
 );
-
 }
