@@ -212,29 +212,49 @@ export default function ServicosSolicitados() {
 
   // Helpers
   const renderDetalhes = (s) => {
+    const tipo = (s.servico_nome || "").toUpperCase();
     let partes = [];
-    if (s.identificacao) partes.push(s.identificacao);
-    if (s.admissao_data_ini || s.admissao_tipo) {
+
+    // Sempre inclui descrição do serviço
+    if (s.descricao_servico) {
+      partes.push(`Descrição: ${s.descricao_servico}`);
+    }
+
+    if (tipo.includes("ADMISS")) {
       partes.push(`Admissão: ${s.admissao_data_ini || '-'} ${s.admissao_tipo || ''}`);
+      if (s.admissao_deslig_programado)
+        partes.push(`Deslig. Prog.: ${s.admissao_deslig_programado}`);
     }
-    if (s.rescisao_tipo_aviso || s.rescisao_data_ini || s.rescisao_dias_aviso) {
+    else if (tipo.includes("RESCIS")) {
       partes.push(
-        `Rescisão: ${s.rescisao_tipo_aviso || '-'}, ` +
-        `${s.rescisao_data_ini || '-'}, ` +
-        `${s.rescisao_dias_aviso ? `Aviso ${s.rescisao_dias_aviso}` : ''}`
+        `Rescisão: ${s.rescisao_tipo_aviso || '-'} ` +
+        `${s.rescisao_data_ini || '-'} ` +
+        (s.rescisao_dias_aviso ? `Aviso ${s.rescisao_dias_aviso}` : '') +
+        (s.rescisao_tipo ? ` (${s.rescisao_tipo})` : '')
       );
     }
-    if (s.ferias_data_ini || s.ferias_abono) {
+    else if (tipo.includes("FÉRIAS") || tipo.includes("FERIAS")) {
       partes.push(
-        `Férias: ${s.ferias_data_ini || '-'}, ` +
-        `${s.ferias_abono ? `${s.ferias_abono} abono` : ''}`
+        `Férias: ${s.ferias_data_ini || '-'} ` +
+        (s.ferias_abono ? `${s.ferias_abono} abono` : '')
       );
     }
-    if (s.afast_tipo || s.afast_ini) {
-      partes.push(`Afast.: ${s.afast_tipo || '-'} ${s.afast_ini || ''}`);
+    else if (tipo.includes("AFAST")) {
+      partes.push(
+        `Afast.: ${s.afast_tipo || '-'} ` +
+        `${s.afast_ini || ''} ` +
+        (s.afast_dias ? `(${s.afast_dias} dias)` : '') +
+        (s.afast_pericia ? ` Perícia: ${s.afast_pericia}` : '')
+      );
     }
-    return partes.join(" | ");
+    else {
+      // fallback para outros tipos → usa só identificação
+      if (s.identificacao) partes.push(s.identificacao);
+    }
+
+    return partes.filter(Boolean).join(" | ");
   };
+
 
   const abrirModal = (solicitacao = null) => {
     setSolicitacaoSelecionada(solicitacao);

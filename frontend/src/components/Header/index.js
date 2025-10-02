@@ -51,7 +51,7 @@ const Header = () => {
         <div className="header__branding">
           <img src={logoImg} alt="Silveira Contabilidade" className="branding__logo" />
           <div className="branding__text">
-            <span className="branding__main">Painel Gerencial</span>
+            <span className="branding__main">PLANNUS  </span>
             <span className="branding__sub">DP</span>
           </div>
         </div>

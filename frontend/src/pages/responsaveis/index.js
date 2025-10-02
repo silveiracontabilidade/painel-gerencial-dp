@@ -297,15 +297,20 @@ export default function Responsaveis() {
                   <td>{r.email}</td>
                   <td>{r.ramal || '-'}</td>
                   <td>{r.grupo_nome || '-'}</td>
-                  <td>{r.status || '-'}</td>
+                  {/* <td>{r.status || '-'}</td> */}
+                  <td>
+                    <span
+                      className={`status-circle ${r.status === "SIM" ? "ativo" : "inativo"}`}
+                      title={r.status === "SIM" ? "Ativo - clique para inativar" : "Inativo - clique para reativar"}
+                      onClick={() => alternarStatus(r)}
+                    />
+                  </td>
+
                   <td>{r.perfil}</td>
                   <td className="acoes">
                     {(perfilUsuario === "admin" || perfilUsuario === "coordenador") ? (
                       <>
                         <button onClick={() => editar(r)} title="Editar"><Pencil size={16} /></button>
-                        <button onClick={() => alternarStatus(r)} title={r.status === "SIM" ? "Inativar" : "Reativar"}>
-                          {r.status === "SIM" ? <Trash2 size={16} /> : <Check size={16} />}
-                        </button>
                         <button onClick={() => resetarSenha(r.usuario)} title="Resetar Senha"><KeyRound size={16} /></button>
                       </>
                     ) : (

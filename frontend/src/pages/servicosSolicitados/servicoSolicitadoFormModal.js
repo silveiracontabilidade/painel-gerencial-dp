@@ -7,6 +7,28 @@ import Select from 'react-select';
 import { paraISO, paraBR } from '../../utils/datas';
 
 // ===== Helpers =====
+// Mascara COMPETÊNCIA (MMAAAA)
+const mascararCompetencia = (valor) => {
+  const digits = String(valor || '').replace(/\D/g, '').slice(0, 6); // só números, máx 6
+  return digits;
+};
+
+const normalizarCompetencia = (valor) => {
+  if (!valor) return '';
+  const digits = valor.replace(/\D/g, '');
+  if (digits.length !== 6) return valor; // só aceita completo
+  let mes = parseInt(digits.slice(0, 2), 10);
+  let ano = parseInt(digits.slice(2, 6), 10);
+
+  if (mes < 1) mes = 1;
+  if (mes > 12) mes = 12;
+  if (ano < 1900) ano = 1900;
+
+  const MM = String(mes).padStart(2, '0');
+  const YYYY = String(ano).padStart(4, '0');
+  return `${MM}${YYYY}`;
+};
+
 const toBRHifen = (iso) => (iso ? paraBR(iso).replace(/\//g, '-') : '');
 const toISO = (brOuBrHifen) => {
   if (!brOuBrHifen) return null;
@@ -189,8 +211,37 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     [FIELD_MAP.multa.rnc]: '',
   });
 
-
   const CAMPOS_DATA_CORE = ['data_solicitacao', 'data_vencimento', 'data_para_resposta', 'data_conclusao'];
+
+  //PARA COMPETÊNCIA
+  const renderInputCompetencia = (name = 'competencia', label = 'COMPETÊNCIA', classe = 'campo-curto', disabled = false) => (
+    <div className={`campo ${classe}`} key={name}>
+      <label>
+        {label}{' '}
+        {errors[name] && <span style={{ color: 'red', fontWeight: 600, fontSize: 11 }}>({errors[name]})</span>}
+      </label>
+      <input
+        type="text"
+        name={name}
+        value={form[name] || ''}
+        onChange={(e) => {
+          const val = mascararCompetencia(e.target.value);
+          setForm((prev) => ({ ...prev, [name]: val }));
+          if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
+        }}
+        onBlur={(e) => {
+          const val = normalizarCompetencia(e.target.value);
+          setForm((prev) => ({ ...prev, [name]: val }));
+        }}
+        placeholder="MMAAAA"
+        maxLength={6}
+        inputMode="numeric"
+        autoComplete="off"
+        disabled={disabled}
+        style={errors[name] ? { borderColor: 'red' } : undefined}
+      />
+    </div>
+  );
 
   useEffect(() => {
     const init = async () => {
@@ -416,6 +467,22 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     if (form.data_solicitacao) {
       const iso = toISO(form.data_solicitacao);
       if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) e.data_solicitacao = 'Data inválida. Use dd-mm-aaaa.';
+    }
+
+    // ✅ Validação COMPETÊNCIA MMAAAA
+    if (form.competencia) {
+      const digits = form.competencia.replace(/\D/g, '');
+      if (digits.length !== 6) {
+        e.competencia = 'Formato inválido. Use MMAAAA.';
+      } else {
+        const mes = parseInt(digits.slice(0, 2), 10);
+        const ano = parseInt(digits.slice(2, 6), 10);
+        if (mes < 1 || mes > 12) {
+          e.competencia = 'Mês inválido (01 a 12).';
+        } else if (ano < 1900) {
+          e.competencia = 'Ano inválido (mínimo 1900).';
+        }
+      }
     }
 
     // mínimos por tipo (exemplos)
@@ -737,13 +804,18 @@ const renderBlocoAdmissao = () => (
         />
       </div>
 
-      <div className="campo campo-medio">
-        <label>Deslig. Programado</label>
+      <div className="campo campo-curto">
+        <label>Data Deslig. Programado</label>
         <input
           type="text"
           name={FIELD_MAP.admissao.deslig_programado}
           value={admissao[FIELD_MAP.admissao.deslig_programado] || ''}
           onChange={handleAdmissaoChange}
+          onBlur={handleAdmissaoDateBlur}
+          placeholder="dd-mm-aaaa"
+          maxLength={10}
+          inputMode="numeric"
+          autoComplete="off"
         />
       </div>
 
@@ -800,6 +872,11 @@ const renderBlocoAfastamento = () => (
           name={FIELD_MAP.afast.pericia}
           value={afast[FIELD_MAP.afast.pericia] || ''}
           onChange={handleAfastChange}
+          onBlur={handleAfastDateBlur}
+          placeholder="dd-mm-aaaa"
+          maxLength={10}
+          inputMode="numeric"
+          autoComplete="off"
         />
       </div>
       <div className="campo campo-curto">
@@ -939,7 +1016,7 @@ const renderBlocoMulta = () => (
           </div>
 
           {renderInput('id_acessorias', 'ID ACESSÓRIAS', 'text', 'campo-curto')}  
-          {renderInput('competencia', 'COMPETÊNCIA', 'text', 'campo-curto')}
+          {renderInputCompetencia('competencia', 'COMPETÊNCIA', 'campo-curto')}
 
           {/* Arquivos */}
           {/* <div className="campo campo-arquivos"> */}

@@ -86,24 +86,57 @@ class ResponsavelSerializer(serializers.ModelSerializer):
             'grupo',
             'grupo_nome',
             'perfil',
-            'status',   # 👈 faltava aqui
+            'status',
         ]
         extra_kwargs = {
-            'usuario': {'read_only': True},
+            'usuario': {'required': True, 'allow_blank': False},
         }
 
-
     def create(self, validated_data):
-        # cria User com senha padrão
+        email = validated_data.get('email')
+        username = validated_data.get('usuario') or email
+
         user = User.objects.create_user(
-            username=validated_data['email'],  # usa o email como login
-            email=validated_data['email'],
+            username=username,
+            email=email,
             password="Mudar123"
         )
 
-        # cria Responsavel vinculado
-        responsavel = Responsavel.objects.create(usuario=user, **validated_data)
+        responsavel = Responsavel.objects.create(usuario=username, **validated_data)
         return responsavel
+
+    def update(self, instance, validated_data):
+        novo_usuario = validated_data.get('usuario', instance.usuario)
+        novo_email = validated_data.get('email', instance.email)
+
+        # 🔥 atualiza também no auth_user
+        try:
+            user = User.objects.get(username=instance.usuario)
+            user.username = novo_usuario
+            user.email = novo_email
+            user.save()
+        except User.DoesNotExist:
+            # se não existir, cria
+            User.objects.create_user(
+                username=novo_usuario,
+                email=novo_email,
+                password="Mudar123"
+            )
+
+        # 🔥 atualiza o Responsavel
+        instance.usuario = novo_usuario
+        instance.nome = validated_data.get('nome', instance.nome)
+        instance.email = novo_email
+        instance.voip = validated_data.get('voip', instance.voip)
+        instance.ramal = validated_data.get('ramal', instance.ramal)
+        instance.grupo = validated_data.get('grupo', instance.grupo)
+        instance.perfil = validated_data.get('perfil', instance.perfil)
+        instance.status = validated_data.get('status', instance.status)
+        instance.save()
+
+        return instance
+
+
 
 
 # ---------------------- Empresa / Planilha ----------------------      

@@ -301,3 +301,8 @@
   margin-left: 6px;
   font-weight: bold;
 }
+
+.empresas-table tbody tr:hover {
+  background-color: #fff3e0; /* tom claro do dourado */
+  transition: background-color 0.2s ease; /* suaviza a transição */
+}

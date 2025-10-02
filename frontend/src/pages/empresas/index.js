@@ -280,10 +280,17 @@ const [empresaSelecionada, setEmpresaSelecionada] = useState(null);
 const [readOnlyModal, setReadOnlyModal] = useState(false);
 
 const abrirModal = (empresa = null, readOnly = false) => {
-  setEmpresaSelecionada(empresa);
+  if (!empresa) {
+    // 👉 Nova empresa → força limpar
+    setEmpresaSelecionada(null);
+  } else {
+    setEmpresaSelecionada(empresa);
+  }
   setReadOnlyModal(readOnly);
   setModalAberto(true);
 };
+
+
 
 const fecharModal = () => {
   setModalAberto(false);

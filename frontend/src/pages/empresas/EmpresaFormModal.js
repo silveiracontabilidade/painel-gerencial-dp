@@ -57,28 +57,47 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
   }, [dados]);
 
 
-  //dados da CCT
+    // dados da empresa (reset geral em nova)
   useEffect(() => {
-    const normalizada = {};
-    for (const campo in dados) {
-      let valor = dados[campo];
-
-      if (valor && ['inicio_contrato','termino_contrato','dt_envio_cct','dt_venc_conec_social','venc_procuracao'].includes(campo)) {
-        // Se vier no formato ISO (YYYY-MM-DD)
-        if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
-          const [ano, mes, dia] = valor.split('-');
-          valor = `${dia}-${mes}-${ano}`; // DD-MM-YYYY
-        }
-        // Se vier no formato YYYY/MM/DD
-        else if (/^\d{4}\/\d{2}\/\d{2}$/.test(valor)) {
-          const [ano, mes, dia] = valor.split('/');
-          valor = `${dia}-${mes}-${ano}`; // DD-MM-YYYY
-        }
-      }
-      normalizada[campo] = typeof valor === 'string' ? valor.toUpperCase() : valor;
+    if (!dados) {
+      // 👉 Nova empresa → limpa o form inteiro
+      setEmpresa({});
+      setCcts([]);
+      setPlrs([]);
+      return;
     }
-    setEmpresa(normalizada);
-  }, [dados]);
+
+    // 👉 Edição → normaliza os dados recebidos
+    const normalizada = {};
+      for (const campo in dados) {
+        let valor = dados[campo];
+
+        if (
+          valor &&
+          [
+            'inicio_contrato',
+            'termino_contrato',
+            'dt_envio_cct',
+            'dt_venc_conec_social',
+            'venc_procuracao'
+          ].includes(campo)
+        ) {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+            const [ano, mes, dia] = valor.split('-');
+            valor = `${dia}-${mes}-${ano}`;
+          } else if (/^\d{4}\/\d{2}\/\d{2}$/.test(valor)) {
+            const [ano, mes, dia] = valor.split('/');
+            valor = `${dia}-${mes}-${ano}`;
+          }
+        }
+
+        normalizada[campo] =
+          typeof valor === 'string' ? valor.toUpperCase() : valor;
+      }
+
+      setEmpresa(normalizada);
+    }, [dados, visivel]); // 👈 inclui "visivel" também
+
 
 
   // dados do PLR
@@ -255,6 +274,37 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
     const MM = String(m).padStart(2, "0");
     return `${HH}:${MM}`;
   };
+
+  // Valida números decimais no formato brasileiro (00,00)
+  const validarDecimal = (valor) => {
+    if (!valor) return "";
+
+    // mantém apenas dígitos e vírgula
+    valor = valor.replace(/[^0-9,]/g, "");
+
+    // garante apenas uma vírgula
+    const partes = valor.split(",");
+    if (partes.length > 2) {
+      valor = partes[0] + "," + partes[1];
+    }
+
+    // limita a 2 casas decimais
+    if (partes[1]?.length > 2) {
+      valor = partes[0] + "," + partes[1].slice(0, 2);
+    }
+
+    return valor;
+  };
+
+  // Normaliza no blur — se não tiver vírgula, adiciona ",00"
+  const normalizarDecimal = (valor) => {
+    if (!valor) return "";
+    if (!valor.includes(",")) return valor + ",00";
+    const [int, dec] = valor.split(",");
+    return int + "," + (dec || "00").padEnd(2, "0");
+  };
+
+
 
   // Valida/mascara hora no formato HH:MM (00–23 : 00–59)
   const validarHora = (valor) => {
@@ -448,6 +498,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
               if (validation === "date") valor = mascararData(valor);
               if (validation === "time") valor = mascararHora(valor);
               if (validation === "duration") valor = mascararDuracao(valor);
+              if (validation === "decimal") valor = validarDecimal(valor);
 
               handleChange(campo)({ target: { value: valor } });
             }}
@@ -464,6 +515,10 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
               }
               if (validation === "duration") {
                 const valor = normalizarDuracao(e.target.value);
+                handleChange(campo)({ target: { value: valor } });
+              }
+              if (validation === "decimal") {
+                const valor = normalizarDecimal(e.target.value);
                 handleChange(campo)({ target: { value: valor } });
               }
             }}
@@ -598,7 +653,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
                 {renderFlag('enviadctf', 'ENVIA DCTF', empresa.enviadctf)}
                 {renderSelect('visitacao', 'VISITAÇÃO', opcoes.visitacao, empresa.visitacao)}
                 {renderText('tempo_demandado', 'TEMPO DEMANDADO', 'campo-curto', 'text', null, "duration")}
-                {renderText('honorarios', 'HONORÁRIO', 'campo-curto')}
+                {renderText('honorarios', 'HONORÁRIO', 'campo-curto','text',null,'decimal')}
                 
               </div>
             </div>

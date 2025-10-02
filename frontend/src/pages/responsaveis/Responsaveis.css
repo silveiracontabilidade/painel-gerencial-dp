@@ -157,7 +157,6 @@
   stroke: #C3996B;
 }
 
-
 .col-ramal input {
   width: 100%;
   max-width: 80px;   /* 4 dígitos cabem bem */
@@ -166,4 +165,21 @@
 .col-status select {
   width: 100%;
   max-width: 100px;  /* "SIM"/"NÃO" cabem */
+}
+
+
+.status-circle {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.status-circle.ativo {
+  background-color: #155825; /* verde */
+}
+
+.status-circle.inativo {
+  background-color: #7e1d26; /* vermelho */
 }

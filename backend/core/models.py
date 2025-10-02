@@ -276,6 +276,7 @@ class Servico(models.Model):
     class Meta:
         db_table = 'pg_servicos'
         managed = False   # 👈 não deixa o Django criar/alterar a tabela
+        ordering = ['nome']   # 👈 adiciona isso
 
     def __str__(self):
         return self.nome
