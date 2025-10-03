@@ -1,6 +1,7 @@
 // ServicosSolicitados.js
 import React, { useEffect, useState, useMemo  } from 'react';
 import { Plus, Pencil, Trash2, FileText, CheckCircle } from 'lucide-react';
+import EmpresaFormModal from '../empresas/EmpresaFormModal'
 import api from '../../api/axios';
 import ServicoSolicitadoFormModal from './servicoSolicitadoFormModal';
 import './servicos-solicitados.css';
@@ -15,6 +16,20 @@ export default function ServicosSolicitados() {
   const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState(null);
 
   const [servicos, setServicos] = useState([]);
+
+  // para mostrar os detalhes da empresa
+  const [empresaModalAberto, setEmpresaModalAberto] = useState(false);
+  const [empresaSelecionada, setEmpresaSelecionada] = useState(null);
+
+  const abrirEmpresaModal = (empresa) => {
+    setEmpresaSelecionada(empresa);
+    setEmpresaModalAberto(true);
+  };
+
+  const fecharEmpresaModal = () => {
+    setEmpresaSelecionada(null);
+    setEmpresaModalAberto(false);
+  };
 
   //concluir
   const concluir = async (id) => {
@@ -101,7 +116,7 @@ export default function ServicosSolicitados() {
     "AZUL": "#1E90FF",
     "VERDE": "#2E8B57",
     "VERMELHO": "#DC143C",
-    "AMARELO": "#ebca14ff",
+    "AMARELO": "#FFF200",
     "ROXO": "#800080",
     "ROSA": "#FF69B4",
     "LILAS": "#C8A2C8",
@@ -127,7 +142,7 @@ export default function ServicosSolicitados() {
     // Fórmula perceptual de luminância
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 
-    return luminance > 0.6 ? '#000000' : '#FFFFFF'; // se fundo claro → preto
+    return luminance > 0.65 ? '#000000' : '#FFFFFF'; // se fundo claro → preto
   }
 
   // Mapas para lookup rápido
@@ -271,20 +286,31 @@ export default function ServicosSolicitados() {
       carregarSolicitacoes();
     }
   };
-
+ 
+  // empresa
   const renderEmpresa = (valorEmpresa) => {
     const cod = String(valorEmpresa ?? '');
     const emp = empresaByCodigo.get(cod);
-    return emp ? `${emp.cod_folha} — ${emp.razao_social}` : cod;
+    if (!emp) return cod;
+
+    return (
+      <span
+        onClick={() => abrirEmpresaModal(emp)}
+        style={{ cursor: 'pointer', color: '#2B9FAE', fontWeight: 'bold' }}
+        title="Clique para ver detalhes"
+      >
+        {emp.cod_folha} — {emp.razao_social}
+      </span>
+    );
   };
-  
- 
+
+
   const renderResp = (valorEmpresa) => {
     const cod = String(valorEmpresa ?? '');
     const emp = empresaByCodigo.get(cod);
     if (!emp) return '-';
 
-    const nomeResp = emp.resp_dp || '-';
+    const nomeResp = (emp.resp_dp || '-').toUpperCase();
     const nomeGrupo = String(emp.grupo || '').toUpperCase();
     const corFundo = GRUPO_CORES[nomeGrupo] || '#000';
     const corTexto = getContrastColor(corFundo);
@@ -487,10 +513,21 @@ export default function ServicosSolicitados() {
         </tbody>
       </table>
 
+      {/* detalhes do servico     */}
       {modalAberto && (
         <ServicoSolicitadoFormModal
           dados={solicitacaoSelecionada}
           fechar={fecharModal}
+        />
+      )}
+
+      {/* modal de detalhes da empresa */}
+      {empresaModalAberto && (
+        <EmpresaFormModal
+          visivel={empresaModalAberto}
+          aoFechar={fecharEmpresaModal}
+          aoSalvar={() => {}} // aqui pode deixar vazio, pois na listagem de solicitações talvez não precise salvar
+          dados={empresaSelecionada}
         />
       )}
     </div>
