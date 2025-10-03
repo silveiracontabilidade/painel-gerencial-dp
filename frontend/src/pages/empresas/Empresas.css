@@ -4,7 +4,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
- }
+}
 
 .empresas-titulo {
   display: flex;
@@ -100,7 +100,6 @@
   max-width: 10px;
 }
 
-
 .col-texto-longo {
   width: 150px;
   min-width: 150px;
@@ -163,7 +162,6 @@
   color: #fff;
   font-weight: bold;
 }
-
 
 .modal-overlay {
   position: fixed;
@@ -252,8 +250,7 @@
 
 /* Coluna Classificação2 com cores */
 .empresas-table td.classificacao2 {
-  /* font-weight: bold; */
-  color: #000000; /* texto branco por padrão */
+  color: #000000;
   text-align: center;
 }
 
@@ -274,7 +271,7 @@
 
 /* CARNÊ LEÃO */
 .empresas-table td.classificacao2.CARNE-LEAO,
-.empresas-table td.classificacao2.CARNÊ-LEÃO {
+.empresas-table td.classificacao2.CARNE-LEAO { /* normalizado */
   background-color: #ffe699; /* bege claro */
   color: #000000;
 }
@@ -287,14 +284,13 @@
 
 /* DOM S/ MOV */
 .empresas-table td.classificacao2.DOM-S-MOV,
-.empresas-table td.classificacao2.DOM-S/-MOV {
+.empresas-table td.classificacao2.DOM-S\/-MOV {
   background-color: #c6e0f5; /* azul claro */
   color: #000000;
 }
 
-/* DOMÉSTICA */
-.empresas-table td.classificacao2.DOMESTICA,
-.empresas-table td.classificacao2.DOMÉSTICA {
+/* DOMESTICA */
+.empresas-table td.classificacao2.DOMESTICA {
   background-color: #9dc3e6; /* azul mais forte */
   color: #000000;
 }
@@ -324,9 +320,9 @@
   color: #000000;
 }
 
-/* PRÓ LABORE */
+/* PRO LABORE */
 .empresas-table td.classificacao2.PROLABORE,
-.empresas-table td.classificacao2.PRÓ-LABORE {
+.empresas-table td.classificacao2.PRO-LABORE {
   background-color: #7030a0; /* roxo */
   color: #ffffff;
 }
@@ -344,7 +340,6 @@
   color: #000000;
 }
 
-
 .filtros-badge {
   background: #C3996B; /* dourado */
   color: white;
@@ -357,5 +352,5 @@
 
 .empresas-table tbody tr:hover {
   background-color: #fff3e0; /* tom claro do dourado */
-  transition: background-color 0.2s ease; /* suaviza a transição */
+  transition: background-color 0.2s ease;
 }
