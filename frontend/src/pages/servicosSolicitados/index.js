@@ -11,10 +11,8 @@ export default function ServicosSolicitados() {
   const [empresas, setEmpresas] = useState([]);
   const [responsaveis, setResponsaveis] = useState([]);
   const [grupos, setGrupos] = useState([]);
-
   const [modalAberto, setModalAberto] = useState(false);
   const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState(null);
-
   const [servicos, setServicos] = useState([]);
 
   // para mostrar os detalhes da empresa
@@ -121,7 +119,7 @@ export default function ServicosSolicitados() {
     "ROSA": "#FF69B4",
     "LILAS": "#C8A2C8",
     "LARANJA": "#FF8C00",
-    "MARROM": "#412504ff",
+    "MARROM": "#412504",
     "OURO": "#C3996B",   // se tiver
     "PRATA": "#A9A9A9",  // se tiver
     // adicione mais cores aqui
