@@ -254,89 +254,94 @@
   text-align: center;
 }
 
-/* === Classificação2 - Cores oficiais === */
+/* === Classificação2 - Cores oficiais (corrigidas) === */
 
 /* BPO FIN */
 .empresas-table td.classificacao2.BPO-FIN {
-  background-color: #d9d9d9; /* cinza claro */
+  background-color: #d0d0d0;
   color: #000000;
 }
 
 /* BPO RH */
 .empresas-table td.classificacao2.BPO-RH,
 .empresas-table td.classificacao2.BPORH {
-  background-color: #ffff00; /* amarelo ovo */
+  background-color: #ffff00;
   color: #000000;
 }
 
 /* CARNÊ LEÃO */
 .empresas-table td.classificacao2.CARNE-LEAO,
 .empresas-table td.classificacao2.CARNE-LEAO { /* normalizado */
-  background-color: #ffe699; /* bege claro */
+  background-color: #d0d0d0;
   color: #000000;
 }
 
 /* CONSULTORIA */
 .empresas-table td.classificacao2.CONSULTORIA {
-  background-color: #ff99cc; /* rosa */
+  background-color: #ff99cc;
   color: #000000;
 }
 
 /* DOM S/ MOV */
 .empresas-table td.classificacao2.DOM-S-MOV,
 .empresas-table td.classificacao2.DOM-S\/-MOV {
-  background-color: #c6e0f5; /* azul claro */
+  background-color: #a6c9ec;
   color: #000000;
 }
 
 /* DOMESTICA */
 .empresas-table td.classificacao2.DOMESTICA {
-  background-color: #9dc3e6; /* azul mais forte */
+  background-color: #a6c9ec;
   color: #000000;
 }
 
 /* FACULTATIVO */
 .empresas-table td.classificacao2.FACULTATIVO {
-  background-color: #00b050; /* verde vivo */
-  color: #ffffff;
+  background-color: #b5e6a2;
+  color: #000000;
 }
 
 /* FATOR R */
-.empresas-table td.classificacao2.FATOR-R,
+.empresas-table td.classificacao2.FATOR-R {
+  background-color: #ff0000;
+  color: #ffffff;
+}
+
+/* FATOR R + FUNCS */
 .empresas-table td.classificacao2.FATOR-R-+-FUNCS {
-  background-color: #ff0000; /* vermelho forte */
+  background-color: #ff5050;
   color: #ffffff;
 }
 
 /* FOLHA COM DADOS */
 .empresas-table td.classificacao2.FOLHA-COM-DADOS {
-  background-color: #00b050; /* verde */
+  background-color: #275317;
   color: #ffffff;
 }
 
 /* FOLHA SEM DADOS */
 .empresas-table td.classificacao2.FOLHA-SEM-DADOS {
-  background-color: #92d050; /* verde claro */
-  color: #000000;
+  background-color: #3c7d22;
+  color: #ffffff;
 }
 
 /* PRO LABORE */
 .empresas-table td.classificacao2.PROLABORE,
 .empresas-table td.classificacao2.PRO-LABORE {
-  background-color: #7030a0; /* roxo */
+  background-color: #be5014;
   color: #ffffff;
 }
 
 /* TIME OUT */
 .empresas-table td.classificacao2.TIMEOUT,
 .empresas-table td.classificacao2.TIME-OUT {
-  background-color: #c65911; /* marrom/laranja escuro */
+  background-color: #0d0d0d;
   color: #ffffff;
 }
 
 /* SEM MOVIMENTO */
 .empresas-table td.classificacao2.SEM-MOVIMENTO {
-  background-color: #ffc000; /* amarelo ouro */
+  background-color: #ffc000;
   color: #000000;
 }
 
