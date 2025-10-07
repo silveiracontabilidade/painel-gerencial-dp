@@ -344,3 +344,25 @@ td:nth-child(9) {
   font-size: 13px;
   border-radius: 4px;
 }
+
+/* utilitários de largura para filtros */
+.servicos-filtros .campo.is-pequeno {
+  min-width: 120px;
+  flex: 0 0 120px;
+  width: 120px;
+}
+
+.servicos-filtros .campo.is-micro {
+  min-width: 90px;
+  flex: 0 0 90px;
+  width: 90px;
+}
+
+/* ajuda o select a não “forçar” largura por causa do texto longo */
+.servicos-filtros select,
+.servicos-filtros input {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

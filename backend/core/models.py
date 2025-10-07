@@ -117,6 +117,7 @@ class PlanilhaGerencial(models.Model):
     honorarios = models.DecimalField(max_digits=10, decimal_places=2, db_column='Honorarios', null=True, blank=True)
 
     # Acessos e sistemas
+    link_out_sist = models.CharField(max_length=250, db_column='LINK_OUT_SIST', null=True, blank=True)
     login_out_sist = models.CharField(max_length=100, db_column='LOGIN_OUT_SIST', null=True, blank=True)
     sen_out_sist = models.CharField(max_length=100, db_column='SEN_OUT_SIST', null=True, blank=True)
     cad_pat = models.CharField(max_length=50, db_column='CAD_PAT', null=True, blank=True)
@@ -142,6 +143,7 @@ class PlanilhaGerencial(models.Model):
     apura_vt = models.CharField(max_length=10, db_column='APURA_VT', null=True, blank=True)
 
     # Serviços
+    pcd = models.TextField(db_column='PCD', null=True, blank=True)
     aprendizes = models.TextField(db_column='APRENDIZES', null=True, blank=True)
     med_ocupa = models.TextField(db_column='MED_OCUPA', null=True, blank=True)
     med_ocupa_proc_venc = models.DateField(db_column='MED_OCUPA_PROC_VENC', null=True, blank=True)

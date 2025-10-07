@@ -64,8 +64,10 @@ export default function ServicosSolicitados() {
     empresa: '',
     responsavelId: '',
     grupoId: '',
-    status: 'todos', // todos | aberto | concluido
-    prazo: 'todos',  // todos | atrasados | no_prazo
+    status: 'todos',
+    prazo: 'todos',
+    servicoId: '',       // 👈 novo
+    competencia: '',     // 👈 novo
   });
 
   useEffect(() => {
@@ -196,6 +198,8 @@ export default function ServicosSolicitados() {
 
       const passaResp = !alvoRespNome || empRespNorm === alvoRespNome;
       const passaGrupo = !alvoGrupoNome || empGrupoNorm === alvoGrupoNome;
+      const passaServico = !filters.servicoId || String(s.servico) === String(filters.servicoId);
+      const passaCompetencia = !filters.competencia || String(s.competencia || '').includes(filters.competencia);
 
       // filtro de status
       if (filters.status === "aberto" && s.data_conclusao) return false;
@@ -219,7 +223,7 @@ export default function ServicosSolicitados() {
         }
       }
 
-      return passaEmpresa && passaResp && passaGrupo;
+      return passaEmpresa && passaResp && passaGrupo && passaServico && passaCompetencia;
     });
   }, [solicitacoes, empresaByCodigo, filters, respById, grupoById]);
 
@@ -340,8 +344,18 @@ export default function ServicosSolicitados() {
     setFilters((prev) => ({ ...prev, [campo]: val }));
   };
 
+  // const limparFiltros = () =>
+  //   setFilters({ empresa: '', responsavelId: '', grupoId: '', status: 'todos', prazo: 'todos' });
   const limparFiltros = () =>
-    setFilters({ empresa: '', responsavelId: '', grupoId: '', status: 'todos', prazo: 'todos' });
+    setFilters({
+      empresa: '',
+      responsavelId: '',
+      grupoId: '',
+      status: 'todos',
+      prazo: 'todos',
+      servicoId: '',
+      competencia: '',
+    });
 
   return (
     <div className="servicos-sol-container">
@@ -393,7 +407,7 @@ export default function ServicosSolicitados() {
           </select>
         </div>
 
-        <div className="campo">
+        <div className="campo is-pequeno">
           <label>Status</label>
           <select value={filters.status} onChange={handleFilterChange('status')}>
             <option value="todos">Todos</option>
@@ -402,7 +416,7 @@ export default function ServicosSolicitados() {
           </select>
         </div>
 
-        <div className="campo">
+        <div className="campo is-pequeno">
           <label>Prazo</label>
           <select value={filters.prazo} onChange={handleFilterChange('prazo')}>
             <option value="todos">Todos</option>
@@ -410,6 +424,34 @@ export default function ServicosSolicitados() {
             <option value="no_prazo">No Prazo</option>
           </select>
         </div>
+
+        <div className="campo is-pequeno" style={{ maxWidth: 10 }}>
+          <label>Serviço</label>
+          <select
+            value={filters.servicoId}
+            onChange={handleFilterChange('servicoId')}
+          >
+            <option value="">Todos</option>
+            {servicos
+              .slice()
+              .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+              .map((s) => (
+                <option key={s.id} value={s.id}>{s.nome}</option>
+              ))}
+          </select>
+        </div>
+
+        <div className="campo is-pequeno" style={{ width: 10 }}>
+          <label>Competência</label>
+          <input
+            type="text"
+            value={filters.competencia}
+            onChange={handleFilterChange('competencia')}
+            placeholder="Ex.: 092025"
+            maxLength={6}
+          />
+        </div>
+
 
         <div>
           <button type="button" onClick={limparFiltros} title="Limpar filtros">

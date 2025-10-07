@@ -29,7 +29,7 @@ export default function Login() {
     <div className="login-page">
       <div className="login-container">
         <img src={logo} alt="Logo" className="login-logo" />
-        <h2>PAINEL GERENCIAL DP</h2>
+        <h2>PLANNUS DP</h2>
         {erro && <p className="erro">{erro}</p>}
         <form onSubmit={handleSubmit}>
           <input

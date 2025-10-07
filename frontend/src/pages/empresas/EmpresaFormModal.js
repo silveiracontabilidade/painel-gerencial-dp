@@ -784,8 +784,13 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
                       <input
                         type="text"
                         value={item.data_entrega || ''}
-                        onChange={e => atualizarPLR(item.id, 'data_entrega', e.target.value)}
                         placeholder="dd-mm-aaaa"
+                        onChange={(e) =>
+                          atualizarPLR(item.id, 'data_entrega', mascararData(e.target.value))
+                        }
+                        onBlur={(e) =>
+                          atualizarPLR(item.id, 'data_entrega', normalizarData(e.target.value))
+                        }
                       />
                     </td>
                     <td>
@@ -821,6 +826,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
               <h4>ADMISSÃO</h4>
               <div className="linha">
                 {renderText('aprendizes', 'APRENDIZES', 'campo-curto')}
+                {renderText('pcd', 'PCD', 'campo-curto')}
                 {renderText('med_ocupa', 'MEDICINA OCUPACIONAL', 'campo-medio')}
                 {renderText('med_ocupa_proc_venc', 'VENC. PROC. MEDICINA', 'campo-medio', 'text',null, 'date')}
               </div>
@@ -872,6 +878,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
             <div className='bloco'>
               <h4>SISTEMA</h4>
               <div className="linha">
+                {renderText('link_out_sist', 'LINK OUTRO SISTEMA', 'campo-micro')}
                 {renderText('login_out_sist', 'LOGIN OUTRO SISTEMA', 'campo-micro')}
                 {renderText('sen_out_sist', 'SENHA OUTRO SISTEMA', 'campo-micro')}
               </div>
@@ -926,11 +933,17 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
                       />
                     </td>
                     <td>
-                      <input
-                        type="text"
-                        value={cct.data_envio}
-                        onChange={(e) => atualizarCCT(cct.id, 'data_envio', e.target.value)}
-                      />
+                        <input
+                          type="text"
+                          value={cct.data_envio || ''}
+                          placeholder="dd-mm-aaaa"
+                          onChange={(e) =>
+                            atualizarCCT(cct.id, 'data_envio', mascararData(e.target.value))
+                          }
+                          onBlur={(e) =>
+                            atualizarCCT(cct.id, 'data_envio', normalizarData(e.target.value))
+                          }
+                        />
                     </td>
                     <td>
                       <input

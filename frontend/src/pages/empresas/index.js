@@ -225,16 +225,6 @@ const [filters, setFilters] = useState({
 
   const params = useMemo(() => ({ page, page_size: pageSize, ...filters }), [filters, page]);
 
-  //FILTROS DE EMPRESAS - TESTANDO O BACKEND
-  // useEffect(() => {
-  //   api.get('api/empresas/', { params: { page: 1, page_size: 2000 } }) // ou mais, se necessário
-  //     .then(({ data }) => {
-  //       setEmpresas(data.results);
-  //     })
-  //     .catch(err => console.error(err));
-  // }, []);
-  /////////////////
-
   useEffect(() => {
     api.get('api/empresas/', {
       params: { page, page_size: pageSize, ...filters }
