@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, UserCog, Plus, Pencil, Filter } from 'lucide-react';
 import EmpresaFormModal from './EmpresaFormModal'; // ajuste o path
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import api from '../../api/axios';
 import './Empresas.css';
 import { paraISO, paraBR } from '../../utils/datas';
@@ -18,6 +18,29 @@ const [responsaveis, setResponsaveis] = useState([]);
 const [modalFiltrosAberto, setModalFiltrosAberto] = useState(false);
 const [perfilUsuario, setPerfilUsuario] = useState(null);
 const [periodosEntrega, setPeriodosEntrega] = useState([]);
+
+const responsaveisPorNome = useMemo(() => {
+  const mapa = new Map();
+  responsaveis.forEach((resp) => {
+    const chave = (resp.nome || '').toUpperCase();
+    if (chave) mapa.set(chave, resp);
+  });
+  return mapa;
+}, [responsaveis]);
+
+const grupoDerivado = useCallback(
+  (empresa) => {
+    if (!empresa) return '';
+    const respNome = (empresa.resp_dp || '').toUpperCase();
+    if (!respNome) {
+      return empresa.grupo ? String(empresa.grupo).toUpperCase() : '';
+    }
+    const responsavel = responsaveisPorNome.get(respNome);
+    const grupo = responsavel?.grupo_nome;
+    return grupo ? String(grupo).toUpperCase() : '';
+  },
+  [responsaveisPorNome]
+);
 
 // lista de campos considerados "avançados"
 const camposAvancados = [
@@ -166,7 +189,7 @@ const [filters, setFilters] = useState({
       (!filters.status_do_cliente || normalize(emp.status_do_cliente) === normalize(filters.status_do_cliente)) &&
       (!filters.tributacao || normalize(emp.tributacao).includes(normalize(filters.tributacao))) &&
       (!filters.sistema || normalize(emp.sistema) === normalize(filters.sistema)) &&
-      (!filters.grupo || normalize(emp.grupo) === normalize(filters.grupo)) &&
+      (!filters.grupo || normalize(grupoDerivado(emp)) === normalize(filters.grupo)) &&
       (!filters.resp_dp || normalize(emp.resp_dp) === normalize(filters.resp_dp)) &&
       (!filters.ramal || normalize(emp.ramal).includes(normalize(filters.ramal))) &&
       (!filters.categoria || normalize(emp.classificacao) === normalize(filters.categoria)) &&
@@ -203,7 +226,7 @@ const [filters, setFilters] = useState({
     }
 
     return filtradas;
-  }, [empresas, filters, ordenacao]);
+  }, [empresas, filters, ordenacao, grupoDerivado]);
   
 
   const empresasVisiveis = useMemo(() => {
@@ -230,27 +253,43 @@ const [filters, setFilters] = useState({
     );
   };
 
-  const options = useMemo(() => ({
-    sistema: Array.from(new Set(empresas.map(e => e.sistema).filter(Boolean)))
-      .sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })),
-    grupo: Array.from(new Set(empresas.map(e => e.grupo).filter(Boolean)))
-      .sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })),
-    resp_dp: Array.from(new Set(empresas.map(e => e.resp_dp).filter(Boolean)))
-      .sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })),
-  }), [empresas]);
+  const options = useMemo(() => {
+    const sistemas = new Set();
+    const grupos = new Set();
+    const responsaveisSet = new Set();
 
-  const params = useMemo(() => ({ page, page_size: pageSize, ...filters }), [filters, page]);
+    empresas.forEach((emp) => {
+      if (emp.sistema) sistemas.add(emp.sistema);
+      const grupo = grupoDerivado(emp);
+      if (grupo) grupos.add(grupo);
+      if (emp.resp_dp) responsaveisSet.add(emp.resp_dp);
+    });
 
-  useEffect(() => {
-    api.get('api/empresas/', {
-      params: { page, page_size: pageSize, ...filters }
+    return {
+      sistema: Array.from(sistemas).sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })),
+      grupo: Array.from(grupos).sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })),
+      resp_dp: Array.from(responsaveisSet).sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })),
+    };
+  }, [empresas, grupoDerivado]);
+
+useEffect(() => {
+  api
+    .get('api/empresas/', {
+      params: { page, page_size: pageSize, ...filters },
     })
-      .then(({ data }) => {
-        setEmpresas(data.results);
-        setCount(data.count || data.results.length);
-      })
-      .catch(err => console.error(err));
-  }, [filters, page]);
+    .then(({ data }) => {
+      const results = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.results)
+        ? data.results
+        : [];
+      setEmpresas(results);
+      setCount(
+        typeof data?.count === 'number' ? data.count : results.length
+      );
+    })
+    .catch((err) => console.error('Erro ao carregar empresas:', err));
+}, [filters, page]);
 
 
 
@@ -482,7 +521,7 @@ const salvarEmpresa = async (empresa) => {
       </div>
 
       <div className="empresas-tabela-wrapper">
-        <table className="empresas-table">
+        <table className="empresas-table empresas-table--uppercase">
           <thead>
             <tr>
               <th className="col-texto-muito-curto">#</th>
@@ -688,7 +727,7 @@ const salvarEmpresa = async (empresa) => {
                 <td>{emp.termino_contrato}</td>
                 <td>{emp.tributacao}</td>
                 <td>{emp.sistema}</td>
-                <td>{emp.grupo}</td>
+                <td>{grupoDerivado(emp)}</td>
                 <td>{emp.resp_dp}</td>
                 <td>{emp.data_pagto_salario}</td>
                 <td>{emp.classificacao}</td>

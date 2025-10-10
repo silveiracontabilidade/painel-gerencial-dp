@@ -6,7 +6,6 @@ import { paraISO, paraBR } from '../../utils/datas';
 export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados }) {
   const [empresa, setEmpresa] = useState({});
   const [responsaveis, setResponsaveis] = useState([]);
-  const [grupos, setGrupos] = useState([]);
   const [periodos, setPeriodos] = useState([]);
   const [sistemas, setSistemas] = useState([]);
   const [ccts, setCcts] = useState([]);
@@ -141,20 +140,39 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
   //carregar todos os dados de tabelas auxiliares
   useEffect(() => {
     async function carregarDados() {
-      const [res1, res2, res3, res4] = await Promise.all([
+      const [resResp, resPeriodos, resSistemas] = await Promise.all([
         api.get('/api/responsaveis/'),
-        api.get('/api/grupos/'),
         api.get('/api/periodos-entrega/'),
         api.get('/api/sistemas/')  
       ]);
 
-      setResponsaveis(res1.data.results || res1.data);
-      setGrupos(res2.data.results || res2.data);
-      setPeriodos(res3.data.results || res3.data);
-      setSistemas(res4.data.results || res4.data);
+      setResponsaveis(resResp.data.results || resResp.data);
+      setPeriodos(resPeriodos.data.results || resPeriodos.data);
+      setSistemas(resSistemas.data.results || resSistemas.data);
     }
     carregarDados();
   }, []);
+
+  useEffect(() => {
+    if (!responsaveis || responsaveis.length === 0) return;
+
+    setEmpresa((prev) => {
+      if (!prev) return prev;
+      const respNome = (prev.resp_dp || '').toUpperCase();
+      if (!respNome) {
+        if (!prev.grupo) return prev;
+        return { ...prev, grupo: '' };
+      }
+      const responsavelEncontrado = responsaveis.find(
+        (resp) => (resp.nome || '').toUpperCase() === respNome
+      );
+      const novoGrupo = responsavelEncontrado?.grupo_nome
+        ? String(responsavelEncontrado.grupo_nome).toUpperCase()
+        : '';
+      if (prev.grupo === novoGrupo) return prev;
+      return { ...prev, grupo: novoGrupo };
+    });
+  }, [responsaveis]);
 
 
 const handleChange = (campo) => (e) => {
@@ -178,6 +196,9 @@ const handleChange = (campo) => (e) => {
       );
       atualizado.ramal = responsavelEncontrado?.ramal
         ? String(responsavelEncontrado.ramal).toUpperCase()
+        : '';
+      atualizado.grupo = responsavelEncontrado?.grupo_nome
+        ? String(responsavelEncontrado.grupo_nome).toUpperCase()
         : '';
     }
 
@@ -730,7 +751,14 @@ const handleChange = (campo) => (e) => {
             <div className="bloco">
               <h4>DADOS DO ANALISTA</h4>
               <div className="linha">
-                {renderSelect('grupo', 'GRUPO', grupos.map(g => g.nome.toUpperCase()),'campo-curto', empresa.grupo)}
+                <div className="campo campo-curto">
+                  <label>GRUPO</label>
+                  <input
+                    type="text"
+                    value={(empresa.grupo || '').toUpperCase()}
+                    readOnly
+                  />
+                </div>
                 {renderSelect('resp_dp', 'RESPONSÁVEL DP', responsaveis.map(r => r.nome.toUpperCase()), 'campo-medio', empresa.resp_dp)}
                 {renderText('ramal', 'RAMAL', 'campo-curto','text',null, 'numeric')}
               </div>
