@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import './App.css';
@@ -15,6 +16,19 @@ import MotivosRescisao from './pages/motivosRescisao';
 
 function App() {
   const isUat = (process.env.REACT_APP_ENV || '').toUpperCase() === 'UAT';
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isUat) {
+      root.style.setProperty('--env-banner-offset', '40px');
+    } else {
+      root.style.removeProperty('--env-banner-offset');
+    }
+
+    return () => {
+      root.style.removeProperty('--env-banner-offset');
+    };
+  }, [isUat]);
 
   return (
     <BrowserRouter>
