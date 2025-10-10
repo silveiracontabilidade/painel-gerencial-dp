@@ -35,6 +35,26 @@ const toISO = (brOuBrHifen) => {
   return paraISO(brOuBrHifen.replace(/\//g, '-'));
 };
 
+const calcularDataParaResposta = (servico, dataSolicitacaoBR) => {
+  if (!servico) return '';
+
+  const prazoDias = Number(servico?.prazo_dias ?? 0);
+  const baseISO = toISO(dataSolicitacaoBR) || new Date().toISOString().split('T')[0];
+
+  let base = new Date(`${baseISO}T00:00:00`);
+  if (!isValidDate(base)) {
+    base = new Date();
+    base.setHours(0, 0, 0, 0);
+  }
+
+  if (Number.isFinite(prazoDias)) {
+    base = new Date(base.getTime());
+    base.setDate(base.getDate() + prazoDias);
+  }
+
+  return isValidDate(base) ? toBRSafe(formatISO(base)) : '';
+};
+
 const mascararData = (valor) => {
   const d = String(valor || '').replace(/[^\d]/g, '').slice(0, 8);
   if (!d) return '';
@@ -335,7 +355,16 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   const handleBlurDataNormalize = (e) => {
     const { name, value } = e.target;
     const val = normalizarData(value);
-    setForm((prev) => ({ ...prev, [name]: val }));
+    setForm((prev) => {
+      const atualizado = { ...prev, [name]: val };
+      if (name === 'data_solicitacao' && atualizado.servico) {
+        const servico = servicos.find((s) => String(s.id) === String(atualizado.servico));
+        if (servico) {
+          atualizado.data_para_resposta = calcularDataParaResposta(servico, val);
+        }
+      }
+      return atualizado;
+    });
   };
 
 
@@ -422,7 +451,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   const handleServicoChange = (e) => {
   const value = e?.target ? e.target.value : e;
   if (!value) {
-    setForm((prev) => ({ ...prev, servico: '', data_vencimento: '' }));
+    setForm((prev) => ({ ...prev, servico: '', data_para_resposta: '' }));
     if (errors.servico) setErrors((prev) => ({ ...prev, servico: undefined }));
     return;
   }
@@ -431,31 +460,13 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
 
   // Base para a data: tentar usar a data_solicitacao do form; se for inválida, cair pra hoje
   const dataSolicBR = form.data_solicitacao || toBRSafe(new Date().toISOString().split('T')[0]);
-  const baseISO = toISO(dataSolicBR) || new Date().toISOString().split('T')[0];
+  const respostaCalculada = calcularDataParaResposta(servico, dataSolicBR);
 
-  // Construção robusta da data base
-  let base = new Date(`${baseISO}T00:00:00`);
-  if (!isValidDate(base)) {
-    base = new Date(); // fallback
-    // zera horário pra não variar por timezone
-    base.setHours(0, 0, 0, 0);
-  }
-
-  // Soma do prazo (sempre número)
-  const prazoDias = Number(servico?.prazo_dias ?? 0);
-    if (!Number.isFinite(prazoDias)) {
-      // se por algum motivo vier algo não numérico, zera
-      base = new Date(base.getTime());
-    } else {
-      base = new Date(base.getTime());
-      base.setDate(base.getDate() + prazoDias);
-    }
-
-    // Formata YYYY-MM-DD sem depender de toISOString (evita "Invalid time value")
-    const vencISO = isValidDate(base) ? formatISO(base) : new Date().toISOString().split('T')[0];
-    const vencBR = toBRSafe(vencISO);
-
-    setForm((prev) => ({ ...prev, servico: String(value), data_vencimento: vencBR }));
+    setForm((prev) => ({
+      ...prev,
+      servico: String(value),
+      data_para_resposta: respostaCalculada,
+    }));
     if (errors.servico) setErrors((prev) => ({ ...prev, servico: undefined }));
   };
 
@@ -1078,8 +1089,8 @@ const renderBlocoMulta = () => (
         {/* Datas principais */}
         <div className="linha">
           {renderInputData('data_solicitacao', 'SOLICITAÇÃO', 'campo-curto')}
-          {renderInputData('data_vencimento', 'VENCIMENTO', 'campo-curto', true)}
-          {renderInputData('data_para_resposta', 'DATA PARA RESPOSTA', 'campo-curto')}
+          {renderInputData('data_vencimento', 'VENCIMENTO', 'campo-curto')}
+          {renderInputData('data_para_resposta', 'DATA PARA RESPOSTA', 'campo-curto', true)}
           {renderInputData('data_conclusao', 'CONCLUSÃO', 'campo-curto')}
         </div>
 

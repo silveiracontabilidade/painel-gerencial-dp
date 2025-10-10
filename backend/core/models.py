@@ -155,14 +155,42 @@ class PlanilhaGerencial(models.Model):
 
 
 # PERÍODOS DE ENTREGA
+# class PeriodoEntrega(models.Model):
+#     DIA_TIPO_CHOICES = [
+#         ('DIA', 'Dia Corrido'),
+#         ('DIA_UTIL', 'Dia Útil'),
+#     ]
+
+#     dia = models.PositiveSmallIntegerField()  # Ex: 5, 10, 20
+#     tipo = models.CharField(max_length=10, choices=DIA_TIPO_CHOICES)
+#     descricao = models.CharField(max_length=50, editable=False)
+
+#     class Meta:
+#         managed = False
+#         db_table = 'pg_periodos_entrega'
+#         unique_together = ('dia', 'tipo')
+#         ordering = ['tipo', 'dia']
+
+#     def save(self, *args, **kwargs):
+#         # Gera descrição automaticamente
+#         if self.tipo == 'DIA_UTIL':
+#             self.descricao = f"{self.dia}º Dia Útil"
+#         else:
+#             self.descricao = f"Dia {self.dia}"
+#         super().save(*args, **kwargs)
+
+#     def __str__(self):
+#         return self.descricao
+
 class PeriodoEntrega(models.Model):
     DIA_TIPO_CHOICES = [
         ('DIA', 'Dia Corrido'),
         ('DIA_UTIL', 'Dia Útil'),
+        ('DIAS_ANTES', 'Dias Antes'),  # 👈 novo tipo
     ]
 
     dia = models.PositiveSmallIntegerField()  # Ex: 5, 10, 20
-    tipo = models.CharField(max_length=10, choices=DIA_TIPO_CHOICES)
+    tipo = models.CharField(max_length=20, choices=DIA_TIPO_CHOICES)
     descricao = models.CharField(max_length=50, editable=False)
 
     class Meta:
@@ -175,12 +203,11 @@ class PeriodoEntrega(models.Model):
         # Gera descrição automaticamente
         if self.tipo == 'DIA_UTIL':
             self.descricao = f"{self.dia}º Dia Útil"
+        elif self.tipo == 'DIAS_ANTES':
+            self.descricao = f"{self.dia} dias antes"
         else:
             self.descricao = f"Dia {self.dia}"
         super().save(*args, **kwargs)
-
-    def __str__(self):
-        return self.descricao
 
 
 # SISTEMAS
@@ -201,7 +228,14 @@ class Sistema(models.Model):
     
 class ServicoSolicitado(models.Model):
     data_solicitacao = models.DateField()
-    empresa = models.IntegerField()
+    empresa = models.IntegerField(null=True, blank=True)
+    responsavel = models.ForeignKey(
+        'Responsavel',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='servicos_solicitados'
+    )
     servico = models.ForeignKey('Servico', on_delete=models.CASCADE)
     competencia = models.CharField(max_length=6)
     identificacao = models.CharField(max_length=100, null=True, blank=True)
@@ -260,7 +294,8 @@ class ServicoSolicitado(models.Model):
         db_table = 'pg_servicos_solicitados'
 
     def __str__(self):
-        return f"Empresa {self.empresa} - {self.servico.nome} ({self.competencia})"
+        destino = f"Empresa {self.empresa}" if self.empresa is not None else f"Responsável {self.responsavel}" if self.responsavel else "Sem destino"
+        return f"{destino} - {self.servico.nome} ({self.competencia})"
     
 
 # CADASTRO DE SERVIÇOS
@@ -298,7 +333,17 @@ class AgendaBase(models.Model):
     mes = models.PositiveSmallIntegerField(null=True, blank=True)
     nome = models.CharField(max_length=255)
     descricao = models.TextField(null=True, blank=True)
-    responsabilidade = models.CharField(max_length=255, null=True, blank=True)
+    servico = models.ForeignKey(
+        'Servico',
+        on_delete=models.DO_NOTHING,
+        db_column='servico_id',
+        null=True,
+        blank=True,
+        related_name='agendas_base'
+    )
+    tipo_distribuicao = models.CharField(max_length=255, null=True, blank=True)
+    usa_data_agenda = models.BooleanField(default=True)
+    campo_periodo_empresa = models.CharField(max_length=100, null=True, blank=True)
     observacao = models.TextField(null=True, blank=True)
 
     class Meta:
@@ -307,6 +352,34 @@ class AgendaBase(models.Model):
 
     def __str__(self):
         return self.nome
+
+
+class AgendaRegra(models.Model):
+    OPERADOR_CHOICES = [
+        ('IGUAL', 'Igual'),
+        ('DIFERENTE', 'Diferente'),
+        ('CONTEM', 'Contém'),
+        ('NAO_CONTEM', 'Não contém'),
+    ]
+
+    CONECTOR_CHOICES = [
+        ('AND', 'E'),
+        ('OR', 'Ou'),
+    ]
+
+    agenda = models.ForeignKey(AgendaBase, on_delete=models.CASCADE, related_name='regras')
+    campo = models.CharField(max_length=64)
+    operador = models.CharField(max_length=16, choices=OPERADOR_CHOICES, default='IGUAL')
+    valor = models.CharField(max_length=255)
+    conector = models.CharField(max_length=3, choices=CONECTOR_CHOICES, default='AND')
+    ordem = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        db_table = 'pg_agenda_regras'
+        ordering = ['ordem', 'id']
+
+    def __str__(self):
+        return f"{self.agenda_id} - {self.campo} {self.operador} {self.valor}"
 
 
 class CCT(models.Model):

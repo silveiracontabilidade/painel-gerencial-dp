@@ -17,6 +17,7 @@ const [ordenacao, setOrdenacao] = useState({ campo: '', direcao: 'asc' });
 const [responsaveis, setResponsaveis] = useState([]);
 const [modalFiltrosAberto, setModalFiltrosAberto] = useState(false);
 const [perfilUsuario, setPerfilUsuario] = useState(null);
+const [periodosEntrega, setPeriodosEntrega] = useState([]);
 
 // lista de campos considerados "avançados"
 const camposAvancados = [
@@ -53,6 +54,18 @@ useEffect(() => {
     }
   }
   fetchPerfil();
+}, []);
+
+useEffect(() => {
+  async function fetchPeriodosEntrega() {
+    try {
+      const { data } = await api.get('/api/periodos-entrega/');
+      setPeriodosEntrega(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Erro ao buscar períodos de entrega:', err);
+    }
+  }
+  fetchPeriodosEntrega();
 }, []);
 
 const [filters, setFilters] = useState({
@@ -218,9 +231,12 @@ const [filters, setFilters] = useState({
   };
 
   const options = useMemo(() => ({
-    sistema: Array.from(new Set(empresas.map(e => e.sistema).filter(Boolean))),
-    grupo: Array.from(new Set(empresas.map(e => e.grupo).filter(Boolean))),
-    resp_dp: Array.from(new Set(empresas.map(e => e.resp_dp).filter(Boolean))),
+    sistema: Array.from(new Set(empresas.map(e => e.sistema).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })),
+    grupo: Array.from(new Set(empresas.map(e => e.grupo).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })),
+    resp_dp: Array.from(new Set(empresas.map(e => e.resp_dp).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })),
   }), [empresas]);
 
   const params = useMemo(() => ({ page, page_size: pageSize, ...filters }), [filters, page]);
@@ -289,6 +305,26 @@ const fecharModal = () => {
 };
 
 
+const normalizarDecimalParaEnvio = (valor) => {
+  if (valor === null || valor === undefined) return null;
+  const texto = String(valor).trim();
+  if (!texto) return null;
+
+  // remove espaços e caracteres estranhos
+  const limpo = texto.replace(/\s/g, '');
+
+  const ultimoComa = limpo.lastIndexOf(',');
+  const ultimoPonto = limpo.lastIndexOf('.');
+
+  if (ultimoComa > ultimoPonto) {
+    // vírgula é separador decimal → remove pontos (milhar) e troca vírgula por ponto
+    return limpo.replace(/\./g, '').replace(',', '.');
+  }
+
+  // ponto é separador decimal (ou não há vírgula) → mantém apenas dígitos e ponto
+  return limpo.replace(/[^0-9.]/g, '');
+};
+
 const salvarEmpresa = async (empresa) => {
   try {
     const camposData = [
@@ -308,13 +344,10 @@ const salvarEmpresa = async (empresa) => {
     });
 
     // normaliza honorários (DecimalField no backend)
-    if (payload.honorarios !== undefined && payload.honorarios !== null && payload.honorarios !== "") {
-      payload.honorarios = String(payload.honorarios)
-        .replace(/\./g, "")
-        .replace(",", ".");
-    } else {
-      payload.honorarios = null;
-    }
+    payload.honorarios =
+      payload.honorarios !== undefined && payload.honorarios !== null && payload.honorarios !== ""
+        ? normalizarDecimalParaEnvio(payload.honorarios)
+        : null;
 
     delete payload.cnpj_formatado;
     delete payload.id;
@@ -423,11 +456,6 @@ const salvarEmpresa = async (empresa) => {
             )}
           </button>
           
-              
-          {/* Botão Nova Empresa */}
-          {/* <button onClick={() => abrirModal()} className="delegar-botao" title="Nova Empresa">
-            <Plus size={16} />
-          </button> */}
 
           {(perfilUsuario === 'admin' || perfilUsuario === 'coordenador') && (
             <button onClick={() => abrirModal(null, false)} className="delegar-botao" title="Nova Empresa">
@@ -534,6 +562,7 @@ const salvarEmpresa = async (empresa) => {
                   <option value="">Todos</option>
                   <option value="Ativo">Ativo</option>
                   <option value="Inativo">Inativo</option>
+                  <option value="Suspenso">Suspenso</option>
                 </select>
               </th>
               <th className="col-data">
@@ -573,10 +602,15 @@ const salvarEmpresa = async (empresa) => {
                   className={filters.data_pagto_salario_inicio ? 'filtro-ativo' : ''}
                 >
                   <option value="">Todos</option>
-                  <option value="5º dia">5º dia</option>
-                  <option value="2º dia">2º dia</option>
-                  <option value="dia 30">Dia 30</option>
-                  <option value="dia 31">Dia 31</option>
+                  {periodosEntrega.map((periodo) => {
+                    const valor = periodo?.descricao || '';
+                    if (!valor) return null;
+                    return (
+                      <option key={periodo.id ?? valor} value={valor}>
+                        {valor.toUpperCase()}
+                      </option>
+                    );
+                  })}
                 </select>
               </th>
               <th className="col-texto-curto">

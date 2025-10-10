@@ -21,7 +21,6 @@ export default function PeriodosEntrega() {
     fetchPerfil();
   }, []);
 
-
   useEffect(() => {
     carregarDados();
   }, []);
@@ -72,8 +71,9 @@ export default function PeriodosEntrega() {
   };
 
   const novo = () => {
+    if (editandoId) return; // impede novo enquanto está editando
     const novoPeriodo = { id: 'novo', dia: '', tipo: 'DIA', descricao: '' };
-    setPeriodos([...periodos, novoPeriodo]);
+    setPeriodos([novoPeriodo, ...periodos]);
     setEditandoId('novo');
     setDadosEditados(novoPeriodo);
   };
@@ -115,13 +115,20 @@ export default function PeriodosEntrega() {
                 {editandoId === p.id ? (
                   <select
                     value={dadosEditados.tipo}
-                    onChange={(e) => setDadosEditados({ ...dadosEditados, tipo: e.target.value })}
+                    onChange={(e) =>
+                      setDadosEditados({ ...dadosEditados, tipo: e.target.value })
+                    }
                   >
                     <option value="DIA">Dia Corrido</option>
                     <option value="DIA_UTIL">Dia Útil</option>
+                    <option value="DIAS_ANTES">Dias Antes</option> {/* 👈 novo */}
                   </select>
                 ) : (
-                  p.tipo === 'DIA_UTIL' ? 'Dia Útil' : 'Dia Corrido'
+                  p.tipo === 'DIA_UTIL'
+                    ? 'Dia Útil'
+                    : p.tipo === 'DIAS_ANTES'
+                    ? `${p.dia} dias antes`
+                    : 'Dia Corrido'
                 )}
               </td>
               <td>{p.descricao}</td>

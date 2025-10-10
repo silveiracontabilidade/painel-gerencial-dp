@@ -14,6 +14,19 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
   const [aba, setAba] = useState('GERENCIAL'); // 'GERENCIAL' | 'FOLHA'
   const [permissoes, setPermissoes] = useState([]);
   const [perfilUsuario, setPerfilUsuario] = useState(null);
+  const camposCaseSensitive = new Set([
+    'link_out_sist',
+    'login_out_sist',
+    'sen_out_sist',
+    'usuarios_pag',
+    'usuario_pag',
+    'usu_pag',
+    'senha_pag',
+    'sen_pag',
+    'sd_login',
+    'sd_senha',
+    'sd_email',
+  ]);
   
   
     //Permissoes do usuário
@@ -91,8 +104,14 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
           }
         }
 
+        if (campo === 'honorarios') {
+          valor = formatarDecimalParaInput(valor);
+        }
+
         normalizada[campo] =
-          typeof valor === 'string' ? valor.toUpperCase() : valor;
+          typeof valor === 'string'
+            ? (camposCaseSensitive.has(campo) ? valor : valor.toUpperCase())
+            : valor;
       }
 
       setEmpresa(normalizada);
@@ -138,15 +157,33 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
   }, []);
 
 
-  const handleChange = (campo) => (e) => {
-    let valor = (e.target.value ?? '').toUpperCase();
-    setEmpresa((prev) => {
-      const atualizado = { ...prev, [campo]: valor };
-      if (campo === 'cod_folha') atualizado['cod_folha_520'] = valor;
-      if (campo === 'cnpj_original') atualizado['cnpj'] = valor.replace(/[^0-9]/g, '');
-      return atualizado;
-    });
-  };
+const handleChange = (campo) => (e) => {
+  const bruto = e?.target?.value ?? '';
+  const valorTransformado = camposCaseSensitive.has(campo)
+    ? bruto
+    : bruto.toUpperCase();
+
+  setEmpresa((prev) => {
+    const atualizado = { ...prev, [campo]: valorTransformado };
+
+    if (campo === 'cod_folha') atualizado['cod_folha_520'] = valorTransformado;
+
+    if (campo === 'cnpj_original') {
+      atualizado['cnpj'] = valorTransformado.replace(/[^0-9]/g, '');
+    }
+
+    if (campo === 'resp_dp') {
+      const responsavelEncontrado = responsaveis.find(
+        (resp) => (resp.nome || '').toUpperCase() === valorTransformado.toUpperCase()
+      );
+      atualizado.ramal = responsavelEncontrado?.ramal
+        ? String(responsavelEncontrado.ramal).toUpperCase()
+        : '';
+    }
+
+    return atualizado;
+  });
+};
 
   
   if (!visivel) return null;
@@ -275,10 +312,43 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
     return `${HH}:${MM}`;
   };
 
+  const formatarDecimalParaInput = (valor) => {
+    if (valor === null || valor === undefined) return '';
+    let texto = String(valor).trim();
+    if (texto === '') return '';
+
+    texto = texto.replace(/\s/g, '');
+    const limpo = texto.replace(/[^0-9.,-]/g, '');
+
+    let paraNumero = limpo;
+    const temVirgula = paraNumero.includes(',');
+    const temPonto = paraNumero.includes('.');
+
+    if (temVirgula && temPonto) {
+      // Usa a vírgula como decimal e remove separadores de milhar
+      paraNumero = paraNumero.replace(/\./g, '').replace(',', '.');
+    } else if (temVirgula) {
+      paraNumero = paraNumero.replace(',', '.');
+    }
+
+    const numero = Number(paraNumero);
+    if (!Number.isNaN(numero)) {
+      return numero.toFixed(2).replace('.', ',');
+    }
+
+    const apenasDigitos = limpo.replace(/[^0-9,]/g, '');
+    if (apenasDigitos === '') return '';
+    const [inteiroBruto, decimalBruto = ''] = apenasDigitos.split(',');
+    const inteiro = inteiroBruto || '0';
+    const decimal = decimalBruto.padEnd(2, '0').slice(0, 2);
+    return `${inteiro},${decimal}`;
+  };
+
   // Valida números decimais no formato brasileiro (00,00)
   const validarDecimal = (valor) => {
     if (!valor) return "";
 
+    valor = valor.replace(/\./g, ",");
     // mantém apenas dígitos e vírgula
     valor = valor.replace(/[^0-9,]/g, "");
 
@@ -299,9 +369,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
   // Normaliza no blur — se não tiver vírgula, adiciona ",00"
   const normalizarDecimal = (valor) => {
     if (!valor) return "";
-    if (!valor.includes(",")) return valor + ",00";
-    const [int, dec] = valor.split(",");
-    return int + "," + (dec || "00").padEnd(2, "0");
+    return formatarDecimalParaInput(valor);
   };
 
 
@@ -994,6 +1062,25 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
           </>
         )}
       <div className="botoes">
+        {empresa?.cod_folha && perfilUsuario === 'admin' && (
+          <button
+            className="excluir"
+            onClick={async () => {
+              if (window.confirm(`Deseja realmente excluir a empresa ${empresa.razao_social}?`)) {
+                try {
+                  await api.delete(`/api/empresas/${empresa.cod_folha}/`);
+                  alert("Empresa excluída com sucesso!");
+                  aoFechar(); // fecha o modal
+                } catch (err) {
+                  console.error("Erro ao excluir empresa:", err.response?.data || err);
+                  alert("Erro ao excluir empresa.");
+                }
+              }
+            }}
+          >
+            EXCLUIR
+          </button>
+        )}
         <button
           onClick={() => {
             if (!validarEmail(empresa.sd_email)) {

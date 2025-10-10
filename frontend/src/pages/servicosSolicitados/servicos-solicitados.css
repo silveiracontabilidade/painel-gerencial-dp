@@ -107,9 +107,22 @@
   font-size: 11px;
 }
 
+.servicos-sol-container td.data-col {
+  white-space: nowrap;
+}
+
 .servicos-sol-container th {
   background-color: #1a1f3a;
   color: white;
+}
+
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable-header:hover {
+  background-color: #243260;
 }
 
 .servicos-sol-container tr:nth-child(even) {

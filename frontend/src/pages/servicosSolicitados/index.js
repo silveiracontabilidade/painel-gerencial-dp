@@ -14,6 +14,7 @@ export default function ServicosSolicitados() {
   const [modalAberto, setModalAberto] = useState(false);
   const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState(null);
   const [servicos, setServicos] = useState([]);
+  const [ordenacao, setOrdenacao] = useState({ campo: '', direcao: 'asc' });
 
   // para mostrar os detalhes da empresa
   const [empresaModalAberto, setEmpresaModalAberto] = useState(false);
@@ -148,7 +149,15 @@ export default function ServicosSolicitados() {
   // Mapas para lookup rápido
   const empresaByCodigo = useMemo(() => {
     const m = new Map();
-    empresas.forEach(e => m.set(String(e.cod_folha), e));
+    empresas.forEach((e) => {
+      const codigoOriginal = String(e.cod_folha ?? '').trim();
+      if (!codigoOriginal) return;
+      m.set(codigoOriginal, e);
+      const codigoNumerico = Number(codigoOriginal);
+      if (!Number.isNaN(codigoNumerico)) {
+        m.set(String(codigoNumerico), e);
+      }
+    });
     return m;
   }, [empresas]);
 
@@ -169,6 +178,20 @@ export default function ServicosSolicitados() {
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .trim().toUpperCase();
 
+  const alternarOrdenacao = (campo) => {
+    setOrdenacao((prev) => {
+      if (prev.campo === campo) {
+        return { campo, direcao: prev.direcao === 'asc' ? 'desc' : 'asc' };
+      }
+      return { campo, direcao: 'asc' };
+    });
+  };
+
+  const iconeOrdenacao = (campo) => {
+    if (ordenacao.campo !== campo) return '';
+    return ordenacao.direcao === 'asc' ? '▲' : '▼';
+  };
+
   // Aplica filtros
   const solicitacoesFiltradas = useMemo(() => {
     const termoEmp = normalize(filters.empresa);
@@ -185,19 +208,26 @@ export default function ServicosSolicitados() {
       const cod = String(s.empresa ?? '');
       const emp = empresaByCodigo.get(cod);
 
-      if (!emp && (termoEmp || alvoRespNome || alvoGrupoNome)) return false;
-      if (!emp) return true;
+      let passaEmpresa = true;
+      let passaResp = true;
+      let passaGrupo = true;
 
-      const codNorm = normalize(emp.cod_folha);
-      const razaoNorm = normalize(emp.razao_social);
-      const empRespNorm = normalize(emp.resp_dp);
-      const empGrupoNorm = normalize(emp.grupo);
+      if (emp) {
+        const codNorm = normalize(emp.cod_folha);
+        const razaoNorm = normalize(emp.razao_social);
+        const empRespNorm = normalize(emp.resp_dp);
+        const empGrupoNorm = normalize(emp.grupo);
 
-      const passaEmpresa =
-        !termoEmp || codNorm.includes(termoEmp) || razaoNorm.includes(termoEmp);
+        passaEmpresa =
+          !termoEmp || codNorm.includes(termoEmp) || razaoNorm.includes(termoEmp);
+        passaResp = !alvoRespNome || empRespNorm === alvoRespNome;
+        passaGrupo = !alvoGrupoNome || empGrupoNorm === alvoGrupoNome;
+      } else {
+        if (termoEmp) return false;
+        passaResp = !filters.responsavelId || String(s.responsavel || '') === String(filters.responsavelId);
+        passaGrupo = !alvoGrupoNome;
+      }
 
-      const passaResp = !alvoRespNome || empRespNorm === alvoRespNome;
-      const passaGrupo = !alvoGrupoNome || empGrupoNorm === alvoGrupoNome;
       const passaServico = !filters.servicoId || String(s.servico) === String(filters.servicoId);
       const passaCompetencia = !filters.competencia || String(s.competencia || '').includes(filters.competencia);
 
@@ -206,17 +236,17 @@ export default function ServicosSolicitados() {
       if (filters.status === "concluido" && !s.data_conclusao) return false;
 
       // filtro de prazo
-      if (filters.prazo !== "todos" && s.data_vencimento) {
-        const venc = new Date(s.data_vencimento.split("-").reverse().join("-"));
+      if (filters.prazo !== "todos" && s.data_para_resposta) {
+        const resposta = new Date(s.data_para_resposta.split("-").reverse().join("-"));
         const concluido = !!s.data_conclusao;
 
-        if (filters.prazo === "atrasados" && (!concluido && venc < hoje)) {
+        if (filters.prazo === "atrasados" && (!concluido && resposta < hoje)) {
           // ok, fica
         } else if (filters.prazo === "atrasados") {
           return false;
         }
 
-        if (filters.prazo === "no_prazo" && (!concluido && venc >= hoje)) {
+        if (filters.prazo === "no_prazo" && (!concluido && resposta >= hoje)) {
           // ok, fica
         } else if (filters.prazo === "no_prazo") {
           return false;
@@ -226,6 +256,55 @@ export default function ServicosSolicitados() {
       return passaEmpresa && passaResp && passaGrupo && passaServico && passaCompetencia;
     });
   }, [solicitacoes, empresaByCodigo, filters, respById, grupoById]);
+
+  const obterValorOrdenacao = (solicitacao, campo) => {
+    switch (campo) {
+      case 'empresa': {
+        const cod = String(solicitacao.empresa ?? '');
+        const emp = empresaByCodigo.get(cod);
+        if (emp) {
+          const parteCodigo = String(emp.cod_folha ?? '').toUpperCase();
+          const parteRazao = String(emp.razao_social ?? '').toUpperCase();
+          return `${parteCodigo} ${parteRazao}`.trim();
+        }
+        return cod.toUpperCase();
+      }
+      case 'responsavel': {
+        if (solicitacao.empresa) {
+          const emp = empresaByCodigo.get(String(solicitacao.empresa));
+          if (emp) return String(emp.resp_dp ?? '').toUpperCase();
+        }
+        return String(solicitacao.responsavel_nome ?? '').toUpperCase();
+      }
+      case 'servico_nome':
+        return String(solicitacao.servico_nome ?? '').toUpperCase();
+      case 'competencia':
+        return String(solicitacao.competencia ?? '');
+      case 'data_solicitacao':
+        return String(solicitacao.data_solicitacao ?? '');
+      case 'data_vencimento':
+        return String(solicitacao.data_vencimento ?? '');
+      case 'data_para_resposta':
+        return String(solicitacao.data_para_resposta ?? '');
+      case 'data_conclusao':
+        return String(solicitacao.data_conclusao ?? '');
+      default:
+        return '';
+    }
+  };
+
+  const solicitacoesOrdenadas = useMemo(() => {
+    if (!ordenacao.campo) return solicitacoesFiltradas;
+    const lista = [...solicitacoesFiltradas];
+    lista.sort((a, b) => {
+      const valA = obterValorOrdenacao(a, ordenacao.campo);
+      const valB = obterValorOrdenacao(b, ordenacao.campo);
+      if (valA < valB) return ordenacao.direcao === 'asc' ? -1 : 1;
+      if (valA > valB) return ordenacao.direcao === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return lista;
+  }, [solicitacoesFiltradas, ordenacao]);
 
   // Helpers
   const renderDetalhes = (s) => {
@@ -289,8 +368,33 @@ export default function ServicosSolicitados() {
     }
   };
  
+  const renderResponsavelBadge = (nomeExibicao, grupoNome) => {
+    const grupoUpper = String(grupoNome || '').toUpperCase();
+    const corFundo = GRUPO_CORES[grupoUpper] || '#1a1f3a';
+    const corTexto = getContrastColor(corFundo);
+    return (
+      <span
+        style={{
+          display: 'inline-block',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          backgroundColor: corFundo,
+          color: corTexto,
+          fontWeight: 600,
+        }}
+      >
+        {nomeExibicao}
+      </span>
+    );
+  };
+
   // empresa
-  const renderEmpresa = (valorEmpresa) => {
+  const renderEmpresa = (solicitacao) => {
+    const valorEmpresa = solicitacao?.empresa;
+    if (valorEmpresa === null || valorEmpresa === undefined || valorEmpresa === '') {
+      return '—';
+    }
+
     const cod = String(valorEmpresa ?? '');
     const emp = empresaByCodigo.get(cod);
     if (!emp) return cod;
@@ -307,30 +411,22 @@ export default function ServicosSolicitados() {
   };
 
 
-  const renderResp = (valorEmpresa) => {
+  const renderResp = (solicitacao) => {
+    const valorEmpresa = solicitacao?.empresa;
+    if (valorEmpresa === null || valorEmpresa === undefined || valorEmpresa === '') {
+      const responsavelId = solicitacao?.responsavel;
+      const responsavel = responsavelId ? respById.get(String(responsavelId)) : null;
+      const nomeResp = (responsavel?.nome || solicitacao?.responsavel_nome || '-').toUpperCase();
+      const grupoNome = responsavel?.grupo ? grupoById.get(String(responsavel.grupo))?.nome : '';
+      return renderResponsavelBadge(nomeResp, grupoNome);
+    }
+
     const cod = String(valorEmpresa ?? '');
     const emp = empresaByCodigo.get(cod);
     if (!emp) return '-';
 
     const nomeResp = (emp.resp_dp || '-').toUpperCase();
-    const nomeGrupo = String(emp.grupo || '').toUpperCase();
-    const corFundo = GRUPO_CORES[nomeGrupo] || '#000';
-    const corTexto = getContrastColor(corFundo);
-
-    return (
-      <span
-        style={{
-          display: 'inline-block',
-          padding: '2px 6px',
-          borderRadius: '4px',
-          backgroundColor: corFundo,
-          color: corTexto,
-          fontWeight: 600,
-        }}
-      >
-        {nomeResp}
-      </span>
-    );
+    return renderResponsavelBadge(nomeResp, emp.grupo || '');
   };
 
   const renderGrupo = (valorEmpresa) => {
@@ -463,48 +559,67 @@ export default function ServicosSolicitados() {
       <table>
         <thead>
           <tr>
-            <th>Empresa</th>
-            <th>Responsável</th>
-            <th>Serviço</th>
+            <th className="sortable-header" onClick={() => alternarOrdenacao('empresa')}>
+              Empresa {iconeOrdenacao('empresa')}
+            </th>
+            <th className="sortable-header" onClick={() => alternarOrdenacao('responsavel')}>
+              Responsável {iconeOrdenacao('responsavel')}
+            </th>
+            <th className="sortable-header" onClick={() => alternarOrdenacao('servico_nome')}>
+              Serviço {iconeOrdenacao('servico_nome')}
+            </th>
             <th>Detalhes</th>
-            <th>Competência</th>
-            <th>Solicitação</th>
-            <th>Vencimento</th>
-            <th>Conclusão</th>
+            <th className="sortable-header" onClick={() => alternarOrdenacao('competencia')}>
+              Competência {iconeOrdenacao('competencia')}
+            </th>
+            <th className="sortable-header" onClick={() => alternarOrdenacao('data_solicitacao')}>
+              Solicitação {iconeOrdenacao('data_solicitacao')}
+            </th>
+            <th className="sortable-header" onClick={() => alternarOrdenacao('data_vencimento')}>
+              Vencimento {iconeOrdenacao('data_vencimento')}
+            </th>
+            <th className="sortable-header" onClick={() => alternarOrdenacao('data_para_resposta')}>
+              Data de Resposta {iconeOrdenacao('data_para_resposta')}
+            </th>
+            <th className="sortable-header" onClick={() => alternarOrdenacao('data_conclusao')}>
+              Conclusão {iconeOrdenacao('data_conclusao')}
+            </th>
             <th>Ações</th>
             <th>Materiais</th>
           </tr>
         </thead>
         <tbody>
-          {solicitacoesFiltradas.map((s) => (
+          {solicitacoesOrdenadas.map((s) => (
             <tr key={s.id}>
-              <td>{renderEmpresa(s.empresa)}</td>
-              <td>{renderResp(s.empresa)}</td>
+              <td>{renderEmpresa(s)}</td>
+              <td>{renderResp(s)}</td>
               <td>{s.servico_nome}</td>
               <td>{renderDetalhes(s)}</td>
               <td>{s.competencia}</td>
               <td>{s.data_solicitacao}</td>
               {/* <td>{s.data_vencimento || '-'}</td> */}
+              <td className="data-col">{s.data_vencimento || '-'}</td>
               <td
+                className="data-col"
                 style={{
-                  backgroundColor: '#E6F0FA', // azul claro fixo no fundo
+                  backgroundColor: '#E6F0FA',
                   color:
-                    s.data_vencimento &&
+                    s.data_para_resposta &&
                     !s.data_conclusao &&
-                    new Date(s.data_vencimento.split('-').reverse().join('-')) < new Date()
+                    new Date(s.data_para_resposta.split('-').reverse().join('-')) < new Date()
                       ? 'red'
                       : 'inherit',
                   fontWeight:
-                    s.data_vencimento &&
+                    s.data_para_resposta &&
                     !s.data_conclusao &&
-                    new Date(s.data_vencimento.split('-').reverse().join('-')) < new Date()
+                    new Date(s.data_para_resposta.split('-').reverse().join('-')) < new Date()
                       ? 'bold'
                       : 'normal',
                 }}
               >
-                {s.data_vencimento || '-'}
+                {s.data_para_resposta || '-'}
               </td>
-              <td>{s.data_conclusao || '-'}</td>
+              <td className="data-col">{s.data_conclusao || '-'}</td>
               <td className="acoes">
                 <button onClick={() => abrirModal(s)} title="Editar">
                   <Pencil size={16} />

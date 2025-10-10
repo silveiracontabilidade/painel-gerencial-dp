@@ -5,8 +5,7 @@ from .models import (
     Responsavel,
     PlanilhaGerencial,
     Servico,
-    ServicoSolicitado,AgendaBase,Sistema, PeriodoEntrega, CCT, PG_PLR,
-    Responsavel,
+    ServicoSolicitado, AgendaBase, AgendaRegra, Sistema, PeriodoEntrega, CCT, PG_PLR,
     MotivoRescisao
     )
 import math
@@ -203,11 +202,13 @@ from .models import ServicoSolicitado, PlanilhaGerencial  # garante import de Pl
 class ServicoSolicitadoSerializer(BaseSerializer):
     empresa_razao_social = serializers.SerializerMethodField(read_only=True)
     servico_nome = serializers.StringRelatedField(source='servico', read_only=True)
+    responsavel_nome = serializers.StringRelatedField(source='responsavel', read_only=True)
 
     class Meta:
         model = ServicoSolicitado
         fields = [
             'id', 'data_solicitacao', 'empresa', 'empresa_razao_social',
+            'responsavel', 'responsavel_nome',
             'servico', 'servico_nome', 'competencia', 'identificacao',
             'descricao_servico', 'data_vencimento', 'data_para_resposta', 'data_conclusao',
 
@@ -243,13 +244,53 @@ class ServicoSolicitadoSerializer(BaseSerializer):
     def get_empresa_razao_social(self, obj):
         return getattr(obj.empresa, 'razao_social', None)
 
- 
+
+
+# # # ---------------------- AGENDA REGRAS ----------------------
+class AgendaRegraSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AgendaRegra
+        fields = ['id', 'campo', 'operador', 'valor', 'conector', 'ordem']
+
 
 # # # ---------------------- AGENDA BASE ----------------------
 class AgendaBaseSerializer(serializers.ModelSerializer):
+    servico_nome = serializers.CharField(source='servico.nome', read_only=True)
+    regras = AgendaRegraSerializer(many=True, required=False)
+
     class Meta:
         model = AgendaBase
         fields = '__all__'
+
+    def create(self, validated_data):
+        regras_data = validated_data.pop('regras', [])
+        agenda = super().create(validated_data)
+        self._atualizar_regras(agenda, regras_data)
+        return agenda
+
+    def update(self, instance, validated_data):
+        regras_data = validated_data.pop('regras', None)
+        agenda = super().update(instance, validated_data)
+        if regras_data is not None:
+            agenda.regras.all().delete()
+            self._atualizar_regras(agenda, regras_data)
+        return agenda
+
+    def _atualizar_regras(self, agenda, regras_data):
+        regras_criadas = []
+        for ordem, regra in enumerate(regras_data, start=1):
+            regras_criadas.append(
+                AgendaRegra(
+                    agenda=agenda,
+                    campo=regra.get('campo', '').upper(),
+                    operador=regra.get('operador', 'IGUAL'),
+                    valor=regra.get('valor', ''),
+                    conector=regra.get('conector', 'AND'),
+                    ordem=regra.get('ordem', ordem),
+                )
+            )
+        if regras_criadas:
+            AgendaRegra.objects.bulk_create(regras_criadas)
 
 
 # # # ---------------------- SISTEMAS ----------------------
@@ -271,6 +312,8 @@ class PeriodoEntregaSerializer(serializers.ModelSerializer):
         tipo = validated_data['tipo']
         if tipo == 'DIA_UTIL':
             descricao = f"{dia}º Dia Útil"
+        elif tipo == 'DIAS_ANTES':
+            descricao = f"{dia} dias antes"
         else:
             descricao = f"Dia {dia}"
         validated_data['descricao'] = descricao
@@ -281,6 +324,8 @@ class PeriodoEntregaSerializer(serializers.ModelSerializer):
         tipo = validated_data.get('tipo', instance.tipo)
         if tipo == 'DIA_UTIL':
             descricao = f"{dia}º Dia Útil"
+        elif tipo == 'DIAS_ANTES':
+            descricao = f"{dia} dias antes"
         else:
             descricao = f"Dia {dia}"
         validated_data['descricao'] = descricao
