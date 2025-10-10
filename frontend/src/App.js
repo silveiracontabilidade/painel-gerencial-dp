@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+import './App.css';
 import Empresas from './pages/empresas';
 import Grupos from './pages/grupos';
 import Responsaveis from './pages/responsaveis';
@@ -13,8 +14,15 @@ import ServicosSolicitados from './pages/servicosSolicitados';
 import MotivosRescisao from './pages/motivosRescisao';
 
 function App() {
+  const isUat = (process.env.REACT_APP_ENV || '').toUpperCase() === 'UAT';
+
   return (
     <BrowserRouter>
+      {isUat && (
+        <div className="env-banner env-banner--uat">
+          ⚠️ Ambiente Homologação (UAT)
+        </div>
+      )}
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Navigate to="/empresas" replace />} />
