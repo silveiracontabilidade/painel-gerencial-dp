@@ -41,9 +41,10 @@
 .empresas-table th,
 .empresas-table td {
   border: 1px solid #ddd;
-  padding: 0.5rem;
+  padding: 0.4rem 0.3rem;
   text-align: left;
-  font-size: 11px;
+  font-size: 10px;
+  box-sizing: border-box;
 }
 
 .empresas-table--uppercase th,
@@ -102,15 +103,15 @@
 }
 
 .col-texto-curto {
-  width: 110px;
-  min-width: 100px;
-  max-width: 130px;
+  width: 100px;
+  min-width: 90px;
+  max-width: 115px;
 }
 
 .col-texto-curto2 {
-  width: 60px;
-  min-width: 60px;
-  max-width: 80px;
+  width: 50px;
+  min-width: 45px;
+  max-width: 65px;
 }
 
 .col-texto-muito-curto {
@@ -120,8 +121,8 @@
 }
 
 .col-texto-longo {
-  width: 150px;
-  min-width: 150px;
+  width: 140px;
+  min-width: 130px;
   max-width: 150px;
 }
 
@@ -132,8 +133,8 @@
 }
 
 .col-texto-medio {
-  width: 60px;
-  min-width: 60px;
+  width: 55px;
+  min-width: 55px;
   max-width: 60px;
 }
 
@@ -182,13 +183,17 @@
   font-weight: bold;
 }
 
-.status-cell,
-.boolean-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
+.status-cell {
+  padding: 0.5rem 0;
   text-align: center;
+  vertical-align: middle;
+  background: transparent;
+}
+
+.boolean-cell {
+  padding: 0.5rem 0;
+  text-align: center;
+  vertical-align: middle;
   background: transparent;
 }
 
@@ -205,6 +210,10 @@
 }
 
 .boolean-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   font-size: 12px;
   font-weight: 700;
   line-height: 1;

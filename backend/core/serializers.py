@@ -101,7 +101,8 @@ class ResponsavelSerializer(serializers.ModelSerializer):
             password="Mudar123"
         )
 
-        responsavel = Responsavel.objects.create(usuario=username, **validated_data)
+        dados_responsavel = {**validated_data, 'usuario': username}
+        responsavel = Responsavel.objects.create(**dados_responsavel)
         return responsavel
 
     def update(self, instance, validated_data):

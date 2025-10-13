@@ -61,6 +61,20 @@ const grupoDerivado = useCallback(
   [responsaveisPorNome]
 );
 
+const ramalDerivado = useCallback(
+  (empresa) => {
+    if (!empresa) return '';
+    const respNome = (empresa.resp_dp || '').toUpperCase();
+    const responsavel = respNome ? responsaveisPorNome.get(respNome) : null;
+    const ramalFonte = responsavel?.ramal ?? empresa.ramal;
+    return ramalFonte ? String(ramalFonte).toUpperCase() : '';
+  },
+  [responsaveisPorNome]
+);
+
+const compararTexto = (a, b) =>
+  a.localeCompare(b, 'pt', { sensitivity: 'base', ignorePunctuation: true });
+
 // lista de campos considerados "avançados"
 const camposAvancados = [
   "sci_report","visitacao","tempo_demandado","serv_prest","serv_tom","deson",
@@ -210,7 +224,7 @@ const [filters, setFilters] = useState({
       (!filters.sistema || normalize(emp.sistema) === normalize(filters.sistema)) &&
       (!filters.grupo || normalize(grupoDerivado(emp)) === normalize(filters.grupo)) &&
       (!filters.resp_dp || normalize(emp.resp_dp) === normalize(filters.resp_dp)) &&
-      (!filters.ramal || normalize(emp.ramal).includes(normalize(filters.ramal))) &&
+      (!filters.ramal || normalize(ramalDerivado(emp)).includes(normalize(filters.ramal))) &&
       (!filters.categoria || normalize(emp.classificacao) === normalize(filters.categoria)) &&
       (!filters.classificacao2 || normalize(emp.classificacao2) === normalize(filters.classificacao2)) &&
       (!filters.matriz || normalize(emp.matriz).includes(normalize(filters.matriz))) &&
@@ -225,17 +239,26 @@ const [filters, setFilters] = useState({
     // Aplica ordenação, se houver campo definido
     if (ordenacao.campo) {
       filtradas.sort((a, b) => {
-        let valA = a[ordenacao.campo] || '';
-        let valB = b[ordenacao.campo] || '';
-
-        // 👉 Se for cod_folha, compara como número
         if (ordenacao.campo === 'cod_folha') {
-          const numA = parseInt(valA, 10) || 0;
-          const numB = parseInt(valB, 10) || 0;
+          const numA = parseInt(a.cod_folha, 10) || 0;
+          const numB = parseInt(b.cod_folha, 10) || 0;
           return ordenacao.direcao === 'asc' ? numA - numB : numB - numA;
         }
 
-        // Comparação normal (texto)
+        let valA;
+        let valB;
+
+        if (ordenacao.campo === 'grupo') {
+          valA = grupoDerivado(a);
+          valB = grupoDerivado(b);
+        } else if (ordenacao.campo === 'ramal') {
+          valA = ramalDerivado(a);
+          valB = ramalDerivado(b);
+        } else {
+          valA = a[ordenacao.campo] || '';
+          valB = b[ordenacao.campo] || '';
+        }
+
         valA = valA.toString().toUpperCase();
         valB = valB.toString().toUpperCase();
         if (valA < valB) return ordenacao.direcao === 'asc' ? -1 : 1;
@@ -245,7 +268,7 @@ const [filters, setFilters] = useState({
     }
 
     return filtradas;
-  }, [empresas, filters, ordenacao, grupoDerivado]);
+  }, [empresas, filters, ordenacao, grupoDerivado, ramalDerivado]);
   
 
   const empresasVisiveis = useMemo(() => {
@@ -281,7 +304,8 @@ const [filters, setFilters] = useState({
       if (emp.sistema) sistemas.add(emp.sistema);
       const grupo = grupoDerivado(emp);
       if (grupo) grupos.add(grupo);
-      if (emp.resp_dp) responsaveisSet.add(emp.resp_dp);
+      const responsavelNome = (emp.resp_dp || '').toString().trim();
+      if (responsavelNome) responsaveisSet.add(responsavelNome.toUpperCase());
     });
 
     return {
@@ -290,6 +314,38 @@ const [filters, setFilters] = useState({
       resp_dp: Array.from(responsaveisSet).sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })),
     };
   }, [empresas, grupoDerivado]);
+
+  const classificacaoOptions = useMemo(
+    () => ['Bronze', 'Diamante', 'Ouro', 'Prata'].sort(compararTexto),
+    []
+  );
+
+  const classificacao2Options = useMemo(
+    () =>
+      [
+        'BPO FIN',
+        'BPO RH',
+        'CARNÊ LEÃO',
+        'CONSULTORIA',
+        'DOM S/ MOV',
+        'DOMÉSTICA',
+        'FACULTATIVO',
+        'FATOR R',
+        'FATOR R + FUNCS',
+        'FOLHA COM DADOS',
+        'FOLHA SEM DADOS',
+        'PRÓ LABORE',
+        'SEM MOVIMENTO',
+        'TIME OUT',
+      ].sort(compararTexto),
+    []
+  );
+
+  const periodosOrdenados = useMemo(() => {
+    return [...periodosEntrega]
+      .filter((periodo) => periodo?.descricao)
+      .sort((a, b) => compararTexto(a.descricao || '', b.descricao || ''));
+  }, [periodosEntrega]);
 
 useEffect(() => {
   api
@@ -544,7 +600,7 @@ const salvarEmpresa = async (empresa) => {
           <thead>
             <tr>
               <th className="col-texto-muito-curto">#</th>
-              <th className="col-texto-curto2" onClick={() => handleOrdenar('cod_folha')} style={{ cursor: 'pointer' }}>
+              <th className="col-texto-muito-curto" onClick={() => handleOrdenar('cod_folha')} style={{ cursor: 'pointer' }}>
                 Código {ordenacao.campo === 'cod_folha' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-texto-longo" onClick={() => handleOrdenar('razao_social')} style={{ cursor: 'pointer' }}>
@@ -568,7 +624,7 @@ const salvarEmpresa = async (empresa) => {
               <th className="col-texto-medio" onClick={() => handleOrdenar('tributacao')} style={{ cursor: 'pointer' }}>
                 Tributação {ordenacao.campo === 'tributacao' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="col-texto-medio" onClick={() => handleOrdenar('sistema')} style={{ cursor: 'pointer' }}>
+              <th className="col-texto-muito-curto" onClick={() => handleOrdenar('sistema')} style={{ cursor: 'pointer' }}>
                 Sistema {ordenacao.campo === 'sistema' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-texto-medio" onClick={() => handleOrdenar('grupo')} style={{ cursor: 'pointer' }}>
@@ -577,9 +633,9 @@ const salvarEmpresa = async (empresa) => {
               <th className="col-texto-medio" onClick={() => handleOrdenar('resp_dp')} style={{ cursor: 'pointer' }}>
                 Responsável {ordenacao.campo === 'resp_dp' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
-              {/* <th className="col-texto-sim-nao" onClick={() => handleOrdenar('ramal')} style={{ cursor: 'pointer' }}>
+              <th className="col-texto-curto2" onClick={() => handleOrdenar('ramal')} style={{ cursor: 'pointer' }}>
                 Ramal {ordenacao.campo === 'ramal' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
-              </th> */}
+              </th>
               <th className="col-data" onClick={() => handleOrdenar('data_pagto_salario')} style={{ cursor: 'pointer' }}>
                 Data Pgt. {ordenacao.campo === 'data_pagto_salario' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
@@ -603,7 +659,7 @@ const salvarEmpresa = async (empresa) => {
                   <input type="checkbox" checked={todosSelecionados} readOnly />
                 </button>
               </th>
-              <th className="col-texto-curto">
+              <th className="col-texto-muito-curto">
                 <input type="text" value={filters.cod_folha} onChange={handleFilterChange('cod_folha')} className={filters.cod_folha ? 'filtro-ativo' : ''} />
               </th>
               <th className="col-texto-longo">
@@ -634,7 +690,7 @@ const salvarEmpresa = async (empresa) => {
               <th className="col-texto-medio">
                 <input type="text" value={filters.tributacao} onChange={handleFilterChange('tributacao')} className={filters.tributacao ? 'filtro-ativo' : ''} />
               </th>
-              <th className="col-texto-medio">
+              <th className="col-texto-muito-curto">
                 <select value={filters.sistema} onChange={handleFilterChange('sistema')} className={filters.sistema ? 'filtro-ativo' : ''}>
                   <option value="">Todos</option>
                   {options.sistema.map(o => <option key={o} value={o}>{o}</option>)}
@@ -652,6 +708,9 @@ const salvarEmpresa = async (empresa) => {
                   {options.resp_dp.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </th>
+              <th className="col-texto-curto2">
+                <input type="text" value={filters.ramal} onChange={handleFilterChange('ramal')} className={filters.ramal ? 'filtro-ativo' : ''} />
+              </th>
               
               <th className="col-data">
                 <select
@@ -660,9 +719,8 @@ const salvarEmpresa = async (empresa) => {
                   className={filters.data_pagto_salario_inicio ? 'filtro-ativo' : ''}
                 >
                   <option value="">Todos</option>
-                  {periodosEntrega.map((periodo) => {
-                    const valor = periodo?.descricao || '';
-                    if (!valor) return null;
+                  {periodosOrdenados.map((periodo) => {
+                    const valor = periodo.descricao;
                     return (
                       <option key={periodo.id ?? valor} value={valor}>
                         {valor.toUpperCase()}
@@ -671,32 +729,20 @@ const salvarEmpresa = async (empresa) => {
                   })}
                 </select>
               </th>
-              <th className="col-texto-curto">
+              <th className="col-texto-muito-curto">
                 <select value={filters.classificacao} onChange={handleFilterChange('classificacao')} className={filters.classificacao ? 'filtro-ativo' : ''}>
                   <option value="">Todos</option>
-                  <option value="Bronze">Bronze</option>
-                  <option value="Prata">Prata</option>
-                  <option value="Ouro">Ouro</option>
-                  <option value="Diamante">Diamante</option>
+                  {classificacaoOptions.map((opcao) => (
+                    <option key={opcao} value={opcao}>{opcao}</option>
+                  ))}
                 </select>
               </th>
               <th>
                 <select value={filters.classificacao2} onChange={handleFilterChange('classificacao2')}>
                   <option value="">Todos</option>
-                  <option value="BPO FIN">BPO FIN</option>
-                  <option value="BPO RH">BPO RH</option>
-                  <option value="CARNÊ LEÃO">CARNÊ LEÃO</option>
-                  <option value="CONSULTORIA">CONSULTORIA</option>
-                  <option value="DOM S/ MOV">DOM S/ MOV</option>
-                  <option value="DOMÉSTICA">DOMÉSTICA</option>
-                  <option value="FACULTATIVO">FACULTATIVO</option>
-                  <option value="FATOR R">FATOR R</option>
-                  <option value="FATOR R + FUNCS">FATOR R + FUNCS</option>
-                  <option value="FOLHA COM DADOS">FOLHA COM DADOS</option>
-                  <option value="FOLHA SEM DADOS">FOLHA SEM DADOS</option>
-                  <option value="PRÓ LABORE">PRÓ LABORE</option>
-                  <option value="TIME OUT">TIME OUT</option>
-                  <option value="SEM MOVIMENTO">SEM MOVIMENTO</option>
+                  {classificacao2Options.map((opcao) => (
+                    <option key={opcao} value={opcao}>{opcao}</option>
+                  ))}
                 </select>
               </th>
               <th className="col-bool">
@@ -748,6 +794,7 @@ const salvarEmpresa = async (empresa) => {
                 <td>{(emp.sistema || '').toUpperCase()}</td>
                 <td>{grupoDerivado(emp)}</td>
                 <td>{(emp.resp_dp || '').toUpperCase()}</td>
+                <td className="col-texto-curto2">{ramalDerivado(emp)}</td>
                 <td>{emp.data_pagto_salario}</td>
                 <td>{(emp.classificacao || '').toUpperCase()}</td>
                 <td className={`classificacao2 ${emp.classificacao2?.toUpperCase().replace(/\s+/g, '-').replace('+','-')}`}>
