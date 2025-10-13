@@ -6,6 +6,25 @@ import './Empresas.css';
 import { paraISO, paraBR } from '../../utils/datas';
 import FiltrosAvancadosModal from './FiltrosAvancadosModal';
 
+const StatusBadge = ({ status }) => {
+  const normalized = (status || '').toUpperCase();
+  if (!normalized) return <span className="status-badge status-badge--empty">&nbsp;</span>;
+
+  let color = '#999';
+  if (normalized === 'ATIVO') color = '#2ecc71';
+  else if (normalized === 'INATIVO') color = '#e74c3c';
+  else color = '#f39c12';
+
+  return <span className="status-badge" style={{ backgroundColor: color }} title={normalized} />;
+};
+
+const BooleanIcon = ({ value }) => {
+  const normalized = (value || '').toUpperCase();
+  if (normalized === 'SIM') return <span className="boolean-icon boolean-icon--yes" title="SIM">✔</span>;
+  if (normalized === 'NÃO' || normalized === 'NAO') return <span className="boolean-icon boolean-icon--no" title="NÃO">✘</span>;
+  return <span className="boolean-icon boolean-icon--empty">—</span>;
+};
+
 export default function Empresas() {
 
 const [empresas, setEmpresas] = useState([]);
@@ -537,7 +556,7 @@ const salvarEmpresa = async (empresa) => {
               <th className="col-texto-curto" onClick={() => handleOrdenar('cnpj')} style={{ cursor: 'pointer' }}>
                 CNPJ {ordenacao.campo === 'cnpj' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="col-texto-medio" onClick={() => handleOrdenar('status_do_cliente')} style={{ cursor: 'pointer' }}>
+              <th className="col-status text-uppercase" onClick={() => handleOrdenar('status_do_cliente')} style={{ cursor: 'pointer' }}>
                 Status {ordenacao.campo === 'status_do_cliente' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
               <th className="col-data" onClick={() => handleOrdenar('inicio_contrato')} style={{ cursor: 'pointer' }}>
@@ -571,10 +590,10 @@ const salvarEmpresa = async (empresa) => {
                 Classificação {ordenacao.campo === 'classificacao2' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
 
-              <th className="col-texto-sim-nao" onClick={() => handleOrdenar('matriz')} style={{ cursor: 'pointer' }}>
+              <th className="col-bool" onClick={() => handleOrdenar('matriz')} style={{ cursor: 'pointer' }}>
                 Matriz {ordenacao.campo === 'matriz' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
-              <th className="col-texto-sim-nao" onClick={() => handleOrdenar('enviadctf')} style={{ cursor: 'pointer' }}>
+              <th className="col-bool" onClick={() => handleOrdenar('enviadctf')} style={{ cursor: 'pointer' }}>
                 DCTF {ordenacao.campo === 'enviadctf' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
               </th>
             </tr>
@@ -596,7 +615,7 @@ const salvarEmpresa = async (empresa) => {
               <th className="col-texto-curto">
                 <input type="text" value={filters.cnpj} onChange={handleFilterChange('cnpj')} className={filters.cnpj ? 'filtro-ativo' : ''} />
               </th>
-              <th className="col-texto-medio">
+              <th className="col-status">
                 <select value={filters.status_do_cliente} onChange={handleFilterChange('status_do_cliente')} className={filters.status_do_cliente ? 'filtro-ativo' : ''}>
                   <option value="">Todos</option>
                   <option value="Ativo">Ativo</option>
@@ -680,14 +699,14 @@ const salvarEmpresa = async (empresa) => {
                   <option value="SEM MOVIMENTO">SEM MOVIMENTO</option>
                 </select>
               </th>
-              <th className="col-texto-curto">
+              <th className="col-bool">
                 <select value={filters.matriz} onChange={handleFilterChange('matriz')} className={filters.matriz ? 'filtro-ativo' : ''}>
                   <option value="">Todos</option>
                   <option value="Sim">Sim</option>
                   <option value="Não">Não</option>
                 </select>
               </th>
-              <th className="col-texto-curto">
+              <th className="col-bool">
                 <select value={filters.enviadctf} onChange={handleFilterChange('enviadctf')} className={filters.enviadctf ? 'filtro-ativo' : ''}>
                   <option value="">Todos</option>
                   <option value="Sim">Sim</option>
@@ -719,23 +738,23 @@ const salvarEmpresa = async (empresa) => {
                 >
                   {emp.cod_folha}
                 </td>
-                <td>{emp.razao_social}</td>
-                <td>{emp.grupo_economico}</td>
+                <td>{(emp.razao_social || '').toUpperCase()}</td>
+                <td>{(emp.grupo_economico || '').toUpperCase()}</td>
                 <td>{emp.cnpj_formatado}</td>
-                <td>{emp.status_do_cliente}</td>
+                <td className="status-cell"><StatusBadge status={emp.status_do_cliente} /></td>
                 <td>{emp.inicio_contrato}</td>
                 <td>{emp.termino_contrato}</td>
-                <td>{emp.tributacao}</td>
-                <td>{emp.sistema}</td>
+                <td>{(emp.tributacao || '').toUpperCase()}</td>
+                <td>{(emp.sistema || '').toUpperCase()}</td>
                 <td>{grupoDerivado(emp)}</td>
-                <td>{emp.resp_dp}</td>
+                <td>{(emp.resp_dp || '').toUpperCase()}</td>
                 <td>{emp.data_pagto_salario}</td>
-                <td>{emp.classificacao}</td>
+                <td>{(emp.classificacao || '').toUpperCase()}</td>
                 <td className={`classificacao2 ${emp.classificacao2?.toUpperCase().replace(/\s+/g, '-').replace('+','-')}`}>
-                    {emp.classificacao2}
+                    {(emp.classificacao2 || '').toUpperCase()}
                 </td>
-                <td>{emp.matriz}</td>
-                <td>{emp.enviadctf}</td>
+                <td className="boolean-cell"><BooleanIcon value={emp.matriz} /></td>
+                <td className="boolean-cell"><BooleanIcon value={emp.enviadctf} /></td>
               </tr>
             ))}
           </tbody>

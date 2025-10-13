@@ -27,7 +27,7 @@
 .empresas-tabela-wrapper {
   flex: 1;
   overflow-y: auto;
-  overflow-x: auto;
+  overflow-x: hidden;
   border: 1px solid #ccc;     /* borda cinza */
   background-color: #fff;     /* fundo branco para destacar */
 }
@@ -35,7 +35,7 @@
 .empresas-table {
   border-collapse: collapse;
   width: 100%;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .empresas-table th,
@@ -44,6 +44,25 @@
   padding: 0.5rem;
   text-align: left;
   font-size: 11px;
+}
+
+.empresas-table--uppercase th,
+.empresas-table--uppercase td {
+  text-transform: uppercase;
+}
+
+.col-status {
+  width: 38px;
+  min-width: 32px;
+  max-width: 42px;
+  text-align: center;
+}
+
+.col-bool {
+  width: 46px;
+  min-width: 40px;
+  max-width: 52px;
+  text-align: center;
 }
 
 .empresas-table thead th {
@@ -83,15 +102,15 @@
 }
 
 .col-texto-curto {
-  width: 100px;
+  width: 110px;
   min-width: 100px;
-  max-width: 100px;
+  max-width: 130px;
 }
 
 .col-texto-curto2 {
-  width: 40px;
-  min-width: 100px;
-  max-width: 100px;
+  width: 60px;
+  min-width: 60px;
+  max-width: 80px;
 }
 
 .col-texto-muito-curto {
@@ -161,6 +180,49 @@
   background-color: #C3996B; /* ajuste como preferir */
   color: #fff;
   font-weight: bold;
+}
+
+.status-cell,
+.boolean-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  text-align: center;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.status-badge {
+  display: inline-flex;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #999;
+}
+
+.status-badge--empty {
+  opacity: 0.4;
+}
+
+.boolean-icon {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.boolean-icon--yes {
+  color: #2ecc71;
+}
+
+.boolean-icon--no {
+  color: #e74c3c;
+}
+
+.boolean-icon--empty {
+  color: #b0b0b0;
 }
 
 .modal-overlay {
