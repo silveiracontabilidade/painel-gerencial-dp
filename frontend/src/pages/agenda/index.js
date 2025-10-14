@@ -3,12 +3,81 @@ import { Plus, Pencil, Trash2, Check, X, Play } from 'lucide-react';
 import api from '../../api/axios';
 import './Agenda.css';
 
+const ordenarPt = (a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' });
+
+const CAMPOS_REGRA_CONFIG = [
+  { value: 'CLASSIFICACAO2', label: 'Classificação' },
+  { value: 'SECCONCI', label: 'SECONCI' },
+  { value: 'APURA_VT', label: 'Apura VT' },
+  { value: 'SERV_PREST', label: 'Serviços Prestados' },
+  { value: 'PLANILHA_CONVENIO', label: 'Planilha Convênio' },
+  { value: 'PLANILHA_FOLHA', label: 'Planilha Folha' },
+  { value: 'DESON', label: 'Desoneração' },
+  { value: 'ADIANTAMENTO', label: 'Adiantamento' },
+  { value: 'PLR', label: 'PLR' },
+  { value: 'DT_13_ADIANTAMENTO_ENTREGA', label: '13º adiantamento' },
+  { value: 'DT_13_ENTREGA', label: '13º pagamento' },
+  { value: 'ENVIA_PONTO', label: 'Envia ponto' },
+];
+
+const CAMPOS_BOOLEANOS = new Set([
+  'SECCONCI',
+  'APURA_VT',
+  'SERV_PREST',
+  'PLANILHA_CONVENIO',
+  'PLANILHA_FOLHA',
+  'DESON',
+  'ADIANTAMENTO',
+  'PLR',
+  'ENVIA_PONTO',
+]);
+
+const CAMPOS_PREENCHIMENTO = new Set(['DT_13_ADIANTAMENTO_ENTREGA', 'DT_13_ENTREGA']);
+const CAMPOS_SEM_OPERADOR = new Set([...CAMPOS_BOOLEANOS, ...CAMPOS_PREENCHIMENTO]);
+
+const LABEL_POR_CAMPO = CAMPOS_REGRA_CONFIG.reduce((acc, item) => {
+  acc[item.value] = item.label;
+  return acc;
+}, {});
+
+const formatarDistribuicao = (valor) => {
+  if (!valor) return '-';
+  return valor
+    .split(' ')
+    .map((parte) => {
+      const texto = (parte || '').toLowerCase();
+      if (!texto) return '';
+      if (['e', 'de', 'da', 'do', 'das', 'dos'].includes(texto)) {
+        return texto;
+      }
+      return texto.charAt(0).toUpperCase() + texto.slice(1);
+    })
+    .join(' ');
+};
+
+const CLASSIFICACAO2_OPTIONS = [
+  'BPO FIN',
+  'BPO RH',
+  'CARNÊ LEÃO',
+  'CONSULTORIA',
+  'DOM S/ MOV',
+  'DOMÉSTICA',
+  'FACULTATIVO',
+  'FATOR R',
+  'FATOR R + FUNCS',
+  'FOLHA COM DADOS',
+  'FOLHA SEM DADOS',
+  'PRÓ LABORE',
+  'SEM MOVIMENTO',
+  'TIME OUT',
+].sort(ordenarPt);
+
 export default function AgendaBase() {
   const [itens, setItens] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
-const [dados, setDados] = useState({
+  const [dados, setDados] = useState({
     periodo: '',
-    dia: '',
+    dia: '1',
     mes: '',
     nome: '',
     descricao: '',
@@ -26,25 +95,39 @@ const [dados, setDados] = useState({
   const camposPeriodoEmpresa = [
     { value: 'dt_adiantamento_entrega', label: 'Entrega do adiantamento' },
     { value: 'plr_dt_entrega', label: 'Entrega do PLR' },
-    { value: 'dt_13_adiantamento_entrega', label: 'Adiantamento 13º' },
-    { value: 'dt_13_entrega', label: 'Entrega 13º' },
+    { value: 'dt_13_adiantamento_entrega', label: '13º adiantamento' },
+    { value: 'dt_13_entrega', label: '13º pagamento' },
     { value: 'ponto_entrega', label: 'Entrega do ponto' },
   ];
 
-  const camposRegra = [
-    { value: 'CLASSIFICACAO2', label: 'Classificação 2' },
-    { value: 'SECCONCI', label: 'SECONCI' },
-    { value: 'APURA_VT', label: 'Apura VT' },
-    { value: 'SERV_PREST', label: 'Serviços Prestados' },
-    { value: 'PLANILHA_CONVENIO', label: 'Planilha Convênio' },
-    { value: 'PLANILHA_FOLHA', label: 'Planilha Folha' },
-    { value: 'DESON', label: 'Desoneração' },
-    { value: 'ADIANTAMENTO', label: 'Adiantamento' },
-    { value: 'PLR', label: 'PLR' },
-    { value: 'DT_13_ADIANTAMENTO_ENTREGA', label: 'Adiantamento 13º' },
-    { value: 'DT_13_ENTREGA', label: 'Entrega 13º' },
-    { value: 'ENVIA_PONTO', label: 'Envia ponto' },
-  ];
+  const camposRegra = CAMPOS_REGRA_CONFIG;
+  const obterLabelCampo = (campo) => LABEL_POR_CAMPO[campo] || campo;
+  const ehCampoSemOperador = (campo) => CAMPOS_SEM_OPERADOR.has(campo);
+  const ehCampoBooleano = (campo) => CAMPOS_BOOLEANOS.has(campo);
+  const ehCampoPreenchimento = (campo) => CAMPOS_PREENCHIMENTO.has(campo);
+  const construirRegraNormalizada = (regra, index = 0) => {
+    const campoUpper = (regra.campo || '').toUpperCase();
+    const base = {
+      id: regra.id,
+      campo: campoUpper,
+      operador: (regra.operador || 'IGUAL').toUpperCase(),
+      valor: regra.valor || '',
+      conector: (regra.conector || 'AND').toUpperCase(),
+      ordem: regra.ordem ?? index + 1,
+    };
+
+    if (ehCampoBooleano(campoUpper)) {
+      base.operador = 'IGUAL';
+      base.valor = base.valor || 'Sim';
+    }
+
+    if (ehCampoPreenchimento(campoUpper)) {
+      base.operador = 'IGUAL';
+      base.valor = 'PREENCHIDO';
+    }
+
+    return base;
+  };
 
   const operadoresRegra = [
     { value: 'IGUAL', label: 'Igual' },
@@ -68,6 +151,7 @@ const [dados, setDados] = useState({
     descricao: '',
     servico: '',
     tipo_distribuicao: '',
+    fonte_data: '',
   });
   const [servicos, setServicos] = useState([]);
   const [modalLoteAberto, setModalLoteAberto] = useState(false);
@@ -101,6 +185,7 @@ const [dados, setDados] = useState({
         regras: item.regras || [],
         usa_data_agenda: usaAgenda,
         campo_periodo_empresa: item.campo_periodo_empresa ?? '',
+        tipo_distribuicao: item.tipo_distribuicao ? item.tipo_distribuicao.toLowerCase().trim() : '',
       };
     });
     setItens(normalizados);
@@ -144,7 +229,12 @@ const [dados, setDados] = useState({
       (!filtros.nome || i.nome?.toLowerCase().includes(filtros.nome.toLowerCase())) &&
       (!filtros.descricao || i.descricao?.toLowerCase().includes(filtros.descricao.toLowerCase())) &&
       (!filtros.servico || String(i.servico ?? '') === filtros.servico) &&
-      (!filtros.tipo_distribuicao || i.tipo_distribuicao?.toLowerCase().includes(filtros.tipo_distribuicao.toLowerCase()))
+      (!filtros.tipo_distribuicao || i.tipo_distribuicao?.toLowerCase() === filtros.tipo_distribuicao.toLowerCase()) &&
+      (!filtros.fonte_data || (
+        filtros.fonte_data === 'agenda'
+          ? (i.usa_data_agenda ?? true)
+          : (i.usa_data_agenda === false && i.campo_periodo_empresa === filtros.fonte_data)
+      ))
     );
   }, [itensOrdenados, filtros]);
 
@@ -210,7 +300,7 @@ const [dados, setDados] = useState({
     const linhaVazia = {
       id: ID_TEMP,
       periodo: '',
-      dia: '',
+      dia: '1',
       mes: '',
       nome: '',
       descricao: '',
@@ -234,17 +324,13 @@ const [dados, setDados] = useState({
     setDados({
       ...item,
       periodo: (item.periodo || '').toLowerCase().trim(),
+      dia: item.dia !== undefined && item.dia !== null ? String(item.dia) : '1',
+      mes: item.mes !== undefined && item.mes !== null ? String(item.mes) : '',
       servico: item.servico ? String(item.servico) : '',
+      tipo_distribuicao: item.tipo_distribuicao ? item.tipo_distribuicao.toLowerCase().trim() : '',
       usa_data_agenda: usaAgenda,
       campo_periodo_empresa: item.campo_periodo_empresa ?? '',
-      regras: (item.regras || []).map((regra, index) => ({
-        id: regra.id,
-        campo: regra.campo,
-        operador: regra.operador,
-        valor: regra.valor,
-        conector: regra.conector,
-        ordem: regra.ordem ?? index + 1,
-      })),
+      regras: (item.regras || []).map((regra, index) => construirRegraNormalizada(regra, index)),
     });
   };
 
@@ -255,7 +341,7 @@ const [dados, setDados] = useState({
     setEditandoId(null);
     setDados({
       periodo: '',
-      dia: '',
+      dia: '1',
       mes: '',
       nome: '',
       descricao: '',
@@ -269,30 +355,59 @@ const [dados, setDados] = useState({
 
   /* ---------- salvar ---------- */
   const salvar = async (id) => {
-    if (!dados.periodo || !dados.dia || !dados.nome || !dados.descricao || !dados.tipo_distribuicao) {
+    const usaAgenda = dados.usa_data_agenda !== false;
+
+    if (!dados.nome || !dados.descricao || !dados.servico || !dados.tipo_distribuicao) {
       alert('Preencha todos os campos obrigatórios.');
       return;
     }
 
-    if (dados.periodo !== 'mensal' && (dados.mes === '' || dados.mes === null)) {
-      alert('O campo "Mês" é obrigatório quando o período for semestral ou anual.');
-      return;
+    if (usaAgenda) {
+      if (!dados.periodo || !dados.dia) {
+        alert('Informe período e dia quando a data base for a agenda.');
+        return;
+      }
+
+      if (dados.periodo !== 'mensal' && (dados.mes === '' || dados.mes === null)) {
+        alert('Informe o mês quando o período não for mensal.');
+        return;
+      }
     }
 
-    if (dados.usa_data_agenda === false && !dados.campo_periodo_empresa) {
+    if (!usaAgenda && !dados.campo_periodo_empresa) {
       alert('Selecione o campo de referência para calcular a data nas empresas.');
       return;
     }
 
+    const periodoNormalizado = usaAgenda ? (dados.periodo || '').toLowerCase().trim() : null;
+    const diaBruto = dados.dia === '' || dados.dia === null ? null : Number(dados.dia);
+    const servicoNumero = Number(dados.servico);
+
+    if (usaAgenda && (diaBruto === null || Number.isNaN(diaBruto))) {
+      alert('Informe um dia válido.');
+      return;
+    }
+
+    const diaPayload = usaAgenda
+      ? diaBruto
+      : (Number.isNaN(diaBruto) || diaBruto === null ? 1 : diaBruto);
+
+    if (Number.isNaN(servicoNumero)) {
+      alert('Selecione um serviço válido.');
+      return;
+    }
+
     const payload = {
-      periodo: (dados.periodo || '').toLowerCase().trim(),
-      dia: dados.dia,
+      periodo: periodoNormalizado,
+      dia: diaPayload,
       nome: dados.nome,
       descricao: dados.descricao,
-      servico: dados.servico ? Number(dados.servico) : null,
-      tipo_distribuicao: dados.tipo_distribuicao,
-      usa_data_agenda: dados.usa_data_agenda !== false,
-      campo_periodo_empresa: dados.usa_data_agenda !== false
+      servico: servicoNumero,
+      tipo_distribuicao: dados.tipo_distribuicao
+        ? dados.tipo_distribuicao.toLowerCase().trim()
+        : null,
+      usa_data_agenda: usaAgenda,
+      campo_periodo_empresa: usaAgenda
         ? null
         : (dados.campo_periodo_empresa || null),
       regras: (dados.regras || []).map((regra, index) => ({
@@ -305,10 +420,11 @@ const [dados, setDados] = useState({
       })),
     };
 
-    if (dados.periodo === 'mensal') {
+    if (!usaAgenda || periodoNormalizado === 'mensal') {
       payload.mes = null;
     } else {
-      payload.mes = dados.mes === '' ? null : parseInt(dados.mes, 10);
+      const mesNormalizado = dados.mes === '' || dados.mes === null ? null : Number(dados.mes);
+      payload.mes = Number.isNaN(mesNormalizado) ? null : mesNormalizado;
     }
 
     try {
@@ -335,23 +451,24 @@ const [dados, setDados] = useState({
 
   const handleFonteDataChange = (valor) => {
     if (valor === 'agenda') {
-      setDados((prev) => ({ ...prev, usa_data_agenda: true, campo_periodo_empresa: '' }));
+      setDados((prev) => ({
+        ...prev,
+        usa_data_agenda: true,
+        campo_periodo_empresa: '',
+      }));
     } else {
-      setDados((prev) => ({ ...prev, usa_data_agenda: false, campo_periodo_empresa: valor }));
+      setDados((prev) => ({
+        ...prev,
+        usa_data_agenda: false,
+        campo_periodo_empresa: valor,
+      }));
     }
   };
 
   const abrirModalRegras = (item) => {
     const origem = editandoId === item.id ? (dados.regras || []) : (item.regras || []);
     const copia = origem.length > 0
-      ? origem.map((regra, index) => ({
-          id: regra.id,
-          campo: regra.campo || '',
-          operador: regra.operador || 'IGUAL',
-          valor: regra.valor || '',
-          conector: regra.conector || 'AND',
-          ordem: regra.ordem || index + 1,
-        }))
+      ? origem.map((regra, index) => construirRegraNormalizada(regra, index))
       : [{ campo: '', operador: 'IGUAL', valor: '', conector: 'AND', ordem: 1 }];
     setRegraItemId(item.id);
     setRegrasTemp(copia);
@@ -374,6 +491,31 @@ const [dados, setDados] = useState({
     });
   };
 
+  const handleCampoChange = (index, valor) => {
+    const campoNormalizado = (valor || '').toUpperCase();
+    setRegrasTemp((prev) => {
+      const copia = [...prev];
+      const atual = { ...copia[index], campo: campoNormalizado };
+
+      if (ehCampoBooleano(campoNormalizado)) {
+        atual.operador = 'IGUAL';
+        atual.valor = 'Sim';
+      } else if (ehCampoPreenchimento(campoNormalizado)) {
+        atual.operador = 'IGUAL';
+        atual.valor = 'PREENCHIDO';
+      } else {
+        atual.operador = atual.operador || 'IGUAL';
+        if (campoNormalizado === 'CLASSIFICACAO2') {
+          const possuiValor = CLASSIFICACAO2_OPTIONS.includes(atual.valor || '');
+          atual.valor = possuiValor ? atual.valor : '';
+        }
+      }
+
+      copia[index] = atual;
+      return copia;
+    });
+  };
+
   const adicionarRegra = () => {
     setRegrasTemp((prev) => ([
       ...prev,
@@ -388,10 +530,11 @@ const [dados, setDados] = useState({
   };
 
   const salvarRegrasModal = () => {
-    const normalizadas = regrasTemp.map((regra, index) => ({
-      ...regra,
-      ordem: index + 1,
-    }));
+    const normalizadas = regrasTemp.map((regra, index) => {
+      const base = construirRegraNormalizada(regra, index);
+      base.ordem = index + 1;
+      return base;
+    });
 
     if (regraItemId === editandoId) {
       setDados((prev) => ({ ...prev, regras: normalizadas }));
@@ -431,6 +574,19 @@ const [dados, setDados] = useState({
       <table>
         <thead>
           <tr>
+            <th onClick={() => handleOrdenar('nome')}>
+              Nome {ordenacao.campo === 'nome' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+            </th>
+            <th onClick={() => handleOrdenar('descricao')}>
+              Descrição {ordenacao.campo === 'descricao' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+            </th>
+            <th onClick={() => handleOrdenar('servico_nome')}>
+              Serviço {ordenacao.campo === 'servico_nome' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+            </th>
+            <th onClick={() => handleOrdenar('tipo_distribuicao')}>
+              Distribuir por {ordenacao.campo === 'tipo_distribuicao' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+            </th>
+            <th>Data base</th>
             <th onClick={() => handleOrdenar('periodo')}>
               Período {ordenacao.campo === 'periodo' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
             </th>
@@ -440,25 +596,43 @@ const [dados, setDados] = useState({
             <th onClick={() => handleOrdenar('mes')}>
               Mês {ordenacao.campo === 'mes' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
             </th>
-            <th onClick={() => handleOrdenar('nome')}>
-              Nome {ordenacao.campo === 'nome' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
-            </th>
-            <th onClick={() => handleOrdenar('servico_nome')}>
-              Serviço {ordenacao.campo === 'servico_nome' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
-            </th>
-            <th onClick={() => handleOrdenar('descricao')}>
-              Descrição {ordenacao.campo === 'descricao' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
-            </th>
-            <th onClick={() => handleOrdenar('tipo_distribuicao')}>
-              Distribuir por {ordenacao.campo === 'tipo_distribuicao' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
-            </th>
-            <th>Data base</th>
             <th>Regras</th>
             <th>Ações</th>
           </tr>
 
           {/* linha de filtros */}
           <tr className="linha-filtros">
+            <th>
+              <input type="text" value={filtros.nome} onChange={handleFiltro('nome')} />
+            </th>
+            <th>
+              <input type="text" value={filtros.descricao} onChange={handleFiltro('descricao')} />
+            </th>
+            <th>
+              <select value={filtros.servico} onChange={handleFiltro('servico')}>
+                <option value="">Todos</option>
+                {servicos.map((servico) => (
+                  <option key={servico.id} value={String(servico.id)}>{servico.nome}</option>
+                ))}
+              </select>
+            </th>
+            <th>
+              <select value={filtros.tipo_distribuicao} onChange={handleFiltro('tipo_distribuicao')}>
+                <option value="">Todos</option>
+                {distribuicoes.map((opcao) => (
+                  <option key={opcao} value={opcao}>{formatarDistribuicao(opcao)}</option>
+                ))}
+              </select>
+            </th>
+            <th>
+              <select value={filtros.fonte_data} onChange={handleFiltro('fonte_data')}>
+                <option value="">Todos</option>
+                <option value="agenda">Data da agenda</option>
+                {camposPeriodoEmpresa.map((opcao) => (
+                  <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
+                ))}
+              </select>
+            </th>
             <th>
               <select value={filtros.periodo} onChange={handleFiltro('periodo')}>
                 <option value="">Todos</option>
@@ -473,135 +647,184 @@ const [dados, setDados] = useState({
             <th>
               <input type="number" value={filtros.mes} onChange={handleFiltro('mes')} />
             </th>
-            <th>
-              <input type="text" value={filtros.nome} onChange={handleFiltro('nome')} />
-            </th>
-            <th>
-              <select value={filtros.servico} onChange={handleFiltro('servico')}>
-                <option value="">Todos</option>
-                {servicos.map((servico) => (
-                  <option key={servico.id} value={String(servico.id)}>{servico.nome}</option>
-                ))}
-              </select>
-            </th>
-            <th>
-              <input type="text" value={filtros.descricao} onChange={handleFiltro('descricao')} />
-            </th>
-            <th>
-              <select value={filtros.tipo_distribuicao} onChange={handleFiltro('tipo_distribuicao')}>
-                <option value="">Todos</option>
-                {distribuicoes.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </th>
-            <th></th>
             <th></th>
             <th></th>
           </tr>
         </thead>
 
         <tbody>
-          {itensFiltrados.map((item) => (
-            <tr key={item.id}>
-              {['periodo', 'dia', 'mes', 'nome', 'servico', 'descricao', 'tipo_distribuicao'].map((campo) => (
-                <td key={campo}>
-                  {editandoId === item.id ? (
-                    campo === 'periodo' ? (
-                      <select
-                        value={dados.periodo}
-                        onChange={(e) => setDados({ ...dados, periodo: e.target.value })}
-                      >
-                        <option value="">--</option>
-                        {periodos.map((p) => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                    ) : campo === 'servico' ? (
-                      <select
-                        value={dados.servico ?? ''}
-                        onChange={(e) => setDados({ ...dados, servico: e.target.value })}
-                      >
-                        <option value="">--</option>
-                        {servicos.map((servico) => (
-                          <option key={servico.id} value={String(servico.id)}>{servico.nome}</option>
-                        ))}
-                      </select>
-                    ) : campo === 'tipo_distribuicao' ? (
-                      <select
-                        value={dados.tipo_distribuicao}
-                        onChange={(e) => setDados({ ...dados, tipo_distribuicao: e.target.value })}
-                      >
-                        <option value="">--</option>
-                        {distribuicoes.map((d) => (
-                          <option key={d} value={d}>{d}</option>
-                        ))}
-                      </select>
-                    ) : ['nome', 'descricao'].includes(campo) ? (
-                      <textarea
-                        rows={4}
-                        style={{ overflowY: 'auto', resize: 'vertical' }}
-                        value={dados[campo] ?? ''}
-                        onChange={(e) => setDados({ ...dados, [campo]: e.target.value })}
-                      />
-                    ) : (
-                      <input
-                        type={(campo === 'dia' || campo === 'mes') ? 'number' : 'text'}
-                        value={dados[campo] ?? ''}
-                        onChange={(e) => setDados({ ...dados, [campo]: e.target.value })}
-                      />
-                    )
+          {itensFiltrados.map((item) => {
+            const emEdicao = editandoId === item.id;
+            const usaAgendaLinha = emEdicao ? (dados.usa_data_agenda !== false) : (item.usa_data_agenda ?? true);
+            const servicoNome = item.servico_nome || servicosMap.get(String(item.servico))?.nome || '-';
+            const periodoMostrar = usaAgendaLinha ? (item.periodo || '') : '';
+            const diaMostrar = usaAgendaLinha && item.dia !== undefined && item.dia !== null ? item.dia : '';
+            const mesMostrar = usaAgendaLinha && item.periodo !== 'mensal' && item.mes !== undefined && item.mes !== null
+              ? item.mes
+              : '';
+
+            return (
+              <tr key={item.id}>
+                <td>
+                  {emEdicao ? (
+                    <textarea
+                      rows={4}
+                      style={{ overflowY: 'auto', resize: 'vertical' }}
+                      value={dados.nome ?? ''}
+                      onChange={(e) => setDados({ ...dados, nome: e.target.value })}
+                    />
                   ) : (
-                    campo === 'servico'
-                      ? (item.servico_nome || servicosMap.get(String(item.servico))?.nome || '-')
-                      : (item[campo] || '-')
+                    item.nome || '-'
                   )}
                 </td>
-              ))}
 
-              <td>
-                {editandoId === item.id ? (
-                  <select
-                    className="agenda-data-select"
-                    value={dados.usa_data_agenda ? 'agenda' : (dados.campo_periodo_empresa || '')}
-                    onChange={(e) => handleFonteDataChange(e.target.value)}
-                  >
-                    <option value="agenda">Data da agenda</option>
-                    {camposPeriodoEmpresa.map((opcao) => (
-                      <option key={opcao.value || 'selecione'} value={opcao.value}>{opcao.label}</option>
-                    ))}
-                  </select>
-                ) : (
-                  formatarFonteData(item)
-                )}
-              </td>
+                <td>
+                  {emEdicao ? (
+                    <textarea
+                      rows={4}
+                      style={{ overflowY: 'auto', resize: 'vertical' }}
+                      value={dados.descricao ?? ''}
+                      onChange={(e) => setDados({ ...dados, descricao: e.target.value })}
+                    />
+                  ) : (
+                    item.descricao || '-'
+                  )}
+                </td>
 
-              <td>
-                {editandoId === item.id ? (
-                  <div className="agenda-regras-cell">
-                    <span>{(dados.regras || []).length} regra(s)</span>
-                    <button type="button" onClick={() => abrirModalRegras(item)}>Editar</button>
-                  </div>
-                ) : (
-                  <span>{(item.regras || []).length}</span>
-                )}
-              </td>
+                <td>
+                  {emEdicao ? (
+                    <select
+                      value={dados.servico ?? ''}
+                      onChange={(e) => setDados({ ...dados, servico: e.target.value })}
+                    >
+                      <option value="">--</option>
+                      {servicos.map((servico) => (
+                        <option key={servico.id} value={String(servico.id)}>{servico.nome}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    servicoNome
+                  )}
+                </td>
 
-              <td className="acoes">
-                {editandoId === item.id ? (
-                  <>
-                    <button onClick={() => salvar(item.id)} title="Salvar"><Check size={16} /></button>
-                    <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => editar(item)} title="Editar"><Pencil size={16} /></button>
-                    <button onClick={() => excluir(item.id)} title="Excluir"><Trash2 size={16} /></button>
-                  </>
-                )}
-              </td>
-            </tr>
-          ))}
+                <td>
+                  {emEdicao ? (
+                    <select
+                      value={dados.tipo_distribuicao ?? ''}
+                      onChange={(e) => setDados({ ...dados, tipo_distribuicao: e.target.value })}
+                    >
+                      <option value="">--</option>
+                      {distribuicoes.map((opcao) => (
+                        <option key={opcao} value={opcao}>{formatarDistribuicao(opcao)}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    formatarDistribuicao(item.tipo_distribuicao)
+                  )}
+                </td>
+
+                <td>
+                  {emEdicao ? (
+                    <select
+                      className="agenda-data-select"
+                      value={dados.usa_data_agenda ? 'agenda' : (dados.campo_periodo_empresa || '')}
+                      onChange={(e) => handleFonteDataChange(e.target.value)}
+                    >
+                      <option value="agenda">Data da agenda</option>
+                      {camposPeriodoEmpresa.map((opcao) => (
+                        <option key={opcao.value || 'selecione'} value={opcao.value}>{opcao.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    formatarFonteData(item)
+                  )}
+                </td>
+
+                <td>
+                  {emEdicao ? (
+                    <select
+                      value={dados.usa_data_agenda ? dados.periodo : ''}
+                      disabled={!dados.usa_data_agenda}
+                      onChange={(e) => {
+                        const valor = e.target.value;
+                        setDados((prev) => ({
+                          ...prev,
+                          periodo: valor,
+                          mes: valor === 'mensal' ? '' : prev.mes,
+                        }));
+                      }}
+                    >
+                      <option value="">--</option>
+                      {periodos.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    (usaAgendaLinha && periodoMostrar) || ''
+                  )}
+                </td>
+
+                <td>
+                  {emEdicao ? (
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={dados.usa_data_agenda ? (dados.dia ?? '') : ''}
+                      disabled={!dados.usa_data_agenda}
+                      onChange={(e) => setDados({ ...dados, dia: e.target.value })}
+                    />
+                  ) : (
+                    usaAgendaLinha ? (diaMostrar || '') : ''
+                  )}
+                </td>
+
+                <td>
+                  {emEdicao ? (
+                    <input
+                      type="number"
+                      min="1"
+                      max="12"
+                      value={
+                        dados.usa_data_agenda && dados.periodo !== 'mensal'
+                          ? (dados.mes ?? '')
+                          : ''
+                      }
+                      disabled={!dados.usa_data_agenda || dados.periodo === 'mensal'}
+                      onChange={(e) => setDados({ ...dados, mes: e.target.value })}
+                    />
+                  ) : (
+                    usaAgendaLinha ? (mesMostrar || '') : ''
+                  )}
+                </td>
+
+                <td>
+                  {emEdicao ? (
+                    <div className="agenda-regras-cell">
+                      <span>{(dados.regras || []).length} regra(s)</span>
+                      <button type="button" onClick={() => abrirModalRegras(item)}>Editar</button>
+                    </div>
+                  ) : (
+                    <span>{(item.regras || []).length}</span>
+                  )}
+                </td>
+
+                <td className="acoes">
+                  {emEdicao ? (
+                    <>
+                      <button onClick={() => salvar(item.id)} title="Salvar"><Check size={16} /></button>
+                      <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => editar(item)} title="Editar"><Pencil size={16} /></button>
+                      <button onClick={() => excluir(item.id)} title="Excluir"><Trash2 size={16} /></button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       {modalLoteAberto && (
@@ -699,63 +922,104 @@ const [dados, setDados] = useState({
             <h3>Regras da agenda</h3>
 
             <div className="agenda-regras-list">
-              {regrasTemp.map((regra, index) => (
-                <div className="agenda-regra-linha" key={`${regra.id || 'novo'}-${index}`}>
-                  {index > 0 && (
-                    <div className="agenda-regra-col agenda-regra-col--conector">
-                      <label>Conector</label>
-                      <select
-                        value={regra.conector || 'AND'}
-                        onChange={(e) => atualizarRegra(index, 'conector', e.target.value)}
-                      >
-                        {conectoresRegra.map((opcao) => (
-                          <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
-                        ))}
-                      </select>
+              {regrasTemp.map((regra, index) => {
+                const campoAtual = (regra.campo || '').toUpperCase();
+                const labelCampo = obterLabelCampo(campoAtual);
+                const semOperador = ehCampoSemOperador(campoAtual);
+                const campoBooleano = ehCampoBooleano(campoAtual);
+                const campoPreenchimento = ehCampoPreenchimento(campoAtual);
+                const campoClassificacao = campoAtual === 'CLASSIFICACAO2';
+
+                return (
+                  <div className="agenda-regra-linha" key={`${regra.id || 'novo'}-${index}`}>
+                    <div className="agenda-regra-campos">
+                      <div className="agenda-regra-col agenda-regra-col--conector">
+                        <label className={index === 0 ? 'agenda-regra-label--placeholder' : ''}>Conector</label>
+                        {index > 0 ? (
+                          <select
+                            value={regra.conector || 'AND'}
+                            onChange={(e) => atualizarRegra(index, 'conector', e.target.value)}
+                          >
+                            {conectoresRegra.map((opcao) => (
+                              <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div className="agenda-regra-input--placeholder" />
+                        )}
+                      </div>
+                      <div className="agenda-regra-col">
+                        <label>Campo</label>
+                        <select
+                          value={regra.campo || ''}
+                          onChange={(e) => handleCampoChange(index, e.target.value)}
+                        >
+                          <option value="">Selecione</option>
+                          {camposRegra.map((opcao) => (
+                            <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {semOperador ? (
+                        <div className="agenda-regra-col agenda-regra-col--placeholder">
+                          <label>Operador</label>
+                          <div className="agenda-regra-input--placeholder" />
+                        </div>
+                      ) : (
+                        <div className="agenda-regra-col">
+                          <label>Operador</label>
+                          <select
+                            value={regra.operador || 'IGUAL'}
+                            onChange={(e) => atualizarRegra(index, 'operador', e.target.value)}
+                          >
+                            {operadoresRegra.map((opcao) => (
+                              <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      <div className="agenda-regra-col agenda-regra-col--valor">
+                        <label>Valor</label>
+                        {semOperador ? (
+                          <span className="agenda-regra-texto">
+                            {campoBooleano && labelCampo
+                              ? `Empresa com ${labelCampo} = Sim`
+                              : campoPreenchimento && labelCampo
+                                ? `Empresa com ${labelCampo} preenchido`
+                                : 'Condição aplicada automaticamente'}
+                          </span>
+                        ) : campoClassificacao ? (
+                          <select
+                            value={regra.valor || ''}
+                            onChange={(e) => atualizarRegra(index, 'valor', e.target.value)}
+                          >
+                            <option value="">Selecione</option>
+                            {CLASSIFICACAO2_OPTIONS.map((opcao) => (
+                              <option key={opcao} value={opcao}>{opcao}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={regra.valor || ''}
+                            onChange={(e) => atualizarRegra(index, 'valor', e.target.value.toUpperCase())}
+                          />
+                        )}
+                      </div>
                     </div>
-                  )}
-                  <div className="agenda-regra-col">
-                    <label>Campo</label>
-                    <select
-                      value={regra.campo || ''}
-                      onChange={(e) => atualizarRegra(index, 'campo', e.target.value)}
-                    >
-                      <option value="">Selecione</option>
-                      {camposRegra.map((opcao) => (
-                        <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
-                      ))}
-                    </select>
+                    {regrasTemp.length > 1 && (
+                      <button
+                        type="button"
+                        className="agenda-regra-remover"
+                        onClick={() => removerRegra(index)}
+                        title="Remover regra"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
                   </div>
-                  <div className="agenda-regra-col">
-                    <label>Operador</label>
-                    <select
-                      value={regra.operador || 'IGUAL'}
-                      onChange={(e) => atualizarRegra(index, 'operador', e.target.value)}
-                    >
-                      {operadoresRegra.map((opcao) => (
-                        <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="agenda-regra-col agenda-regra-col--valor">
-                    <label>Valor</label>
-                    <input
-                      type="text"
-                      value={regra.valor || ''}
-                      onChange={(e) => atualizarRegra(index, 'valor', e.target.value.toUpperCase())}
-                    />
-                  </div>
-                  {regrasTemp.length > 1 && (
-                    <button
-                      type="button"
-                      className="agenda-regra-remover"
-                      onClick={() => removerRegra(index)}
-                    >
-                      Remover
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
               {regrasTemp.length === 0 && (
                 <p className="agenda-regra-vazia">Nenhuma regra cadastrada.</p>
               )}

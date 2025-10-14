@@ -215,11 +215,25 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
             'ENVIA_PONTO': 'envia_ponto',
         }
 
+        CAMPOS_BOOLEANOS = {
+            'SECCONCI',
+            'APURA_VT',
+            'SERV_PREST',
+            'PLANILHA_CONVENIO',
+            'PLANILHA_FOLHA',
+            'DESON',
+            'ADIANTAMENTO',
+            'PLR',
+            'ENVIA_PONTO',
+        }
+
+        CAMPOS_PREENCHIMENTO = {'DT_13_ADIANTAMENTO_ENTREGA', 'DT_13_ENTREGA'}
+
         CAMPOS_PERIODO_EMPRESA = {
             'dt_adiantamento_entrega': 'Entrega do adiantamento',
             'plr_dt_entrega': 'Entrega do PLR',
-            'dt_13_adiantamento_entrega': 'Adiantamento 13º',
-            'dt_13_entrega': 'Entrega 13º',
+            'dt_13_adiantamento_entrega': '13º adiantamento',
+            'dt_13_entrega': '13º pagamento',
             'ponto_entrega': 'Entrega do ponto',
         }
 
@@ -261,24 +275,49 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
             combinado = None
 
             for regra in regras_ordenadas:
-                campo_model = CAMPO_MAP.get((regra.campo or '').upper())
+                campo_upper = (regra.campo or '').upper()
+                campo_model = CAMPO_MAP.get(campo_upper)
                 if not campo_model:
                     continue
 
-                valor = (regra.valor or '').strip()
-                operador = (regra.operador or 'IGUAL').upper()
                 conector = (regra.conector or 'AND').upper()
 
-                if operador == 'IGUAL':
-                    q = Q(**{f"{campo_model}__iexact": valor})
-                elif operador == 'DIFERENTE':
-                    q = ~Q(**{f"{campo_model}__iexact": valor})
-                elif operador == 'CONTEM':
-                    q = Q(**{f"{campo_model}__icontains": valor})
-                elif operador == 'NAO_CONTEM':
-                    q = ~Q(**{f"{campo_model}__icontains": valor})
+                if campo_upper in CAMPOS_BOOLEANOS:
+                    valor_normalizado = normalizar_texto(regra.valor or '')
+                    if not valor_normalizado or valor_normalizado in {'sim', 's', '1', 'true'}:
+                        q = (
+                            Q(**{f"{campo_model}__iregex": r'^(\\s)*(sim|s|1|true)(\\s)*$'})
+                            | Q(**{f"{campo_model}__iexact": 'Sim'})
+                            | Q(**{f"{campo_model}__iexact": 'SIM'})
+                        )
+                    elif valor_normalizado in {'nao', 'não', 'n', '0', 'false'}:
+                        q = (
+                            Q(**{f"{campo_model}__iregex": r'^(\\s)*(nao|não|n|0|false)(\\s)*$'})
+                            | Q(**{f"{campo_model}__iexact": 'Não'})
+                            | Q(**{f"{campo_model}__iexact": 'NAO'})
+                        )
+                    else:
+                        q = Q(**{f"{campo_model}__iexact": (regra.valor or '').strip()})
+                elif campo_upper in CAMPOS_PREENCHIMENTO:
+                    valor_normalizado = (regra.valor or '').strip().lower()
+                    if valor_normalizado in {'nao', 'não', 'vazio', 'nao preenchido', 'não preenchido'}:
+                        q = Q(**{f"{campo_model}__isnull": True}) | Q(**{f"{campo_model}__exact": ''})
+                    else:
+                        q = Q(**{f"{campo_model}__isnull": False}) & ~Q(**{f"{campo_model}__exact": ''})
                 else:
-                    continue
+                    valor = (regra.valor or '').strip()
+                    operador = (regra.operador or 'IGUAL').upper()
+
+                    if operador == 'IGUAL':
+                        q = Q(**{f"{campo_model}__iexact": valor})
+                    elif operador == 'DIFERENTE':
+                        q = ~Q(**{f"{campo_model}__iexact": valor})
+                    elif operador == 'CONTEM':
+                        q = Q(**{f"{campo_model}__icontains": valor})
+                    elif operador == 'NAO_CONTEM':
+                        q = ~Q(**{f"{campo_model}__icontains": valor})
+                    else:
+                        continue
 
                 if combinado is None:
                     combinado = q
@@ -353,7 +392,11 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
             periodo_por_descricao[normalizar_texto(p.descricao)] = p
             periodo_por_descricao[str(p.id)] = p
 
-        empresas_base_qs = PlanilhaGerencial.objects.filter(status_do_cliente__icontains='ativo')
+        empresas_base_qs = PlanilhaGerencial.objects.filter(
+            status_do_cliente__iregex=r'(ativo|ativa)'
+        ).exclude(
+            status_do_cliente__iregex=r'inativ'
+        )
 
         responsaveis_todos = Responsavel.objects.select_related('grupo').all()
         responsaveis_ativos = []

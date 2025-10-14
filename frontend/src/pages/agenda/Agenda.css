@@ -238,7 +238,7 @@ td.acoes button:hover svg {
 }
 
 .agenda-modal-regras {
-  width: 560px;
+  width: 720px;
   max-width: 95%;
 }
 
@@ -252,9 +252,17 @@ td.acoes button:hover svg {
 
 .agenda-regra-linha {
   display: flex;
-  gap: 10px;
-  align-items: flex-end;
-  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.agenda-regra-campos {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 150px repeat(3, minmax(170px, 1fr));
+  column-gap: 10px;
+  row-gap: 10px;
+  align-items: end;
 }
 
 .agenda-regra-col {
@@ -266,12 +274,7 @@ td.acoes button:hover svg {
 }
 
 .agenda-regra-col--conector {
-  max-width: 140px;
-  flex: 0 0 140px;
-}
-
-.agenda-regra-col--valor {
-  min-width: 160px;
+  width: 100%;
 }
 
 .agenda-regra-col select,
@@ -282,13 +285,52 @@ td.acoes button:hover svg {
   font-size: 12px;
 }
 
+.agenda-regra-col--placeholder label {
+  visibility: hidden;
+}
+
+.agenda-regra-texto {
+  display: block;
+  padding: 6px 8px;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  background-color: #f7f9fc;
+  font-size: 12px;
+  color: #333;
+}
+
+.agenda-regra-label--placeholder {
+  visibility: hidden;
+}
+
+.agenda-regra-input--placeholder {
+  width: 100%;
+  height: 36px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
 .agenda-regra-remover {
   background: transparent;
   border: none;
   color: #b30000;
   cursor: pointer;
-  font-weight: 600;
-  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  margin-left: 4px;
+  align-self: flex-start;
+}
+
+.agenda-regra-remover svg {
+  width: 16px;
+  height: 16px;
+}
+
+.agenda-regra-remover:hover {
+  color: #ff1f1f;
 }
 
 .agenda-regras-acoes {
