@@ -95,6 +95,7 @@ export default function AgendaBase() {
   const camposPeriodoEmpresa = [
     { value: 'dt_adiantamento_entrega', label: 'Entrega do adiantamento' },
     { value: 'plr_dt_entrega', label: 'Entrega do PLR' },
+    { value: 'data_entrega_folha', label: 'Data Entrega Folha' },
     { value: 'dt_13_adiantamento_entrega', label: '13º adiantamento' },
     { value: 'dt_13_entrega', label: '13º pagamento' },
     { value: 'ponto_entrega', label: 'Entrega do ponto' },

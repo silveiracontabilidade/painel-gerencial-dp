@@ -210,6 +210,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
             'DESON': 'deson',
             'ADIANTAMENTO': 'adiantamento',
             'PLR': 'plr',
+            'DATA_ENTREGA_FOLHA': 'data_entrega_folha',
             'DT_13_ADIANTAMENTO_ENTREGA': 'dt_13_adiantamento_entrega',
             'DT_13_ENTREGA': 'dt_13_entrega',
             'ENVIA_PONTO': 'envia_ponto',
