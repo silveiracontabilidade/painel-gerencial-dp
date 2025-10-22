@@ -82,7 +82,7 @@ const Header = () => {
               <span className="menu__title">Cadastros</span>
               {menuAberto === 'cadastros' && (
                 <ul className="submenu">
-                  <li><NavLink to="/agenda">Agenda</NavLink></li>
+                  {/* <li><NavLink to="/agenda">Agenda</NavLink></li> */}
                   <li><NavLink to="/grupos">Grupos</NavLink></li>
                   <li><NavLink to="/motivos-rescisao">Tipo Aviso Prévio</NavLink></li>
                   <li><NavLink to="/tipos-admissao">Tipos de Admissão</NavLink></li>
