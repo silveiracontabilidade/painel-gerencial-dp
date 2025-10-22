@@ -6,7 +6,7 @@ from .models import (
     PlanilhaGerencial,
     Servico,
     ServicoSolicitado, AgendaBase, AgendaRegra, Sistema, PeriodoEntrega, CCT, PG_PLR,
-    MotivoRescisao
+    MotivoRescisao, TipoAdmissao
     )
 import math
 from decimal import Decimal
@@ -423,6 +423,12 @@ class UsuarioResponsavelSerializer(serializers.Serializer):
 class MotivoRescisaoSerializer(serializers.ModelSerializer):
     class Meta:
         model = MotivoRescisao
+        fields = ['id', 'descricao', 'mensagem']
+
+
+class TipoAdmissaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TipoAdmissao
         fields = ['id', 'descricao', 'mensagem']
         
         

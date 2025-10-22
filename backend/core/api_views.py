@@ -28,7 +28,8 @@ from .models import (
     PG_PLR,
     Responsavel,
     Permissao,
-    MotivoRescisao
+    MotivoRescisao,
+    TipoAdmissao
 )
 from .serializers import (
     UserSerializer,
@@ -44,6 +45,7 @@ from .serializers import (
     PGPLRSerializer,
     UsuarioResponsavelSerializer,
     MotivoRescisaoSerializer,
+    TipoAdmissaoSerializer,
     ChangePasswordSerializer
 )
 
@@ -179,8 +181,39 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
     queryset = AgendaBase.objects.select_related('servico').prefetch_related('regras').all()
     serializer_class = AgendaBaseSerializer
 
+    def _usuario_pode_editar(self, request):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        try:
+            responsavel = Responsavel.objects.get(usuario=request.user.username)
+        except Responsavel.DoesNotExist:
+            return False
+        return (responsavel.perfil or '').lower() in ('admin', 'coordenador')
+
+    def create(self, request, *args, **kwargs):
+        if not self._usuario_pode_editar(request):
+            return Response({'detail': 'Permissão negada.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if not self._usuario_pode_editar(request):
+            return Response({'detail': 'Permissão negada.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        if not self._usuario_pode_editar(request):
+            return Response({'detail': 'Permissão negada.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if not self._usuario_pode_editar(request):
+            return Response({'detail': 'Permissão negada.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=False, methods=['post'], url_path='gerar-servicos')
     def gerar_servicos(self, request):
+        if not self._usuario_pode_editar(request):
+            return Response({'detail': 'Permissão negada.'}, status=status.HTTP_403_FORBIDDEN)
         mes = request.data.get('mes')
         ano = request.data.get('ano')
 
@@ -748,6 +781,15 @@ def minhas_permissoes(request):
 class MotivoRescisaoViewSet(viewsets.ModelViewSet):
     queryset = MotivoRescisao.objects.all()
     serializer_class = MotivoRescisaoSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['descricao', 'mensagem']
+    ordering_fields = ['id', 'descricao']
+    ordering = ['descricao']
+
+
+class TipoAdmissaoViewSet(viewsets.ModelViewSet):
+    queryset = TipoAdmissao.objects.all()
+    serializer_class = TipoAdmissaoSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['descricao', 'mensagem']
     ordering_fields = ['id', 'descricao']

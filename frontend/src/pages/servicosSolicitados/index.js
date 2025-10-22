@@ -3,6 +3,7 @@ import React, { useEffect, useState, useMemo  } from 'react';
 import { Plus, Pencil, Trash2, FileText, CheckCircle } from 'lucide-react';
 import EmpresaFormModal from '../empresas/EmpresaFormModal'
 import api from '../../api/axios';
+import { paraISO } from '../../utils/datas';
 import ServicoSolicitadoFormModal from './servicoSolicitadoFormModal';
 import './servicos-solicitados.css';
 
@@ -15,6 +16,8 @@ export default function ServicosSolicitados() {
   const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState(null);
   const [servicos, setServicos] = useState([]);
   const [ordenacao, setOrdenacao] = useState({ campo: '', direcao: 'asc' });
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(10);
 
   // para mostrar os detalhes da empresa
   const [empresaModalAberto, setEmpresaModalAberto] = useState(false);
@@ -65,11 +68,27 @@ export default function ServicosSolicitados() {
     empresa: '',
     responsavelId: '',
     grupoId: '',
-    status: 'todos',
+    status: 'aberto',
     prazo: 'todos',
     servicoId: '',       // 👈 novo
     competencia: '',     // 👈 novo
   });
+
+  const normalizarDecimalParaEnvio = (valor) => {
+    if (valor === null || valor === undefined) return null;
+    const texto = String(valor).trim();
+    if (!texto) return null;
+
+    const limpo = texto.replace(/\s/g, '');
+    const ultimoComa = limpo.lastIndexOf(',');
+    const ultimoPonto = limpo.lastIndexOf('.');
+
+    if (ultimoComa > ultimoPonto) {
+      return limpo.replace(/\./g, '').replace(',', '.');
+    }
+
+    return limpo.replace(/[^0-9.]/g, '');
+  };
 
   useEffect(() => {
     carregarSolicitacoes();
@@ -110,6 +129,117 @@ export default function ServicosSolicitados() {
     ]);
     setResponsaveis(resResp.data);
     setGrupos(resGrupo.data);
+  };
+
+  const salvarEmpresaDetalhe = async (empresa) => {
+    try {
+      const camposData = [
+        "inicio_contrato",
+        "termino_contrato",
+        "dt_envio_cct",
+        "dt_venc_conec_social",
+        "venc_procuracao",
+        "med_ocupa_proc_venc",
+      ];
+
+      const payload = { ...empresa };
+
+      camposData.forEach((campo) => {
+        payload[campo] = payload[campo] ? paraISO(payload[campo]) : null;
+      });
+
+      if (payload.resp_dp) {
+        const responsavelNome = String(payload.resp_dp || "").toUpperCase();
+        const responsavel = responsaveis.find(
+          (r) => String(r.nome || "").toUpperCase() === responsavelNome
+        );
+        payload.grupo = responsavel?.grupo_nome
+          ? String(responsavel.grupo_nome).toUpperCase()
+          : "";
+        payload.ramal = responsavel?.ramal
+          ? String(responsavel.ramal).toUpperCase()
+          : "";
+      }
+
+      payload.honorarios =
+        payload.honorarios !== undefined && payload.honorarios !== null && payload.honorarios !== ""
+          ? normalizarDecimalParaEnvio(payload.honorarios)
+          : null;
+
+      delete payload.cnpj_formatado;
+      delete payload.id;
+
+      let novaEmpresa;
+      if (empresaSelecionada) {
+        const res = await api.put(`/api/empresas/${payload.cod_folha}/`, payload);
+        novaEmpresa = res.data;
+      } else {
+        const res = await api.post("/api/empresas/", payload);
+        novaEmpresa = res.data;
+      }
+
+      if (empresa.ccts && empresa.ccts.length > 0) {
+        for (const cct of empresa.ccts) {
+          const payloadCCT = {
+            ...cct,
+            cod_folha: novaEmpresa.cod_folha,
+            data_envio: cct.data_envio ? paraISO(cct.data_envio) : null,
+          };
+
+          if (cct.id && !String(cct.id).startsWith("tmp-")) {
+            try {
+              await api.put(`/api/ccts/${cct.id}/`, payloadCCT);
+            } catch (e) {
+              if (e?.response?.status === 404) {
+                const { id, ...semId } = payloadCCT;
+                await api.post(`/api/ccts/`, semId);
+              } else {
+                throw e;
+              }
+            }
+          } else {
+            const { id, ...semId } = payloadCCT;
+            await api.post(`/api/ccts/`, semId);
+          }
+        }
+      }
+
+      if (empresa.plrs && empresa.plrs.length > 0) {
+        for (const plr of empresa.plrs) {
+          const payloadPLR = {
+            ...plr,
+            cod_folha: novaEmpresa.cod_folha,
+            data_entrega: plr.data_entrega ? paraISO(plr.data_entrega) : null,
+            valor:
+              plr.valor === "" || plr.valor === null || plr.valor === undefined
+                ? null
+                : String(plr.valor).replace(/\./g, "").replace(",", "."),
+          };
+
+          if (plr.id && !String(plr.id).startsWith("tmp-")) {
+            try {
+              await api.put(`/api/pg-plr/${plr.id}/`, payloadPLR);
+            } catch (e) {
+              if (e?.response?.status === 404) {
+                const { id, ...semId } = payloadPLR;
+                await api.post(`/api/pg-plr/`, semId);
+              } else {
+                throw e;
+              }
+            }
+          } else {
+            const { id, ...semId } = payloadPLR;
+            await api.post(`/api/pg-plr/`, semId);
+          }
+        }
+      }
+
+      await carregarEmpresas();
+      fecharEmpresaModal();
+    } catch (err) {
+      console.error("Erro ao salvar empresa:", err.response?.data || err);
+      alert("Erro ao salvar empresa.");
+    }
   };
 
   // mapa de cores para grupos
@@ -257,6 +387,10 @@ export default function ServicosSolicitados() {
     });
   }, [solicitacoes, empresaByCodigo, filters, respById, grupoById]);
 
+  useEffect(() => {
+    setPaginaAtual(1);
+  }, [filters]);
+
   const obterValorOrdenacao = (solicitacao, campo) => {
     switch (campo) {
       case 'empresa': {
@@ -306,6 +440,29 @@ export default function ServicosSolicitados() {
     return lista;
   }, [solicitacoesFiltradas, ordenacao]);
 
+  const totalRegistros = solicitacoesFiltradas.length;
+  const totalPaginas = Math.max(1, Math.ceil((totalRegistros || 0) / itensPorPagina) || 1);
+
+  useEffect(() => {
+    setPaginaAtual((prev) => (prev > totalPaginas ? totalPaginas : prev));
+  }, [totalPaginas]);
+
+  const solicitacoesPagina = useMemo(() => {
+    const inicio = (paginaAtual - 1) * itensPorPagina;
+    return solicitacoesOrdenadas.slice(inicio, inicio + itensPorPagina);
+  }, [solicitacoesOrdenadas, paginaAtual, itensPorPagina]);
+
+  const handleItensPorPaginaChange = (e) => {
+    const novoValor = Number(e.target.value) || 10;
+    setItensPorPagina(novoValor);
+    setPaginaAtual(1);
+  };
+
+  const irParaPagina = (alvo) => {
+    if (alvo < 1 || alvo > totalPaginas) return;
+    setPaginaAtual(alvo);
+  };
+
   // Helpers
   const renderDetalhes = (s) => {
     const tipo = (s.servico_nome || "").toUpperCase();
@@ -313,13 +470,16 @@ export default function ServicosSolicitados() {
 
     // Sempre inclui descrição do serviço
     if (s.descricao_servico) {
-      partes.push(`Descrição: ${s.descricao_servico}`);
+      partes.push(s.descricao_servico);
     }
 
     if (tipo.includes("ADMISS")) {
       partes.push(`Admissão: ${s.admissao_data_ini || '-'} ${s.admissao_tipo || ''}`);
       if (s.admissao_deslig_programado)
         partes.push(`Deslig. Prog.: ${s.admissao_deslig_programado}`);
+      if (s.admissao_preliminar) {
+        partes.push(`Preliminar Enviada: ${s.admissao_preliminar}`);
+      }
     }
     else if (tipo.includes("RESCIS")) {
       partes.push(
@@ -330,10 +490,13 @@ export default function ServicosSolicitados() {
       );
     }
     else if (tipo.includes("FÉRIAS") || tipo.includes("FERIAS")) {
-      partes.push(
-        `Férias: ${s.ferias_data_ini || '-'} ` +
-        (s.ferias_abono ? `${s.ferias_abono} abono` : '')
-      );
+      const detalhesFerias = [
+        `Férias: ${s.ferias_data_ini || '-'}`,
+        s.ferias_qtd_dias ? `${s.ferias_qtd_dias} dias` : null,
+        s.ferias_qtd_dias_abono ? `${s.ferias_qtd_dias_abono} dias abono` : null,
+        s.ferias_abono ? `Abono: ${s.ferias_abono}` : null,
+      ].filter(Boolean).join(' | ');
+      if (detalhesFerias) partes.push(detalhesFerias);
     }
     else if (tipo.includes("AFAST")) {
       partes.push(
@@ -447,7 +610,7 @@ export default function ServicosSolicitados() {
       empresa: '',
       responsavelId: '',
       grupoId: '',
-      status: 'todos',
+      status: 'aberto',
       prazo: 'todos',
       servicoId: '',
       competencia: '',
@@ -456,7 +619,7 @@ export default function ServicosSolicitados() {
   return (
     <div className="servicos-sol-container">
       <div className="servicos-header">
-        <h2>Serviços Solicitados</h2>
+        <h2>To Do</h2>
         <button onClick={() => abrirModal()} title="Novo Serviço">
           <Plus size={18} /> Novo
         </button>
@@ -589,8 +752,8 @@ export default function ServicosSolicitados() {
           </tr>
         </thead>
         <tbody>
-          {solicitacoesOrdenadas.map((s) => (
-            <tr key={s.id}>
+          {solicitacoesPagina.map((s) => (
+            <tr key={s.id} className={s.data_conclusao ? 'linha-concluida' : ''}>
               <td>{renderEmpresa(s)}</td>
               <td>{renderResp(s)}</td>
               <td>{s.servico_nome}</td>
@@ -668,6 +831,66 @@ export default function ServicosSolicitados() {
         </tbody>
       </table>
 
+      <div className="paginacao-controles">
+        <div className="paginacao-info">
+          {totalRegistros > 0 ? (
+            <>
+              Mostrando{' '}
+              <strong>
+                {(paginaAtual - 1) * itensPorPagina + 1}-
+                {Math.min(paginaAtual * itensPorPagina, totalRegistros)}
+              </strong>{' '}
+              de <strong>{totalRegistros}</strong>
+            </>
+          ) : (
+            'Nenhum registro para exibir'
+          )}
+        </div>
+        <div className="paginacao-botoes">
+          <button
+            type="button"
+            onClick={() => irParaPagina(1)}
+            disabled={paginaAtual === 1}
+          >
+            «
+          </button>
+          <button
+            type="button"
+            onClick={() => irParaPagina(paginaAtual - 1)}
+            disabled={paginaAtual === 1}
+          >
+            ‹
+          </button>
+          <span>
+            Página <strong>{paginaAtual}</strong> de <strong>{totalPaginas}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={() => irParaPagina(paginaAtual + 1)}
+            disabled={paginaAtual === totalPaginas}
+          >
+            ›
+          </button>
+          <button
+            type="button"
+            onClick={() => irParaPagina(totalPaginas)}
+            disabled={paginaAtual === totalPaginas}
+          >
+            »
+          </button>
+        </div>
+        <div className="paginacao-page-size">
+          <label>Itens por página</label>
+          <select value={itensPorPagina} onChange={handleItensPorPaginaChange}>
+            {[10, 20, 30, 40, 50].map((qtd) => (
+              <option key={qtd} value={qtd}>
+                {qtd}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* detalhes do servico     */}
       {modalAberto && (
         <ServicoSolicitadoFormModal
@@ -681,7 +904,7 @@ export default function ServicosSolicitados() {
         <EmpresaFormModal
           visivel={empresaModalAberto}
           aoFechar={fecharEmpresaModal}
-          aoSalvar={() => {}} // aqui pode deixar vazio, pois na listagem de solicitações talvez não precise salvar
+          aoSalvar={salvarEmpresaDetalhe}
           dados={empresaSelecionada}
         />
       )}

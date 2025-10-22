@@ -1,0 +1,102 @@
+.filtro-nome {
+  width: 80%;
+}
+
+.tipos-container {
+  padding: 24px;
+  font-family: Arial, sans-serif;
+}
+
+.tipos-header {
+  display: flex;
+  width: 80%;
+  justify-content: space-between;
+  align-items: center;
+  margin: 30px 0 16px 0;
+}
+
+.tipos-header h2 {
+  font-size: 20px;
+  color: #1a1f3a;
+  margin: 0;
+}
+
+.tipos-header button {
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  background-color: #1a1f3a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tipos-header button:hover {
+  background-color: #C3996B;
+}
+
+.tipos-container table {
+  width: 80%;
+  border-collapse: collapse;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tipos-container th,
+.tipos-container td {
+  border: 1px solid #ddd;
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+.tipos-container th {
+  background-color: #1a1f3a;
+  color: #ddd;
+  height: 20px;
+}
+
+.tipos-container th.ordenado-asc::after {
+  content: "▲";
+  margin-left: 6px;
+  font-size: 10px;
+  color: #C3996B;
+}
+
+.tipos-container th.ordenado-desc::after {
+  content: "▼";
+  margin-left: 6px;
+  font-size: 10px;
+  color: #C3996B;
+}
+
+.tipos-container tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.tipos-container input[type="text"] {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+td.acoes {
+  width: 85px;
+  text-align: center;
+}
+
+td.acoes button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  margin: 0 2px;
+}
+
+td.acoes button:hover svg {
+  stroke: #C3996B;
+}

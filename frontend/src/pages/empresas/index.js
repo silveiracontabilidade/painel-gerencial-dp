@@ -463,6 +463,19 @@ const salvarEmpresa = async (empresa) => {
         ? normalizarDecimalParaEnvio(payload.honorarios)
         : null;
 
+    if (payload.resp_dp) {
+      const responsavelNome = String(payload.resp_dp || '').toUpperCase();
+      const responsavel = responsaveis.find(
+        (r) => String(r.nome || '').toUpperCase() === responsavelNome
+      );
+      payload.grupo = responsavel?.grupo_nome
+        ? String(responsavel.grupo_nome).toUpperCase()
+        : '';
+      payload.ramal = responsavel?.ramal
+        ? String(responsavel.ramal).toUpperCase()
+        : '';
+    }
+
     delete payload.cnpj_formatado;
     delete payload.id;
 

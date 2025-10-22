@@ -35,24 +35,30 @@ const toISO = (brOuBrHifen) => {
   return paraISO(brOuBrHifen.replace(/\//g, '-'));
 };
 
-const calcularDataParaResposta = (servico, dataSolicitacaoBR) => {
-  if (!servico) return '';
+const calcularDataRespostaPorPrazo = (dataVencimentoBR, prazoDias) => {
+  if (!dataVencimentoBR) return null;
+  const dias = Number(prazoDias ?? 0);
+  if (!Number.isFinite(dias)) return null;
 
-  const prazoDias = Number(servico?.prazo_dias ?? 0);
-  const baseISO = toISO(dataSolicitacaoBR) || new Date().toISOString().split('T')[0];
+  const partes = dataVencimentoBR.split('-');
+  if (partes.length !== 3) return null;
+  const [dd, mm, yyyy] = partes.map((p) => parseInt(p, 10));
+  if (Number.isNaN(dd) || Number.isNaN(mm) || Number.isNaN(yyyy)) return null;
 
-  let base = new Date(`${baseISO}T00:00:00`);
-  if (!isValidDate(base)) {
-    base = new Date();
-    base.setHours(0, 0, 0, 0);
+  const data = new Date(yyyy, mm - 1, dd);
+  if (!isValidDate(data)) return null;
+
+  const diasInteiros = Math.max(0, Math.floor(dias));
+  data.setDate(data.getDate() - diasInteiros);
+
+  while (data.getDay() === 0 || data.getDay() === 6) {
+    data.setDate(data.getDate() - 1);
   }
 
-  if (Number.isFinite(prazoDias)) {
-    base = new Date(base.getTime());
-    base.setDate(base.getDate() + prazoDias);
-  }
-
-  return isValidDate(base) ? toBRSafe(formatISO(base)) : '';
+  const dia = String(data.getDate()).padStart(2, '0');
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const ano = String(data.getFullYear());
+  return `${dia}-${mes}-${ano}`;
 };
 
 const mascararData = (valor) => {
@@ -181,6 +187,7 @@ const FIELD_MAP = {
 
 };
 
+const TIPOS_ADMISSAO_OBRIGAM_DESLIGAMENTO = new Set(['ESTAGIARIO', 'PRAZO DETERMINADO']);
 
 export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   const [form, setForm] = useState({});
@@ -189,6 +196,18 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   const [errors, setErrors] = useState({});
   // Estado do Tipo de Aviso Prévio
   const [motivosRescisao, setMotivosRescisao] = useState([]);
+  const [tiposAdmissao, setTiposAdmissao] = useState([]);
+  const [empresaDetalhe, setEmpresaDetalhe] = useState(null);
+  const isEdicao = Boolean(dados?.id);
+
+  const clearFieldError = useCallback((campo) => {
+    setErrors((prev) => {
+      if (!prev?.[campo]) return prev;
+      const atualizado = { ...prev };
+      delete atualizado[campo];
+      return atualizado;
+    });
+  }, []);
 
 
   // estados blocos dinâmicos (mantidos como strings; datas específicas ficam em dd-mm-aaaa)
@@ -265,7 +284,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
 
   useEffect(() => {
     const init = async () => {
-      await carregarDadosAuxiliares();
+      await carregarDadosAuxiliares(!isEdicao);
 
       if (dados) {
         const f = { ...dados };
@@ -319,17 +338,35 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     };
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dados]);
+  }, [dados, isEdicao]);
 
-  const carregarDadosAuxiliares = async () => {
-    const [resEmp, resServ, resMotivos] = await Promise.all([
-      api.get('/api/empresas/', { params: { page: 1, page_size: 2000 } }),
+  const carregarDadosAuxiliares = async (incluirEmpresas = true) => {
+    const [resServ, resMotivos, resTipos] = await Promise.all([
       api.get('/api/servicos/'),
       api.get('/api/motivos-rescisao/'),
+      api.get('/api/tipos-admissao/'),
     ]);
-    setEmpresas(resEmp.data.results || resEmp.data);
     setServicos(resServ.data.results || resServ.data);
     setMotivosRescisao(resMotivos.data.results || resMotivos.data);
+    setTiposAdmissao(resTipos.data.results || resTipos.data);
+    if (incluirEmpresas) {
+      const resEmp = await api.get('/api/empresas/', { params: { page: 1, page_size: 2000 } });
+      setEmpresas(resEmp.data.results || resEmp.data);
+      setEmpresaDetalhe(null);
+    } else {
+      setEmpresas([]);
+      const empresaChave = dados?.empresa ?? dados?.cod_folha;
+      if (empresaChave) {
+        try {
+          const { data } = await api.get(`/api/empresas/${empresaChave}/`);
+          setEmpresaDetalhe(data);
+        } catch (err) {
+          setEmpresaDetalhe(null);
+        }
+      } else {
+        setEmpresaDetalhe(null);
+      }
+    }
   };
 
 
@@ -339,6 +376,23 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     [servicos, form.servico]
   );
   const tipoServico = getTipoServico(servicoSelecionado?.nome);
+  const tipoAdmissaoSelecionado = useMemo(
+    () => tiposAdmissao.find(
+      (t) => normalize(t.descricao) === normalize(admissao[FIELD_MAP.admissao.tipo])
+    ),
+    [tiposAdmissao, admissao]
+  );
+  const exigeDesligamentoProgramado = useMemo(() => {
+    const descricaoNormalizada = normalize(admissao[FIELD_MAP.admissao.tipo]);
+    return TIPOS_ADMISSAO_OBRIGAM_DESLIGAMENTO.has(descricaoNormalizada);
+  }, [admissao]);
+  const empresaLabel = useMemo(() => {
+    const empresaChave = dados?.empresa ?? dados?.cod_folha ?? '';
+    const codigo = empresaDetalhe?.cod_folha ?? empresaChave;
+    const razao = empresaDetalhe?.razao_social;
+    if (!codigo) return '';
+    return razao ? `${codigo} - ${razao}` : String(codigo);
+  }, [empresaDetalhe, dados]);
 
   // ===== Handlers =====
   const handleChange = (e) => {
@@ -356,14 +410,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     const { name, value } = e.target;
     const val = normalizarData(value);
     setForm((prev) => {
-      const atualizado = { ...prev, [name]: val };
-      if (name === 'data_solicitacao' && atualizado.servico) {
-        const servico = servicos.find((s) => String(s.id) === String(atualizado.servico));
-        if (servico) {
-          atualizado.data_para_resposta = calcularDataParaResposta(servico, val);
-        }
-      }
-      return atualizado;
+      return { ...prev, [name]: val };
     });
   };
 
@@ -405,17 +452,23 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   const handleAdmissaoChange = useCallback((e) => {
     const { name, value } = e.target;
     setAdmissao((prev) => ({ ...prev, [name]: value }));
-  }, []);
+    clearFieldError(name);
+    if (name === FIELD_MAP.admissao.tipo) {
+      clearFieldError(FIELD_MAP.admissao.deslig_programado);
+    }
+  }, [clearFieldError]);
 
   const handleAdmissaoDateChange = useCallback((e) => {
     const { name, value } = e.target;
     setAdmissao((prev) => ({ ...prev, [name]: value.replace(/[^\d-]/g, '') }));
-  }, []);
+    clearFieldError(name);
+  }, [clearFieldError]);
 
   const handleAdmissaoDateBlur = useCallback((e) => {
     const { name, value } = e.target;
     setAdmissao((prev) => ({ ...prev, [name]: normalizarData(value) }));
-  }, []);
+    clearFieldError(name);
+  }, [clearFieldError]);
 
   // AFASTAMENTO
   const handleAfastChange = useCallback((e) => {
@@ -449,23 +502,16 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
 
 
   const handleServicoChange = (e) => {
-  const value = e?.target ? e.target.value : e;
-  if (!value) {
-    setForm((prev) => ({ ...prev, servico: '', data_para_resposta: '' }));
-    if (errors.servico) setErrors((prev) => ({ ...prev, servico: undefined }));
-    return;
-  }
-
-  const servico = servicos.find((s) => String(s.id) === String(value));
-
-  // Base para a data: tentar usar a data_solicitacao do form; se for inválida, cair pra hoje
-  const dataSolicBR = form.data_solicitacao || toBRSafe(new Date().toISOString().split('T')[0]);
-  const respostaCalculada = calcularDataParaResposta(servico, dataSolicBR);
+    const value = e?.target ? e.target.value : e;
+    if (!value) {
+      setForm((prev) => ({ ...prev, servico: '', data_para_resposta: '' }));
+      if (errors.servico) setErrors((prev) => ({ ...prev, servico: undefined }));
+      return;
+    }
 
     setForm((prev) => ({
       ...prev,
       servico: String(value),
-      data_para_resposta: respostaCalculada,
     }));
     if (errors.servico) setErrors((prev) => ({ ...prev, servico: undefined }));
   };
@@ -507,8 +553,22 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
       if (rescisao[campo] && !/^\d{2}-\d{2}-\d{4}$/.test(rescisao[campo])) e[campo] = 'Data inválida.';
     }
     if (tipoServico === 'ADMISSAO') {
-      const campo = FIELD_MAP.admissao.data_ini;
-      if (admissao[campo] && !/^\d{2}-\d{2}-\d{4}$/.test(admissao[campo])) e[campo] = 'Data inválida.';
+      const campoDataIni = FIELD_MAP.admissao.data_ini;
+      if (admissao[campoDataIni] && !/^\d{2}-\d{2}-\d{4}$/.test(admissao[campoDataIni])) {
+        e[campoDataIni] = 'Data inválida.';
+      }
+
+      const campoDeslig = FIELD_MAP.admissao.deslig_programado;
+      const valorDeslig = admissao[campoDeslig];
+      if (exigeDesligamentoProgramado) {
+        if (!valorDeslig) {
+          e[campoDeslig] = 'Informe a data do desligamento programado.';
+        } else if (!/^\d{2}-\d{2}-\d{4}$/.test(valorDeslig)) {
+          e[campoDeslig] = 'Data inválida.';
+        }
+      } else if (valorDeslig && !/^\d{2}-\d{2}-\d{4}$/.test(valorDeslig)) {
+        e[campoDeslig] = 'Data inválida.';
+      }
     }
     if (tipoServico === 'AFASTAMENTO') {
       const inif = FIELD_MAP.afast.ini;
@@ -527,6 +587,15 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     // campos base
     payload.empresa = toNull(payload.empresa);
     payload.servico = payload.servico ? Number(payload.servico) : null;
+
+    if (payload.data_vencimento) {
+      const respostaCalculada = servicoSelecionado
+        ? calcularDataRespostaPorPrazo(payload.data_vencimento, servicoSelecionado.prazo_dias)
+        : null;
+      payload.data_para_resposta = respostaCalculada || null;
+    } else {
+      payload.data_para_resposta = null;
+    }
 
     // datas core -> ISO
     CAMPOS_DATA_CORE.forEach((c) => {
@@ -610,6 +679,18 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
         alert('Erro ao salvar o registro. Tente novamente.');
       }
       console.error('Falha ao salvar solicitação:', err);
+    }
+  };
+
+  const handleExcluir = async () => {
+    if (!dados?.id) return;
+    if (!window.confirm('Confirma a exclusão deste serviço solicitado?')) return;
+    try {
+      await api.delete(`/api/solicitacoes/${dados.id}/`);
+      fechar();
+    } catch (err) {
+      console.error('Erro ao excluir solicitação:', err.response?.data || err);
+      alert('Erro ao excluir o serviço solicitado. Tente novamente.');
     }
   };
 
@@ -791,17 +872,51 @@ const renderBlocoAdmissao = () => (
     <h4>Admissão</h4>
     <div className="linha">
       <div className="campo campo-medio">
-        <label>Tipo</label>
-        <input
-          type="text"
+        <label>
+          Tipo{' '}
+          {errors[FIELD_MAP.admissao.tipo] && (
+            <span style={{ color: 'red', fontWeight: 600, fontSize: 11 }}>
+              ({errors[FIELD_MAP.admissao.tipo]})
+            </span>
+          )}
+        </label>
+        <select
           name={FIELD_MAP.admissao.tipo}
           value={admissao[FIELD_MAP.admissao.tipo] || ''}
           onChange={handleAdmissaoChange}
-        />
+        >
+          <option value="">--</option>
+          {admissao[FIELD_MAP.admissao.tipo] &&
+            !tiposAdmissao.some(
+              (tipo) => normalize(tipo.descricao) === normalize(admissao[FIELD_MAP.admissao.tipo])
+            ) && (
+              <option value={admissao[FIELD_MAP.admissao.tipo]}>
+                {admissao[FIELD_MAP.admissao.tipo]}
+              </option>
+            )}
+          {tiposAdmissao.map((tipo) => (
+            <option key={tipo.id} value={tipo.descricao}>
+              {tipo.descricao}
+            </option>
+          ))}
+        </select>
+        {(tipoAdmissaoSelecionado?.mensagem || exigeDesligamentoProgramado) && (
+          <small className="campo-hint">
+            {tipoAdmissaoSelecionado?.mensagem ||
+              'Informe a data de desligamento programado para este tipo.'}
+          </small>
+        )}
       </div>
 
       <div className="campo campo-curto">
-        <label>Data Início (dd-mm-aaaa)</label>
+        <label>
+          Data Início (dd-mm-aaaa){' '}
+          {errors[FIELD_MAP.admissao.data_ini] && (
+            <span style={{ color: 'red', fontWeight: 600, fontSize: 11 }}>
+              ({errors[FIELD_MAP.admissao.data_ini]})
+            </span>
+          )}
+        </label>
         <input
           type="text"
           name={FIELD_MAP.admissao.data_ini}
@@ -816,7 +931,14 @@ const renderBlocoAdmissao = () => (
       </div>
 
       <div className="campo campo-curto">
-        <label>Data Deslig. Programado</label>
+        <label>
+          Data Deslig. Programado{' '}
+          {errors[FIELD_MAP.admissao.deslig_programado] && (
+            <span style={{ color: 'red', fontWeight: 600, fontSize: 11 }}>
+              ({errors[FIELD_MAP.admissao.deslig_programado]})
+            </span>
+          )}
+        </label>
         <input
           type="text"
           name={FIELD_MAP.admissao.deslig_programado}
@@ -978,32 +1100,41 @@ const renderBlocoMulta = () => (
               EMPRESA{' '}
               {errors.empresa && <span style={{ color: 'red', fontWeight: 600, fontSize: 11 }}>({errors.empresa})</span>}
             </label>
-            <Select
-              options={empresas.map((emp) => ({
-                value: emp.cod_folha,
-                label: `${emp.cod_folha} - ${emp.razao_social}`,
-              }))}
-              value={empresas
-                .map((emp) => ({
+            {!isEdicao ? (
+              <Select
+                options={empresas.map((emp) => ({
                   value: emp.cod_folha,
                   label: `${emp.cod_folha} - ${emp.razao_social}`,
-                }))
-                .find((opt) => String(opt.value) === String(form.empresa))}
-              onChange={(opt) => {
-                setForm((prev) => ({ ...prev, empresa: opt?.value || '' }));
-                if (errors.empresa) setErrors((prev) => ({ ...prev, empresa: undefined }));
-              }}
-              placeholder="Digite para buscar..."
-              isClearable
-              styles={{
-                control: (base) => ({
-                  ...base,
-                  borderColor: errors.empresa ? 'red' : base.borderColor,
-                  minHeight: 30,
-                }),
-                indicatorsContainer: (base) => ({ ...base, height: 30 }),
-              }}
-            />
+                }))}
+                value={empresas
+                  .map((emp) => ({
+                    value: emp.cod_folha,
+                    label: `${emp.cod_folha} - ${emp.razao_social}`,
+                  }))
+                  .find((opt) => String(opt.value) === String(form.empresa))}
+                onChange={(opt) => {
+                  setForm((prev) => ({ ...prev, empresa: opt?.value || '' }));
+                  if (errors.empresa) setErrors((prev) => ({ ...prev, empresa: undefined }));
+                }}
+                placeholder="Digite para buscar..."
+                isClearable
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: errors.empresa ? 'red' : base.borderColor,
+                    minHeight: 30,
+                  }),
+                  indicatorsContainer: (base) => ({ ...base, height: 30 }),
+                }}
+              />
+            ) : (
+              <input
+                type="text"
+                value={empresaLabel}
+                readOnly
+                disabled
+              />
+            )}
           </div>
         </div>
 
@@ -1102,6 +1233,11 @@ const renderBlocoMulta = () => (
 
         {/* Botões */}
         <div className="botoes">
+          {dados?.id && (
+            <button type="button" className="excluir" onClick={handleExcluir}>
+              EXCLUIR
+            </button>
+          )}
           <button type="submit">SALVAR</button>
           <button type="button" className="cancelar" onClick={fechar}>
             CANCELAR

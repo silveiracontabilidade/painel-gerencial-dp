@@ -13,6 +13,7 @@ import Login from './pages/login';
 import RequireAuth from './components/RequireAuth';
 import ServicosSolicitados from './pages/servicosSolicitados';
 import MotivosRescisao from './pages/motivosRescisao';
+import TiposAdmissao from './pages/tiposAdmissao';
 
 function App() {
   const isUat = (process.env.REACT_APP_ENV || '').toUpperCase() === 'UAT';
@@ -53,6 +54,7 @@ function App() {
             <Route path="agenda" element={<AgendaBase />} />
             <Route path="servicos-solicitados" element={<ServicosSolicitados />} />
             <Route path="motivos-rescisao" element={<MotivosRescisao />} />
+            <Route path="tipos-admissao" element={<TiposAdmissao />} />
           </Route>
         </Route>
       </Routes>

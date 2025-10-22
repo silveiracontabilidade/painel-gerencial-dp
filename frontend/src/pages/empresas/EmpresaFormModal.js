@@ -177,9 +177,8 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
 
 const handleChange = (campo) => (e) => {
   const bruto = e?.target?.value ?? '';
-  const valorTransformado = camposCaseSensitive.has(campo)
-    ? bruto
-    : bruto.toUpperCase();
+  const manterFormato = camposCaseSensitive.has(campo) || campo.startsWith('obs');
+  const valorTransformado = manterFormato ? bruto : bruto.toUpperCase();
 
   setEmpresa((prev) => {
     const atualizado = { ...prev, [campo]: valorTransformado };
@@ -259,8 +258,7 @@ const handleChange = (campo) => (e) => {
       "opc_rec_patronal",
       "classificacao",
       "cnpj_original",
-      "razao_social",
-      "forma_comunica"
+      "razao_social"
     ];
 
   const abasDisponiveis = [
@@ -465,6 +463,9 @@ const handleChange = (campo) => (e) => {
 
   //helper para verificar se pode editar
   const podeEditar = (aba, campo) => {
+    if (campo === 'forma_comunica') {
+      return true;
+    }
     // 🔒 Se for especialista, nunca pode editar os campos restritos
     if (
       ["especialista", "especialista_senior"].includes(perfilUsuario) &&
@@ -725,7 +726,6 @@ const handleChange = (campo) => (e) => {
           </div>
           <div className='linha'>
             {renderText('razao_social', 'RAZÃO SOCIAL', 'campo-medio')}
-            {renderText('forma_comunica', 'FORMA DE COMUNICAÇÃO', 'campo-curto-fixo')}
           </div>
         </div> 
 
@@ -761,6 +761,7 @@ const handleChange = (campo) => (e) => {
                 </div>
                 {renderSelect('resp_dp', 'RESPONSÁVEL DP', responsaveis.map(r => r.nome.toUpperCase()), 'campo-medio', empresa.resp_dp)}
                 {renderText('ramal', 'RAMAL', 'campo-curto','text',null, 'numeric')}
+                {renderText('forma_comunica', 'FORMA DE COMUNICAÇÃO COM O CLIENTE', 'campo-medio')}
               </div>
             </div>
 
@@ -814,7 +815,7 @@ const handleChange = (campo) => (e) => {
                 {renderText('perc_adiantamento', 'PERCENTUAL', 'campo-curto','text',null,'numeric')}
               </div>
               <div className='linha'>
-                {renderTextarea('obs_adiantamento', 'OBS.')}
+                {renderTextarea('obs_adiantamento', 'OBS.', 'campo-longo','textarea-gigante')}
               </div>
             </div>
           </>
@@ -924,7 +925,7 @@ const handleChange = (campo) => (e) => {
                 {renderText('aprendizes', 'APRENDIZES', 'campo-curto')}
                 {renderText('pcd', 'PCD', 'campo-curto')}
                 {renderText('med_ocupa', 'MEDICINA OCUPACIONAL', 'campo-medio')}
-                {renderText('med_ocupa_proc_venc', 'VENC. PROC. MEDICINA', 'campo-medio', 'text',null, 'date')}
+                {renderText('med_ocupa_proc_venc', 'VENCIMENTO PROCURAÇÃO MEDICINA OCUPACIONAL', 'campo-medio', 'text',null, 'date')}
               </div>
               <br></br>
               <div className="linha">
