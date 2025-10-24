@@ -474,13 +474,16 @@ const handleChange = (campo) => (e) => {
       return false;
     }
 
-    const regra = permissoes.find(
-      (p) =>
-        p.tela === "empresa" &&
-        p.aba === aba &&
-        (p.campo === campo || p.campo === "*")
+    // Preferir regra específica do campo; se não houver, cair no wildcard
+    const regraExata = permissoes.find(
+      (p) => p.tela === "empresa" && p.aba === aba && p.campo === campo
     );
-    return regra ? regra.pode_editar : false;
+    if (regraExata) return !!regraExata.pode_editar;
+
+    const regraWildcard = permissoes.find(
+      (p) => p.tela === "empresa" && p.aba === aba && p.campo === "*"
+    );
+    return regraWildcard ? !!regraWildcard.pode_editar : false;
   };
 
 
