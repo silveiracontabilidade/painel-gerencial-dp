@@ -11,6 +11,7 @@ from .models import (
 import math
 from decimal import Decimal
 from rest_framework.fields import CharField
+from django.db.models import Q
 from datetime import timedelta
 from django.contrib.auth.password_validation import validate_password
 
@@ -106,6 +107,11 @@ class ResponsavelSerializer(serializers.ModelSerializer):
         return responsavel
 
     def update(self, instance, validated_data):
+        # valores atuais antes de modificar
+        nome_antigo = instance.nome
+        grupo_antigo_id = getattr(instance.grupo, 'id', None)
+        ramal_antigo = instance.ramal
+
         novo_usuario = validated_data.get('usuario', instance.usuario)
         novo_email = validated_data.get('email', instance.email)
 
@@ -134,6 +140,28 @@ class ResponsavelSerializer(serializers.ModelSerializer):
         instance.status = validated_data.get('status', instance.status)
         instance.save()
 
+        # Propaga alterações de grupo/ramal para empresas onde este responsável está setado
+        try:
+            # determina novos valores
+            novo_grupo_nome = instance.grupo.nome if instance.grupo else None
+            novo_ramal = instance.ramal
+
+            # se houve mudança relevante (grupo, ramal ou nome)
+            if (
+                grupo_antigo_id != getattr(instance.grupo, 'id', None)
+                or ramal_antigo != novo_ramal
+                or nome_antigo != instance.nome
+            ):
+                PlanilhaGerencial.objects.filter(
+                    Q(resp_dp=nome_antigo) | Q(resp_dp=instance.nome)
+                ).update(
+                    grupo=novo_grupo_nome,
+                    ramal=novo_ramal,
+                )
+        except Exception:
+            # Evita quebrar a operação principal em caso de inconsistências
+            pass
+
         return instance
 
 
@@ -157,6 +185,40 @@ class PlanilhaGerencialSerializer(serializers.ModelSerializer):
         elif len(cnpj) == 11:
             return f"{cnpj[:3]}.{cnpj[3:6]}.{cnpj[6:9]}-{cnpj[9:]}"
         return obj.cnpj  # fallback se não tiver 14 dígitos
+
+    def _aplicar_grupo_ramal_por_responsavel(self, attrs):
+        """Quando resp_dp for informado/alterado, sincroniza grupo e ramal
+        com os dados do Responsavel correspondente.
+        """
+        resp_dp = attrs.get('resp_dp')
+        if not resp_dp:
+            return attrs
+
+        try:
+            # tenta mapear tanto por nome quanto por usuario
+            responsavel = (
+                Responsavel.objects.select_related('grupo')
+                .filter(Q(nome=resp_dp) | Q(usuario=resp_dp))
+                .first()
+            )
+            if responsavel:
+                attrs['grupo'] = responsavel.grupo.nome if responsavel.grupo else None
+                attrs['ramal'] = responsavel.ramal
+        except Exception:
+            # não bloqueia operação caso haja problemas de dados
+            pass
+        return attrs
+
+    def create(self, validated_data):
+        validated_data = dict(validated_data)
+        validated_data = self._aplicar_grupo_ramal_por_responsavel(validated_data)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data = dict(validated_data)
+        if 'resp_dp' in validated_data:
+            validated_data = self._aplicar_grupo_ramal_por_responsavel(validated_data)
+        return super().update(instance, validated_data)
 
 
 # ---------------------- Serviço ----------------------
