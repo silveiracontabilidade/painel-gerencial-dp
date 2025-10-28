@@ -1,14 +1,39 @@
 // ServicosSolicitados.js
 import React, { useEffect, useState, useMemo  } from 'react';
-import { Plus, Pencil, Trash2, FileText, CheckCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, CheckCircle, Loader2 } from 'lucide-react';
 import EmpresaFormModal from '../empresas/EmpresaFormModal'
 import api from '../../api/axios';
 import { paraISO } from '../../utils/datas';
 import ServicoSolicitadoFormModal from './servicoSolicitadoFormModal';
 import './servicos-solicitados.css';
+// util simples para exportar CSV (abre no Excel)
+function exportToCsv(filename, rows, headers) {
+  const sep = ';';
+  const esc = (v) => {
+    const s = v == null ? '' : String(v);
+    const needs = /[";\n]/.test(s);
+    const cleaned = s.replace(/"/g, '""');
+    return needs ? `"${cleaned}"` : cleaned;
+  };
+  const headerLine = headers.map(h => esc(h.label)).join(sep);
+  const lines = rows.map(r => headers.map(h => esc(r[h.key])).join(sep));
+  const csv = [headerLine, ...lines].join('\n');
+  // Prepend BOM para Excel reconhecer UTF-8 e acentos corretamente
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 export default function ServicosSolicitados() {
   const [solicitacoes, setSolicitacoes] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [empresas, setEmpresas] = useState([]);
   const [responsaveis, setResponsaveis] = useState([]);
   const [grupos, setGrupos] = useState([]);
@@ -18,6 +43,43 @@ export default function ServicosSolicitados() {
   const [ordenacao, setOrdenacao] = useState({ campo: '', direcao: 'asc' });
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(10);
+  const [loading, setLoading] = useState(false);
+  
+  const handleExportar = () => {
+    const headers = [
+      { key: 'empresa', label: 'Empresa' },
+      { key: 'empresa_razao', label: 'Razão Social' },
+      { key: 'responsavel', label: 'Responsável' },
+      { key: 'servico', label: 'Serviço' },
+      { key: 'detalhes', label: 'Detalhes' },
+      { key: 'competencia', label: 'Competência' },
+      { key: 'data_solicitacao', label: 'Solicitação' },
+      { key: 'data_vencimento', label: 'Vencimento' },
+      { key: 'data_para_resposta', label: 'Data Resposta' },
+      { key: 'data_conclusao', label: 'Conclusão' },
+    ];
+    const rows = solicitacoesFiltradas.map(s => {
+      const cod = String(s.empresa ?? '');
+      const emp = empresaByCodigo.get(cod);
+      const empresaRazao = emp?.razao_social || '';
+      const responsavel = s.empresa ? (emp?.resp_dp || '') : (s.responsavel_nome || '');
+      return {
+        empresa: cod || '-',
+        empresa_razao: empresaRazao,
+        responsavel: responsavel,
+        servico: s.servico_nome || '',
+        detalhes: renderDetalhes(s),
+        competencia: s.competencia || '',
+        data_solicitacao: s.data_solicitacao || '',
+        data_vencimento: s.data_vencimento || '',
+        data_para_resposta: s.data_para_resposta || '',
+        data_conclusao: s.data_conclusao || '',
+      };
+    });
+    const data = new Date();
+    const ts = `${data.getFullYear()}-${String(data.getMonth()+1).padStart(2,'0')}-${String(data.getDate()).padStart(2,'0')}`;
+    exportToCsv(`servicos_solicitados_${ts}.csv`, rows, headers);
+  };
 
   // para mostrar os detalhes da empresa
   const [empresaModalAberto, setEmpresaModalAberto] = useState(false);
@@ -72,6 +134,7 @@ export default function ServicosSolicitados() {
     prazo: 'todos',
     servicoId: '',       // 👈 novo
     competencia: '',     // 👈 novo
+    detalhes: '',        // 👈 novo filtro
   });
 
   const normalizarDecimalParaEnvio = (valor) => {
@@ -112,9 +175,35 @@ export default function ServicosSolicitados() {
 
 
   //carrega as solicitacoes
+  const temFiltro = useMemo(() => {
+    return (
+      (filters.empresa && filters.empresa.trim() !== '') ||
+      (filters.responsavelId && String(filters.responsavelId) !== '') ||
+      (filters.grupoId && String(filters.grupoId) !== '') ||
+      (filters.servicoId && String(filters.servicoId) !== '') ||
+      (filters.competencia && filters.competencia.trim() !== '') ||
+      (filters.detalhes && filters.detalhes.trim() !== '') ||
+      (filters.prazo && filters.prazo !== 'todos') ||
+      (filters.status && filters.status !== 'aberto')
+    );
+  }, [filters]);
+
   const carregarSolicitacoes = async () => {
-    const res = await api.get('/api/solicitacoes/');
-    setSolicitacoes(res.data.results || res.data);
+    setLoading(true);
+    const params = temFiltro
+      ? { page: 1, page_size: 2000 }
+      : { page: paginaAtual, page_size: itensPorPagina };
+    try {
+      const res = await api.get('/api/solicitacoes/', { params });
+      const results = res.data?.results ?? res.data;
+      setSolicitacoes(results);
+      if (!temFiltro) {
+        const count = typeof res.data?.count === 'number' ? res.data.count : (Array.isArray(results) ? results.length : 0);
+        setTotalCount(count);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const carregarEmpresas = async () => {
@@ -331,6 +420,7 @@ export default function ServicosSolicitados() {
     const alvoGrupoNome = filters.grupoId
       ? normalize(grupoById.get(String(filters.grupoId))?.nome)
       : '';
+    const alvoDetalhes = normalize(filters.detalhes);
 
     const hoje = new Date();
 
@@ -383,7 +473,14 @@ export default function ServicosSolicitados() {
         }
       }
 
-      return passaEmpresa && passaResp && passaGrupo && passaServico && passaCompetencia;
+      // filtro por detalhes
+      let passaDetalhes = true;
+      if (alvoDetalhes) {
+        const detalhesStr = normalize(renderDetalhes(s));
+        passaDetalhes = detalhesStr.includes(alvoDetalhes);
+      }
+
+      return passaEmpresa && passaResp && passaGrupo && passaServico && passaCompetencia && passaDetalhes;
     });
   }, [solicitacoes, empresaByCodigo, filters, respById, grupoById]);
 
@@ -440,17 +537,32 @@ export default function ServicosSolicitados() {
     return lista;
   }, [solicitacoesFiltradas, ordenacao]);
 
-  const totalRegistros = solicitacoesFiltradas.length;
+  // Se houver filtro, total passa a ser o tamanho filtrado desta coleção carregada
+  const totalRegistros = temFiltro ? solicitacoesOrdenadas.length : totalCount;
   const totalPaginas = Math.max(1, Math.ceil((totalRegistros || 0) / itensPorPagina) || 1);
 
   useEffect(() => {
     setPaginaAtual((prev) => (prev > totalPaginas ? totalPaginas : prev));
   }, [totalPaginas]);
 
+  // Recarrega da API quando paginação muda ou filtros (com estratégia condicional)
+  useEffect(() => {
+    carregarSolicitacoes();
+  }, [paginaAtual, itensPorPagina, temFiltro]);
+
+  // Quando filtros mudam, volta para página 1
+  useEffect(() => {
+    setPaginaAtual(1);
+  }, [filters]);
+
+  // Paginação em memória quando há filtro ativo
   const solicitacoesPagina = useMemo(() => {
+    if (!temFiltro) return solicitacoesOrdenadas;
     const inicio = (paginaAtual - 1) * itensPorPagina;
     return solicitacoesOrdenadas.slice(inicio, inicio + itensPorPagina);
-  }, [solicitacoesOrdenadas, paginaAtual, itensPorPagina]);
+  }, [temFiltro, solicitacoesOrdenadas, paginaAtual, itensPorPagina]);
+
+  // Paginação agora é no servidor; não fatiar novamente no cliente
 
   const handleItensPorPaginaChange = (e) => {
     const novoValor = Number(e.target.value) || 10;
@@ -509,6 +621,13 @@ export default function ServicosSolicitados() {
     else {
       // fallback para outros tipos → usa só identificação
       if (s.identificacao) partes.push(s.identificacao);
+    }
+
+    // Sistema da empresa
+    const cod = String(s.empresa ?? '');
+    const emp = empresaByCodigo.get(cod);
+    if (emp && emp.sistema) {
+      partes.push(`Sistema: ${emp.sistema}`);
     }
 
     return partes.filter(Boolean).join(" | ");
@@ -614,15 +733,26 @@ export default function ServicosSolicitados() {
       prazo: 'todos',
       servicoId: '',
       competencia: '',
+      detalhes: '',
     });
 
   return (
     <div className="servicos-sol-container">
-      <div className="servicos-header">
+      {loading && (
+        <div className="loading-overlay">
+          <Loader2 size={36} className="spin" style={{ color: '#fff' }} />
+        </div>
+      )}
+      <div className="servicos-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h2>To Do</h2>
-        <button onClick={() => abrirModal()} title="Novo Serviço">
-          <Plus size={18} /> Novo
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={handleExportar} title="Exportar CSV">
+            Exportar
+          </button>
+          <button onClick={() => abrirModal()} title="Novo Serviço">
+            <Plus size={18} /> Novo
+          </button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -637,7 +767,7 @@ export default function ServicosSolicitados() {
           />
         </div>
 
-        <div className="campo" style={{ minWidth: 220 }}>
+        <div className="campo" style={{ minWidth: 140 }}>
           <label>Responsável</label>
           <select
             value={filters.responsavelId}
@@ -650,21 +780,31 @@ export default function ServicosSolicitados() {
           </select>
         </div>
 
-        <div className="campo" style={{ minWidth: 200 }}>
+        <div className="campo" style={{ minWidth: 120 }}>
           <label>Grupo</label>
-          <select
-            value={filters.grupoId}
-            onChange={handleFilterChange('grupoId')}
-          >
-            <option value="">Todos</option>
-            {grupos
-              .slice()
-              .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'))
-              .map((g) => (
-                <option key={g.id} value={g.id}>{g.nome}</option>
-              ))}
-          </select>
-        </div>
+        <select
+          value={filters.grupoId}
+          onChange={handleFilterChange('grupoId')}
+        >
+          <option value="">Todos</option>
+          {grupos
+            .slice()
+            .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'))
+            .map((g) => (
+              <option key={g.id} value={g.id}>{g.nome}</option>
+            ))}
+        </select>
+      </div>
+
+      <div className="campo" style={{ minWidth: 200 }}>
+        <label>Detalhes</label>
+        <input
+          type="text"
+          value={filters.detalhes}
+          onChange={handleFilterChange('detalhes')}
+          placeholder="Texto livre nos detalhes"
+        />
+      </div>
 
         <div className="campo is-pequeno">
           <label>Status</label>
@@ -752,7 +892,7 @@ export default function ServicosSolicitados() {
           </tr>
         </thead>
         <tbody>
-          {solicitacoesPagina.map((s) => (
+          {(temFiltro ? solicitacoesPagina : solicitacoesOrdenadas).map((s) => (
             <tr key={s.id} className={s.data_conclusao ? 'linha-concluida' : ''}>
               <td>{renderEmpresa(s)}</td>
               <td>{renderResp(s)}</td>

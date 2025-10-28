@@ -264,6 +264,7 @@ class ServicoSolicitado(models.Model):
     admissao_data_ini = models.CharField(max_length=100, null=True, blank=True)
     admissao_deslig_programado = models.CharField(max_length=100, null=True, blank=True)
     admissao_preliminar = models.CharField(max_length=100, null=True, blank=True)
+    admissao_observacao = models.TextField(null=True, blank=True)
 
     # AFASTAMENTO
     afast_tipo = models.CharField(max_length=100, null=True, blank=True)
@@ -282,6 +283,10 @@ class ServicoSolicitado(models.Model):
 
     # OUTROS
     id_acessorias = models.CharField(max_length=100, null=True, blank=True)
+    processo_realizado_por = models.ForeignKey(
+        'Responsavel', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='processos_realizados', db_column='processo_realizado_por'
+    )
 
     STATUS_CHOICES = [
         ("PENDENTE", "Pendente"),

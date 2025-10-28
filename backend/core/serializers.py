@@ -263,14 +263,14 @@ class ServicoSerializer(serializers.ModelSerializer):
 from .models import ServicoSolicitado, PlanilhaGerencial  # garante import de PlanilhaGerencial
 
 class ServicoSolicitadoSerializer(BaseSerializer):
-    empresa_razao_social = serializers.SerializerMethodField(read_only=True)
     servico_nome = serializers.StringRelatedField(source='servico', read_only=True)
     responsavel_nome = serializers.StringRelatedField(source='responsavel', read_only=True)
+    processo_realizado_por_nome = serializers.StringRelatedField(source='processo_realizado_por', read_only=True)
 
     class Meta:
         model = ServicoSolicitado
         fields = [
-            'id', 'data_solicitacao', 'empresa', 'empresa_razao_social',
+            'id', 'data_solicitacao', 'empresa',
             'responsavel', 'responsavel_nome',
             'servico', 'servico_nome', 'competencia', 'identificacao',
             'descricao_servico', 'data_vencimento', 'data_para_resposta', 'data_conclusao',
@@ -286,7 +286,7 @@ class ServicoSolicitadoSerializer(BaseSerializer):
 
             # ADMISSÃO
             'admissao_tipo', 'admissao_data_ini',
-            'admissao_deslig_programado', 'admissao_preliminar',
+            'admissao_deslig_programado', 'admissao_preliminar', 'admissao_observacao',
 
             # AFASTAMENTO
             'afast_tipo', 'afast_dias', 'afast_ini', 'afast_pericia',
@@ -298,14 +298,12 @@ class ServicoSolicitadoSerializer(BaseSerializer):
             'multa_valor', 'multa_rnc',
 
             # OUTROS
-            'id_acessorias',
+            'id_acessorias', 'processo_realizado_por', 'processo_realizado_por_nome',
 
             # STATUS
             'status',
         ]
 
-    def get_empresa_razao_social(self, obj):
-        return getattr(obj.empresa, 'razao_social', None)
 
 
 

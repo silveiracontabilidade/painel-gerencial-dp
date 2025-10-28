@@ -73,8 +73,18 @@ class ServicoViewSet(viewsets.ModelViewSet):
 
 
 class ServicoSolicitadoViewSet(viewsets.ModelViewSet):
-    queryset = ServicoSolicitado.objects.select_related('servico', 'responsavel').all()
+    class ServicoSolicitadoPagination(PageNumberPagination):
+        page_size = 50
+        page_size_query_param = 'page_size'
+        max_page_size = 200
+
+    queryset = (
+        ServicoSolicitado.objects
+        .select_related('servico', 'responsavel', 'processo_realizado_por')
+        .order_by('-data_solicitacao', '-id')
+    )
     serializer_class = ServicoSolicitadoSerializer
+    pagination_class = ServicoSolicitadoPagination
 
 
 class EmpresaPagination(PageNumberPagination):

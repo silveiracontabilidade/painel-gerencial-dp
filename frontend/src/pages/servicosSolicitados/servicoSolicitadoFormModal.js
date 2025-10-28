@@ -163,6 +163,7 @@ const FIELD_MAP = {
     data_ini: 'admissao_data_ini',
     deslig_programado: 'admissao_deslig_programado',
     preliminar: 'admissao_preliminar',
+    observacao: 'admissao_observacao',
   },
 
   // AFASTAMENTO
@@ -192,6 +193,7 @@ const TIPOS_ADMISSAO_OBRIGAM_DESLIGAMENTO = new Set(['ESTAGIARIO', 'PRAZO DETERM
 export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   const [form, setForm] = useState({});
   const [empresas, setEmpresas] = useState([]);
+  const [responsaveis, setResponsaveis] = useState([]);
   const [servicos, setServicos] = useState([]);
   const [errors, setErrors] = useState({});
   // Estado do Tipo de Aviso Prévio
@@ -231,6 +233,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     [FIELD_MAP.admissao.data_ini]: '',
     [FIELD_MAP.admissao.deslig_programado]: '',
     [FIELD_MAP.admissao.preliminar]: '',
+    [FIELD_MAP.admissao.observacao]: '',
   });
 
   const [afast, setAfast] = useState({
@@ -313,6 +316,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
         [FIELD_MAP.admissao.data_ini]: dados[FIELD_MAP.admissao.data_ini] ? toBRSafe(dados[FIELD_MAP.admissao.data_ini]) : '',
         [FIELD_MAP.admissao.deslig_programado]: dados[FIELD_MAP.admissao.deslig_programado] || '',
         [FIELD_MAP.admissao.preliminar]: dados[FIELD_MAP.admissao.preliminar] || '',
+        [FIELD_MAP.admissao.observacao]: dados[FIELD_MAP.admissao.observacao] || '',
       });
       setAfast({
         // [FIELD_MAP.afast.tipo]: dados[FIELD_MAP.afast.tipo] || '',
@@ -349,6 +353,13 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     setServicos(resServ.data.results || resServ.data);
     setMotivosRescisao(resMotivos.data.results || resMotivos.data);
     setTiposAdmissao(resTipos.data.results || resTipos.data);
+    // carrega responsáveis para o select de processo
+    try {
+      const resResp = await api.get('/api/responsaveis/');
+      setResponsaveis(resResp.data.results || resResp.data);
+    } catch (e) {
+      setResponsaveis([]);
+    }
     if (incluirEmpresas) {
       const resEmp = await api.get('/api/empresas/', { params: { page: 1, page_size: 2000 } });
       setEmpresas(resEmp.data.results || resEmp.data);
@@ -625,6 +636,13 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
 
     // === ADMISSÃO (CharField) ===
     Object.entries(admissao).forEach(([k, v]) => (payload[k] = toNull(v)));
+
+    // Processo Realizado Por (FK -> id de responsável)
+    if (form.processo_realizado_por) {
+      payload.processo_realizado_por = Number(form.processo_realizado_por);
+    } else {
+      payload.processo_realizado_por = null;
+    }
 
     // === AFASTAMENTO (CharField) ===
     Object.entries(afast).forEach(([k, v]) => (payload[k] = toNull(v)));
@@ -964,6 +982,16 @@ const renderBlocoAdmissao = () => (
           <option value="NÃO">NÃO</option>
         </select>
       </div>
+
+      <div className="campo campo-longo">
+        <label>Observação</label>
+        <input
+          type="text"
+          name={FIELD_MAP.admissao.observacao}
+          value={admissao[FIELD_MAP.admissao.observacao] || ''}
+          onChange={handleAdmissaoChange}
+        />
+      </div>
     </div>
   </div>
 );
@@ -1223,6 +1251,23 @@ const renderBlocoMulta = () => (
           {renderInputData('data_vencimento', 'VENCIMENTO', 'campo-curto')}
           {renderInputData('data_para_resposta', 'DATA PARA RESPOSTA', 'campo-curto', true)}
           {renderInputData('data_conclusao', 'CONCLUSÃO', 'campo-curto')}
+        </div>
+
+        {/* Processo Realizado Por */}
+        <div className="linha">
+          <div className="campo campo-medio">
+            <label>PROCESSO REALIZADO POR</label>
+            <select
+              name="processo_realizado_por"
+              value={form.processo_realizado_por || ''}
+              onChange={(e) => setForm((prev) => ({ ...prev, processo_realizado_por: e.target.value }))}
+            >
+              <option value="">--</option>
+              {responsaveis.map((r) => (
+                <option key={r.id} value={r.id}>{r.nome}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {servicoSelecionado?.mensagem && (

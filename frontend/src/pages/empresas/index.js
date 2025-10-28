@@ -1,10 +1,34 @@
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, UserCog, Plus, Pencil, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, UserCog, Plus, Pencil, Filter, Loader2 } from 'lucide-react';
 import EmpresaFormModal from './EmpresaFormModal'; // ajuste o path
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import api from '../../api/axios';
 import './Empresas.css';
 import { paraISO, paraBR } from '../../utils/datas';
 import FiltrosAvancadosModal from './FiltrosAvancadosModal';
+// util simples para exportar CSV (abre no Excel)
+function exportToCsv(filename, rows, headers) {
+  const sep = ';';
+  const esc = (v) => {
+    const s = v == null ? '' : String(v);
+    const needs = /[";\n]/.test(s);
+    const cleaned = s.replace(/"/g, '""');
+    return needs ? `"${cleaned}"` : cleaned;
+  };
+  const headerLine = headers.map(h => esc(h.label)).join(sep);
+  const lines = rows.map(r => headers.map(h => esc(r[h.key])).join(sep));
+  const csv = [headerLine, ...lines].join('\n');
+  // Prepend BOM para Excel reconhecer UTF-8 e acentos corretamente
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 const StatusBadge = ({ status }) => {
   const normalized = (status || '').toUpperCase();
@@ -28,6 +52,7 @@ const BooleanIcon = ({ value }) => {
 export default function Empresas() {
 
 const [empresas, setEmpresas] = useState([]);
+const [loading, setLoading] = useState(false);
 const [page, setPage] = useState(1);
 const pageSize = 2000; // ou outro valor conforme necessário 
 const [modalDelegarAberto, setModalDelegarAberto] = useState(false);
@@ -276,6 +301,51 @@ const [filters, setFilters] = useState({
     return empresasFiltradas.slice(inicio, inicio + pageSize);
   }, [empresasFiltradas, page]);
 
+  // Exportação (depende de empresasFiltradas já definido acima)
+  const handleExportar = useCallback(() => {
+    const headers = [
+      { key: 'cod_folha', label: 'Código' },
+      { key: 'razao_social', label: 'Nome' },
+      { key: 'grupo_economico', label: 'Grupo Econômico' },
+      { key: 'cnpj', label: 'CNPJ' },
+      { key: 'status_do_cliente', label: 'Status' },
+      { key: 'inicio_contrato', label: 'Início' },
+      { key: 'termino_contrato', label: 'Término' },
+      { key: 'tributacao', label: 'Tributação' },
+      { key: 'sistema', label: 'Sistema' },
+      { key: 'grupo', label: 'Grupo' },
+      { key: 'resp_dp', label: 'Responsável' },
+      { key: 'ramal', label: 'Ramal' },
+      { key: 'data_pagto_salario', label: 'Data Pagto' },
+      { key: 'classificacao', label: 'Categoria' },
+      { key: 'classificacao2', label: 'Classificação' },
+      { key: 'matriz', label: 'Matriz' },
+      { key: 'enviadctf', label: 'DCTF' },
+    ];
+    const rows = empresasFiltradas.map(e => ({
+      cod_folha: e.cod_folha || '',
+      razao_social: (e.razao_social || '').toUpperCase(),
+      grupo_economico: (e.grupo_economico || '').toUpperCase(),
+      cnpj: e.cnpj || '',
+      status_do_cliente: (e.status_do_cliente || '').toUpperCase(),
+      inicio_contrato: e.inicio_contrato || '',
+      termino_contrato: e.termino_contrato || '',
+      tributacao: (e.tributacao || '').toUpperCase(),
+      sistema: (e.sistema || '').toUpperCase(),
+      grupo: grupoDerivado(e),
+      resp_dp: (e.resp_dp || '').toUpperCase(),
+      ramal: ramalDerivado(e),
+      data_pagto_salario: e.data_pagto_salario || '',
+      classificacao: (e.classificacao || '').toUpperCase(),
+      classificacao2: (e.classificacao2 || '').toUpperCase(),
+      matriz: (e.matriz || '').toUpperCase(),
+      enviadctf: (e.enviadctf || '').toUpperCase(),
+    }));
+    const d = new Date();
+    const ts = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    exportToCsv(`empresas_${ts}.csv`, rows, headers);
+  }, [empresasFiltradas, grupoDerivado, ramalDerivado]);
+
 
   const [count, setCount] = useState(0);
   const toggleSelecionado = (empresa) => {
@@ -348,6 +418,7 @@ const [filters, setFilters] = useState({
   }, [periodosEntrega]);
 
 useEffect(() => {
+  setLoading(true);
   api
     .get('api/empresas/', {
       params: { page, page_size: pageSize, ...filters },
@@ -363,7 +434,8 @@ useEffect(() => {
         typeof data?.count === 'number' ? data.count : results.length
       );
     })
-    .catch((err) => console.error('Erro ao carregar empresas:', err));
+    .catch((err) => console.error('Erro ao carregar empresas:', err))
+    .finally(() => setLoading(false));
 }, [filters, page]);
 
 
@@ -563,6 +635,11 @@ const salvarEmpresa = async (empresa) => {
 
   return (
     <div className="empresas-container">
+      {loading && (
+        <div className="loading-overlay">
+          <Loader2 size={36} className="spin" style={{ color: '#fff' }} />
+        </div>
+      )}
       <br></br>
       <div className="empresas-titulo">
         <h2>Empresas</h2>
@@ -570,7 +647,7 @@ const salvarEmpresa = async (empresa) => {
           <span>Exibindo: {empresas.length} empresas</span>
         </div>
 
-       <div>
+       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {/* Botão Filtros Avançados */}
           <button
             onClick={() => setModalFiltrosAberto(true)}
@@ -581,6 +658,11 @@ const salvarEmpresa = async (empresa) => {
             {temFiltrosAvancados && (
               <span className="filtros-badge">{qtdFiltrosAvancados}</span>
             )}
+          </button>
+
+          {/* Botão Exportar ao lado de Filtros (esquerda) */}
+          <button onClick={handleExportar} className="delegar-botao" title="Exportar CSV">
+            Exportar
           </button>
           
 
