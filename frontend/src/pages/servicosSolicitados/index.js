@@ -576,7 +576,7 @@ export default function ServicosSolicitados() {
   };
 
   // Helpers
-  const renderDetalhes = (s) => {
+  function renderDetalhes(s) {
     const tipo = (s.servico_nome || "").toUpperCase();
     let partes = [];
 
@@ -631,7 +631,7 @@ export default function ServicosSolicitados() {
     }
 
     return partes.filter(Boolean).join(" | ");
-  };
+  }
 
 
   const abrirModal = (solicitacao = null) => {
@@ -767,7 +767,7 @@ export default function ServicosSolicitados() {
           />
         </div>
 
-        <div className="campo" style={{ minWidth: 140 }}>
+        <div className="campo" style={{ minWidth: 130 }}>
           <label>Responsável</label>
           <select
             value={filters.responsavelId}
@@ -780,7 +780,7 @@ export default function ServicosSolicitados() {
           </select>
         </div>
 
-        <div className="campo" style={{ minWidth: 120 }}>
+        <div className="campo" style={{ minWidth: 110 }}>
           <label>Grupo</label>
         <select
           value={filters.grupoId}
@@ -796,7 +796,7 @@ export default function ServicosSolicitados() {
         </select>
       </div>
 
-      <div className="campo" style={{ minWidth: 200 }}>
+      <div className="campo" style={{ minWidth: 180 }}>
         <label>Detalhes</label>
         <input
           type="text"
@@ -852,7 +852,7 @@ export default function ServicosSolicitados() {
         </div>
 
 
-        <div>
+        <div className="filtros-actions">
           <button type="button" onClick={limparFiltros} title="Limpar filtros">
             Limpar
           </button>

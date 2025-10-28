@@ -473,3 +473,20 @@ td:nth-child(9) {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+/* Linha de filtros em uma única linha, com ação à direita */
+.servicos-filtros {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto; /* evita quebra em telas muito estreitas */
+}
+
+.servicos-filtros .campo {
+  flex: 0 0 auto;
+}
+
+.servicos-filtros .filtros-actions {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
