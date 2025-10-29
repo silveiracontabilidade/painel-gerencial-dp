@@ -257,6 +257,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
             'DT_13_ADIANTAMENTO_ENTREGA': 'dt_13_adiantamento_entrega',
             'DT_13_ENTREGA': 'dt_13_entrega',
             'ENVIA_PONTO': 'envia_ponto',
+            'TEM_PAT': 'tem_pat',
         }
 
         CAMPOS_BOOLEANOS = {
@@ -269,6 +270,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
             'ADIANTAMENTO',
             'PLR',
             'ENVIA_PONTO',
+            'TEM_PAT',
         }
 
         CAMPOS_PREENCHIMENTO = {'DT_13_ADIANTAMENTO_ENTREGA', 'DT_13_ENTREGA'}
@@ -453,10 +455,9 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
 
             responsaveis_ativos.append(resp)
 
-        analistas_base = {
+        responsaveis_por_nome = {
             normalizar_texto(resp.nome): resp
             for resp in responsaveis_ativos
-            if resp.perfil in ('especialista', 'especialista_senior', 'analista', 'analista_senior')
         }
         coordenadores_por_grupo = defaultdict(list)
         for resp in responsaveis_ativos:
@@ -466,7 +467,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
 
         detalhes.append({
             'resumo_destinos': {
-                'analistas_ativos': len(analistas_base),
+                'analistas_ativos': len(responsaveis_por_nome),
                 'coordenadores_ativos': sum(len(v) for v in coordenadores_por_grupo.values()),
             }
         })
@@ -481,6 +482,11 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     'agenda_id': item.id,
                     'nome': item.nome,
                     'tipo_distribuicao': item.tipo_distribuicao,
+                    'periodo': item.periodo,
+                    'dia': item.dia,
+                    'mes': item.mes,
+                    'usa_data_agenda': item.usa_data_agenda,
+                    'campo_periodo_empresa': item.campo_periodo_empresa,
                     'status': 'ignorado',
                     'motivo': 'Item sem serviço associado.',
                     'criadas': 0,
@@ -494,6 +500,11 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     'agenda_id': item.id,
                     'nome': item.nome,
                     'tipo_distribuicao': item.tipo_distribuicao,
+                    'periodo': item.periodo,
+                    'dia': item.dia,
+                    'mes': item.mes,
+                    'usa_data_agenda': item.usa_data_agenda,
+                    'campo_periodo_empresa': item.campo_periodo_empresa,
                     'status': 'ignorado',
                     'motivo': 'Itens do período não correspondem ao mês informado.',
                     'criadas': 0,
@@ -519,6 +530,11 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     'agenda_id': item.id,
                     'nome': item.nome,
                     'tipo_distribuicao': item.tipo_distribuicao,
+                    'periodo': item.periodo,
+                    'dia': item.dia,
+                    'mes': item.mes,
+                    'usa_data_agenda': item.usa_data_agenda,
+                    'campo_periodo_empresa': item.campo_periodo_empresa,
                     'status': 'ignorado',
                     'motivo': f"Campo de período '{item.campo_periodo_empresa}' não é suportado.",
                     'criadas': 0,
@@ -532,6 +548,11 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     'agenda_id': item.id,
                     'nome': item.nome,
                     'tipo_distribuicao': item.tipo_distribuicao,
+                    'periodo': item.periodo,
+                    'dia': item.dia,
+                    'mes': item.mes,
+                    'usa_data_agenda': item.usa_data_agenda,
+                    'campo_periodo_empresa': item.campo_periodo_empresa,
                     'status': 'ignorado',
                     'motivo': 'Nenhuma empresa atende às regras configuradas.',
                     'criadas': 0,
@@ -550,6 +571,11 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     'agenda_id': item.id,
                     'nome': item.nome,
                     'tipo_distribuicao': item.tipo_distribuicao,
+                    'periodo': item.periodo,
+                    'dia': item.dia,
+                    'mes': item.mes,
+                    'usa_data_agenda': item.usa_data_agenda,
+                    'campo_periodo_empresa': item.campo_periodo_empresa,
                     'status': 'ignorado',
                     'motivo': 'Tipo de distribuição não reconhecido.',
                     'criadas': 0,
@@ -557,11 +583,24 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                 })
                 continue
 
+            detalhe_comum = {
+                'agenda_id': item.id,
+                'nome': item.nome,
+                'tipo_distribuicao': item.tipo_distribuicao,
+                'periodo': item.periodo,
+                'dia': item.dia,
+                'mes': item.mes,
+                'usa_data_agenda': item.usa_data_agenda,
+                'campo_periodo_empresa': item.campo_periodo_empresa,
+            }
+
             criados_item = 0
             duplicados_item = 0
             empresas_processadas = 0
             analistas_nao_encontrados = set()
             coordenadores_nao_encontrados = set()
+            agregados_por_responsavel = {}
+            responsaveis_gerados = []
 
             for empresa in empresas_selecionadas:
                 codigo_empresa = getattr(empresa, 'cod_folha', None)
@@ -574,9 +613,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                 if not vencimento:
                     itens_sem_data.append(item.id)
                     detalhes.append({
-                        'agenda_id': item.id,
-                        'nome': item.nome,
-                        'tipo_distribuicao': item.tipo_distribuicao,
+                        **detalhe_comum,
                         'status': 'ignorado',
                         'motivo': f'Empresa {codigo_empresa}: não foi possível determinar a data de entrega.',
                         'criadas': 0,
@@ -584,15 +621,52 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     })
                     continue
 
-                responsaveis_destino = []
-                if tipo in ('analista', 'analista e coordenador'):
+                if tipo == 'analista':
                     nome_resp = normalizar_texto(getattr(empresa, 'resp_dp', ''))
-                    resp_obj = analistas_base.get(nome_resp)
-                    if resp_obj:
-                        responsaveis_destino.append(resp_obj)
-                    else:
+                    resp_obj = responsaveis_por_nome.get(nome_resp)
+                    if not resp_obj:
                         if nome_resp:
                             analistas_nao_encontrados.add(nome_resp)
+                        if item.id not in itens_sem_destino:
+                            itens_sem_destino.append(item.id)
+                        detalhes.append({
+                            **detalhe_comum,
+                            'status': 'ignorado',
+                            'motivo': f'Empresa {codigo_empresa}: nenhum responsável encontrado para distribuição por analista.',
+                            'criadas': 0,
+                            'duplicadas': 0,
+                        })
+                        continue
+
+                    info = agregados_por_responsavel.setdefault(
+                        resp_obj.id,
+                        {
+                            'responsavel': resp_obj,
+                            'vencimento': vencimento,
+                            'empresas': [],
+                        }
+                    )
+                    if vencimento and (info['vencimento'] is None or vencimento < info['vencimento']):
+                        info['vencimento'] = vencimento
+                    info['empresas'].append(codigo_int)
+                    empresas_processadas += 1
+                    continue
+
+                responsaveis_destino = []
+                if tipo == 'analista e coordenador':
+                    nome_resp = normalizar_texto(getattr(empresa, 'resp_dp', ''))
+                    resp_obj = responsaveis_por_nome.get(nome_resp)
+                    if resp_obj:
+                        responsaveis_destino.append(resp_obj)
+                    elif nome_resp:
+                        analistas_nao_encontrados.add(nome_resp)
+                elif tipo != 'analista':
+                    nome_resp = normalizar_texto(getattr(empresa, 'resp_dp', ''))
+                    resp_obj = responsaveis_por_nome.get(nome_resp)
+                    if resp_obj:
+                        responsaveis_destino.append(resp_obj)
+                    elif nome_resp:
+                        analistas_nao_encontrados.add(nome_resp)
 
                 if tipo in ('coordenador', 'analista e coordenador'):
                     grupo_emp = normalizar_texto(getattr(empresa, 'grupo', ''))
@@ -604,24 +678,22 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
 
                 if tipo == 'empresa':
                     destinos_empresa = [None]
-                elif tipo == 'analista':
-                    destinos_empresa = responsaveis_destino
                 elif tipo == 'coordenador':
                     destinos_empresa = responsaveis_destino
-                else:  # analista e coordenador
+                elif tipo == 'analista e coordenador':
                     destinos_empresa = []
                     vistos_resp = set()
                     for resp in responsaveis_destino:
                         if resp.id not in vistos_resp:
                             destinos_empresa.append(resp)
                             vistos_resp.add(resp.id)
+                else:  # analista já retornou continue antes
+                    destinos_empresa = responsaveis_destino
 
                 if not destinos_empresa:
                     itens_sem_destino.append(item.id)
                     detalhes.append({
-                        'agenda_id': item.id,
-                        'nome': item.nome,
-                        'tipo_distribuicao': item.tipo_distribuicao,
+                        **detalhe_comum,
                         'status': 'ignorado',
                         'motivo': f'Empresa {codigo_empresa}: nenhum responsável encontrado para o tipo "{tipo}".',
                         'criadas': 0,
@@ -672,20 +744,75 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     )
                     criados_item += 1
 
+            if tipo == 'analista':
+                if not agregados_por_responsavel:
+                    detalhes.append({
+                        **detalhe_comum,
+                        'status': 'ignorado',
+                        'motivo': 'Nenhum responsável elegível encontrado nas empresas do filtro.',
+                        'criadas': 0,
+                        'duplicadas': 0,
+                    })
+                else:
+                    for info in agregados_por_responsavel.values():
+                        resp_destino = info['responsavel']
+                        filtros = {
+                            'servico': item.servico,
+                            'competencia': competencia,
+                            'responsavel': resp_destino,
+                            'empresa__isnull': True,
+                        }
+
+                        chave_dup = (None, resp_destino.id, item.servico_id, competencia)
+                        if chave_dup in chaves_criadas:
+                            duplicados_item += 1
+                            continue
+
+                        if ServicoSolicitado.objects.filter(**filtros).exists():
+                            duplicados_item += 1
+                            continue
+
+                        chaves_criadas.add(chave_dup)
+                        objetos_para_criar.append(
+                            ServicoSolicitado(
+                                data_solicitacao=hoje,
+                                empresa=None,
+                                responsavel=resp_destino,
+                                servico=item.servico,
+                                competencia=competencia,
+                                identificacao=item.nome,
+                                descricao_servico=item.descricao,
+                                data_vencimento=info['vencimento'],
+                                data_para_resposta=info['vencimento'],
+                                avulso_valor=Decimal('0'),
+                                multa_valor=Decimal('0'),
+                                status='PENDENTE',
+                            )
+                        )
+                        criados_item += 1
+                        responsaveis_gerados.append({
+                            'id': resp_destino.id,
+                            'nome': resp_destino.nome,
+                            'empresas': sorted(set(info['empresas'])),
+                        })
+
+
             total_criados += criados_item
             total_duplicados += duplicados_item
 
-            detalhes.append({
-                'agenda_id': item.id,
-                'nome': item.nome,
-                'tipo_distribuicao': item.tipo_distribuicao,
+            detalhe_item = {
+                **detalhe_comum,
                 'status': 'processado' if criados_item or duplicados_item else 'ignorado',
                 'criadas': criados_item,
                 'duplicadas': duplicados_item,
                 'empresas_processadas': empresas_processadas,
                 'analistas_nao_encontrados': sorted(analistas_nao_encontrados),
                 'coordenadores_nao_encontrados': sorted(coordenadores_nao_encontrados),
-            })
+            }
+            if tipo == 'analista':
+                detalhe_item['responsaveis_gerados'] = responsaveis_gerados
+
+            detalhes.append(detalhe_item)
 
         if objetos_para_criar:
             ServicoSolicitado.objects.bulk_create(objetos_para_criar)
@@ -705,7 +832,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
             'campos_regra_invalidos': {k: v for k, v in campos_regra_invalidos.items()},
             'detalhes': detalhes,
             'resumo_destinos': {
-                'analistas_ativos': len(analistas_base),
+                'analistas_ativos': len(responsaveis_por_nome),
                 'coordenadores_ativos': sum(len(v) for v in coordenadores_por_grupo.values()),
             },
         }

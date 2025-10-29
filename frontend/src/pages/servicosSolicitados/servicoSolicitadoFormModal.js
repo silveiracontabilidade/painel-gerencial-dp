@@ -530,7 +530,8 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
   // ===== Validação (leve) =====
   const validar = () => {
     const e = {};
-    if (!form.empresa) e.empresa = 'Selecione a empresa.';
+    const empresaObrigatoria = !form.responsavel;
+    if (empresaObrigatoria && !form.empresa) e.empresa = 'Selecione a empresa.';
     if (!form.servico) e.servico = 'Selecione o serviço.';
     if (form.data_solicitacao) {
       const iso = toISO(form.data_solicitacao);

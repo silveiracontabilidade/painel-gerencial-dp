@@ -15,6 +15,7 @@ const CAMPOS_REGRA_CONFIG = [
   { value: 'DESON', label: 'Desoneração' },
   { value: 'ADIANTAMENTO', label: 'Adiantamento' },
   { value: 'PLR', label: 'PLR' },
+  { value: 'TEM_PAT', label: 'PAT' },
   { value: 'DT_13_ADIANTAMENTO_ENTREGA', label: '13º adiantamento' },
   { value: 'DT_13_ENTREGA', label: '13º pagamento' },
   { value: 'ENVIA_PONTO', label: 'Envia ponto' },
@@ -29,6 +30,7 @@ const CAMPOS_BOOLEANOS = new Set([
   'DESON',
   'ADIANTAMENTO',
   'PLR',
+  'TEM_PAT',
   'ENVIA_PONTO',
 ]);
 
@@ -163,6 +165,13 @@ export default function AgendaBase() {
   const [modalRegrasAberto, setModalRegrasAberto] = useState(false);
   const [regrasTemp, setRegrasTemp] = useState([]);
   const [regraItemId, setRegraItemId] = useState(null);
+  const [perfilUsuario, setPerfilUsuario] = useState(null);
+
+  useEffect(() => {
+    api.get('/api/me')
+      .then(({ data }) => setPerfilUsuario(data.perfil))
+      .catch((err) => console.error('Erro ao buscar perfil:', err));
+  }, []);
 
   useEffect(() => {
     carregarItens();
@@ -217,6 +226,8 @@ export default function AgendaBase() {
     return map;
   }, [servicos]);
 
+  const podeEditar = perfilUsuario === 'admin' || perfilUsuario === 'coordenador';
+
   /* ---------- filtros ---------- */
   const handleFiltro = (campo) => (e) => {
     setFiltros({ ...filtros, [campo]: e.target.value });
@@ -240,6 +251,7 @@ export default function AgendaBase() {
   }, [itensOrdenados, filtros]);
 
   const abrirModalLote = () => {
+    if (!podeEditar) return;
     const hoje = new Date();
     setCompetenciaLote({
       mes: String(hoje.getMonth() + 1).padStart(2, '0'),
@@ -260,6 +272,7 @@ export default function AgendaBase() {
   };
 
   const executarLote = async () => {
+    if (!podeEditar) return;
     setErroLote('');
     setResultadoLote(null);
 
@@ -298,6 +311,7 @@ export default function AgendaBase() {
 
   /* ---------- novo / editar / cancelar ---------- */
   const novo = () => {
+    if (!podeEditar) return;
     const linhaVazia = {
       id: ID_TEMP,
       periodo: '',
@@ -318,6 +332,7 @@ export default function AgendaBase() {
   };
 
   const editar = (item) => {
+    if (!podeEditar) return;
     setEditandoId(item.id);
     const usaAgenda = (item.usa_data_agenda === undefined || item.usa_data_agenda === null)
       ? true
@@ -356,6 +371,7 @@ export default function AgendaBase() {
 
   /* ---------- salvar ---------- */
   const salvar = async (id) => {
+    if (!podeEditar) return;
     const usaAgenda = dados.usa_data_agenda !== false;
 
     if (!dados.nome || !dados.descricao || !dados.servico || !dados.tipo_distribuicao) {
@@ -450,6 +466,139 @@ export default function AgendaBase() {
     return encontrado ? encontrado.label : item.campo_periodo_empresa;
   };
 
+  const obterLabelCampoPeriodo = (valor) => {
+    if (!valor) return '';
+    const encontrado = camposPeriodoEmpresa.find((opcao) => opcao.value === valor);
+    return encontrado ? encontrado.label : valor;
+  };
+
+  const formatarPeriodoDetalhe = (detalhe) => {
+    const periodo = (detalhe?.periodo || '').toLowerCase();
+    const mes = detalhe?.mes != null ? String(detalhe.mes).padStart(2, '0') : '';
+    if (!periodo) return 'Não definido';
+    if (periodo === 'mensal') return 'Mensal';
+    if (periodo === 'semestral') {
+      return `Semestral${mes ? ` (mês base ${mes})` : ''}`;
+    }
+    if (periodo === 'anual') {
+      return `Anual${mes ? ` (mês base ${mes})` : ''}`;
+    }
+    return periodo;
+  };
+
+  const formatarDataBaseDetalhe = (detalhe) => {
+    const usaAgenda = detalhe?.usa_data_agenda;
+    if (usaAgenda || usaAgenda === undefined || usaAgenda === null) {
+      const partes = [];
+      if (detalhe?.dia != null) {
+        partes.push(`dia ${String(detalhe.dia).padStart(2, '0')}`);
+      }
+      if (detalhe?.mes != null) {
+        partes.push(`mês ${String(detalhe.mes).padStart(2, '0')}`);
+      }
+      const info = partes.length ? partes.join(', ') : 'sem dia definido';
+      return `Agenda (${info})`;
+    }
+    if (detalhe?.campo_periodo_empresa) {
+      return `Empresa (${obterLabelCampoPeriodo(detalhe.campo_periodo_empresa)})`;
+    }
+    return '-';
+  };
+
+  const baixarLogExecucao = () => {
+    if (!resultadoLote) return;
+    const linhas = [];
+    linhas.push(`Competência: ${resultadoLote.competencia ?? '-'}`);
+    linhas.push(`Serviços criados: ${resultadoLote.total_criados ?? 0}`);
+    linhas.push(`Já existiam: ${resultadoLote.total_duplicados ?? 0}`);
+    linhas.push('');
+
+    const detalhes = Array.isArray(resultadoLote.detalhes) ? resultadoLote.detalhes : [];
+    const idsSemDestino = new Set((resultadoLote.itens_sem_destino || []).map((valor) => Number(valor)));
+    const idsForaPeriodo = new Set((resultadoLote.itens_fora_periodo || []).map((valor) => Number(valor)));
+
+    const montarLinhaResumo = (detalhe) => {
+      const distribuicao = formatarDistribuicao(detalhe.tipo_distribuicao);
+      const dataBase = formatarDataBaseDetalhe(detalhe);
+      const periodoTexto = formatarPeriodoDetalhe(detalhe);
+      return `- Serviço: ${detalhe.nome || '-'}; Distribuir por: ${distribuicao}; Data base: ${dataBase}; Período: ${periodoTexto}`;
+    };
+
+    const semDestino = detalhes.filter((detalhe) => idsSemDestino.has(Number(detalhe.agenda_id)));
+    linhas.push('Itens sem destino:');
+    if (semDestino.length === 0) {
+      linhas.push('- Nenhum item sem destino.');
+    } else {
+      semDestino.forEach((detalhe) => {
+        linhas.push(montarLinhaResumo(detalhe));
+        if (detalhe.motivo) {
+          linhas.push(`  Motivo: ${detalhe.motivo}`);
+        }
+      });
+    }
+    linhas.push('');
+
+    const foraPeriodo = detalhes.filter((detalhe) => idsForaPeriodo.has(Number(detalhe.agenda_id)));
+    linhas.push('Itens fora do período:');
+    if (foraPeriodo.length === 0) {
+      linhas.push('- Nenhum item fora do período.');
+    } else {
+      foraPeriodo.forEach((detalhe) => {
+        linhas.push(montarLinhaResumo(detalhe));
+        if (detalhe.motivo) {
+          linhas.push(`  Motivo: ${detalhe.motivo}`);
+        }
+      });
+    }
+    linhas.push('');
+
+    linhas.push('Resumo por item:');
+    if (detalhes.length === 0) {
+      linhas.push('- Nenhum item retornado.');
+    } else {
+      detalhes.forEach((detalhe) => {
+        const linhaBase = `- ${detalhe.nome || '-'} | Distribuição: ${formatarDistribuicao(detalhe.tipo_distribuicao)} | Período: ${formatarPeriodoDetalhe(detalhe)} | Criadas: ${detalhe.criadas ?? 0} | Duplicadas: ${detalhe.duplicadas ?? 0} | Status: ${(detalhe.status || '').toUpperCase()}`;
+        linhas.push(linhaBase);
+        linhas.push(`  Data base: ${formatarDataBaseDetalhe(detalhe)}`);
+        if (typeof detalhe.empresas_processadas === 'number') {
+          linhas.push(`  Empresas processadas: ${detalhe.empresas_processadas}`);
+        }
+        if (detalhe.responsaveis_gerados?.length) {
+          const responsaveis = detalhe.responsaveis_gerados
+            .map((resp) => {
+              const empresas = Array.isArray(resp.empresas) && resp.empresas.length > 0
+                ? ` [empresas: ${resp.empresas.join(', ')}]`
+                : '';
+              return `${resp.nome}${empresas}`;
+            })
+            .join('; ');
+          linhas.push(`  Responsáveis gerados: ${responsaveis}`);
+        }
+        if (detalhe.analistas_nao_encontrados?.length) {
+          linhas.push(`  Analistas não encontrados: ${detalhe.analistas_nao_encontrados.join(', ')}`);
+        }
+        if (detalhe.coordenadores_nao_encontrados?.length) {
+          linhas.push(`  Coordenadores não encontrados: ${detalhe.coordenadores_nao_encontrados.join(', ')}`);
+        }
+        if (detalhe.motivo) {
+          linhas.push(`  Motivo: ${detalhe.motivo}`);
+        }
+        linhas.push('');
+      });
+    }
+
+    const conteudo = linhas.join('\n');
+    const blob = new Blob([conteudo], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `log_execucao_${resultadoLote.competencia || 'lote'}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleFonteDataChange = (valor) => {
     if (valor === 'agenda') {
       setDados((prev) => ({
@@ -467,6 +616,7 @@ export default function AgendaBase() {
   };
 
   const abrirModalRegras = (item) => {
+    if (!podeEditar) return;
     const origem = editandoId === item.id ? (dados.regras || []) : (item.regras || []);
     const copia = origem.length > 0
       ? origem.map((regra, index) => construirRegraNormalizada(regra, index))
@@ -518,6 +668,7 @@ export default function AgendaBase() {
   };
 
   const adicionarRegra = () => {
+    if (!podeEditar) return;
     setRegrasTemp((prev) => ([
       ...prev,
       { campo: '', operador: 'IGUAL', valor: '', conector: 'AND', ordem: prev.length + 1 },
@@ -525,12 +676,14 @@ export default function AgendaBase() {
   };
 
   const removerRegra = (index) => {
+    if (!podeEditar) return;
     setRegrasTemp((prev) =>
       prev.filter((_, i) => i !== index).map((regra, idx) => ({ ...regra, ordem: idx + 1 }))
     );
   };
 
   const salvarRegrasModal = () => {
+    if (!podeEditar) return;
     const normalizadas = regrasTemp.map((regra, index) => {
       const base = construirRegraNormalizada(regra, index);
       base.ordem = index + 1;
@@ -550,6 +703,7 @@ export default function AgendaBase() {
 
   /* ---------- excluir ---------- */
   const excluir = async (id) => {
+    if (!podeEditar) return;
     if (window.confirm('Confirma a exclusão?')) {
       await api.delete(`/api/agenda-base/${id}/`);
       carregarItens();
@@ -561,15 +715,17 @@ export default function AgendaBase() {
     <div className="agenda-container">
       <div className="agenda-header">
         <h2>Agenda Base</h2>
-        <div className="agenda-actions">
-          <button type="button" onClick={abrirModalLote} disabled={processandoLote}>
-            <Play size={16} />
-            <span>Gerar serviços</span>
-          </button>
-          <button onClick={novo} disabled={editandoId !== null}>
-            <Plus size={18} />
-          </button>
-        </div>
+        {podeEditar && (
+          <div className="agenda-actions">
+            <button type="button" onClick={abrirModalLote} disabled={processandoLote}>
+              <Play size={16} />
+              <span>Gerar serviços</span>
+            </button>
+            <button onClick={novo} disabled={editandoId !== null}>
+              <Plus size={18} />
+            </button>
+          </div>
+        )}
       </div>
 
       <table>
@@ -811,16 +967,20 @@ export default function AgendaBase() {
                 </td>
 
                 <td className="acoes">
-                  {emEdicao ? (
-                    <>
-                      <button onClick={() => salvar(item.id)} title="Salvar"><Check size={16} /></button>
-                      <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
-                    </>
+                  {podeEditar ? (
+                    emEdicao ? (
+                      <>
+                        <button onClick={() => salvar(item.id)} title="Salvar"><Check size={16} /></button>
+                        <button onClick={cancelar} title="Cancelar"><X size={16} /></button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => editar(item)} title="Editar"><Pencil size={16} /></button>
+                        <button onClick={() => excluir(item.id)} title="Excluir"><Trash2 size={16} /></button>
+                      </>
+                    )
                   ) : (
-                    <>
-                      <button onClick={() => editar(item)} title="Editar"><Pencil size={16} /></button>
-                      <button onClick={() => excluir(item.id)} title="Excluir"><Trash2 size={16} /></button>
-                    </>
+                    <span>-</span>
                   )}
                 </td>
               </tr>
@@ -870,39 +1030,13 @@ export default function AgendaBase() {
                 <p>
                   Já existiam: <strong>{resultadoLote.total_duplicados}</strong>
                 </p>
-                {resultadoLote.itens_sem_servico?.length > 0 && (
-                  <p>
-                    Itens sem serviço: {resultadoLote.itens_sem_servico.join(', ')}
-                  </p>
-                )}
-                {resultadoLote.itens_sem_destino?.length > 0 && (
-                  <p>
-                    Itens sem destino: {resultadoLote.itens_sem_destino.join(', ')}
-                  </p>
-                )}
-                {resultadoLote.itens_fora_periodo?.length > 0 && (
-                  <p>
-                    Itens fora do período: {resultadoLote.itens_fora_periodo.join(', ')}
-                  </p>
-                )}
-                {resultadoLote.detalhes?.length > 0 && (
-                  <div className="agenda-modal-detalhes">
-                    <strong>Resumo por item</strong>
-                    <ul>
-                      {resultadoLote.detalhes.slice(0, 10).map((detalhe) => (
-                        <li key={detalhe.agenda_id}>
-                          {detalhe.nome} — {detalhe.criadas ?? 0} criadas, {detalhe.duplicadas ?? 0} duplicadas
-                          {detalhe.motivo ? ` (${detalhe.motivo})` : ''}
-                        </li>
-                      ))}
-                    </ul>
-                    {resultadoLote.detalhes.length > 10 && (
-                      <p className="agenda-modal-observacao">
-                        Mostrando os 10 primeiros itens.
-                      </p>
-                    )}
-                  </div>
-                )}
+                <button
+                  type="button"
+                  className="agenda-modal-log"
+                  onClick={baixarLogExecucao}
+                >
+                  Baixar log de execução
+                </button>
               </div>
             )}
 
@@ -910,9 +1044,11 @@ export default function AgendaBase() {
               <button type="button" onClick={fecharModalLote} disabled={processandoLote}>
                 Fechar
               </button>
-              <button type="button" onClick={executarLote} disabled={processandoLote}>
-                {processandoLote ? 'Gerando...' : 'Executar'}
-              </button>
+              {!resultadoLote && (
+                <button type="button" onClick={executarLote} disabled={processandoLote}>
+                  {processandoLote ? 'Gerando...' : 'Executar'}
+                </button>
+              )}
             </div>
           </div>
         </div>
