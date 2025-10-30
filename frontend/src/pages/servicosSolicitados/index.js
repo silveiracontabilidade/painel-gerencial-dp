@@ -44,6 +44,7 @@ export default function ServicosSolicitados() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(10);
   const [loading, setLoading] = useState(false);
+  const [mostrarMais, setMostrarMais] = useState(false);
   
   const handleExportar = () => {
     const headers = [
@@ -135,6 +136,10 @@ export default function ServicosSolicitados() {
     servicoId: '',       // 👈 novo
     competencia: '',     // 👈 novo
     detalhes: '',        // 👈 novo filtro
+    data_vencimento_inicio: '',
+    data_vencimento_fim: '',
+    data_solicitacao_inicio: '',
+    data_solicitacao_fim: '',
   });
 
   const normalizarDecimalParaEnvio = (valor) => {
@@ -183,6 +188,10 @@ export default function ServicosSolicitados() {
       (filters.servicoId && String(filters.servicoId) !== '') ||
       (filters.competencia && filters.competencia.trim() !== '') ||
       (filters.detalhes && filters.detalhes.trim() !== '') ||
+      (filters.data_vencimento_inicio && filters.data_vencimento_inicio !== '') ||
+      (filters.data_vencimento_fim && filters.data_vencimento_fim !== '') ||
+      (filters.data_solicitacao_inicio && filters.data_solicitacao_inicio !== '') ||
+      (filters.data_solicitacao_fim && filters.data_solicitacao_fim !== '') ||
       (filters.prazo && filters.prazo !== 'todos') ||
       (filters.status && filters.status !== 'aberto')
     );
@@ -191,7 +200,7 @@ export default function ServicosSolicitados() {
   const carregarSolicitacoes = async () => {
     setLoading(true);
     const params = temFiltro
-      ? { page: 1, page_size: 2000 }
+      ? { page: 1, page_size: 5_000_000 }
       : { page: paginaAtual, page_size: itensPorPagina };
     try {
       const res = await api.get('/api/solicitacoes/', { params });
@@ -207,7 +216,7 @@ export default function ServicosSolicitados() {
   };
 
   const carregarEmpresas = async () => {
-    const res = await api.get('/api/empresas/', { params: { page: 1, page_size: 2000 } });
+    const res = await api.get('/api/empresas/', { params: { page: 1, page_size: 5_000_000 } });
     setEmpresas(res.data.results || res.data);
   };
 
@@ -424,6 +433,23 @@ export default function ServicosSolicitados() {
 
     const hoje = new Date();
 
+    const parseDDMMYYYY = (str) => {
+      if (!str) return null;
+      // aceita 'dd-mm-aaaa' ou 'dd/mm/aaaa'
+      const norm = str.replace(/\//g, '-');
+      const parts = norm.split('-');
+      if (parts.length !== 3) return null;
+      const [dd, mm, yyyy] = parts;
+      const iso = `${yyyy}-${mm}-${dd}`;
+      const d = new Date(iso);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
+    const filtroVencIni = filters.data_vencimento_inicio ? new Date(filters.data_vencimento_inicio) : null;
+    const filtroVencFim = filters.data_vencimento_fim ? new Date(filters.data_vencimento_fim) : null;
+    const filtroSolIni = filters.data_solicitacao_inicio ? new Date(filters.data_solicitacao_inicio) : null;
+    const filtroSolFim = filters.data_solicitacao_fim ? new Date(filters.data_solicitacao_fim) : null;
+
     return solicitacoes.filter((s) => {
       const cod = String(s.empresa ?? '');
       const emp = empresaByCodigo.get(cod);
@@ -480,7 +506,40 @@ export default function ServicosSolicitados() {
         passaDetalhes = detalhesStr.includes(alvoDetalhes);
       }
 
-      return passaEmpresa && passaResp && passaGrupo && passaServico && passaCompetencia && passaDetalhes;
+      // filtro por faixa de vencimento (data_vencimento em dd-mm-aaaa)
+      let passaVenc = true;
+      if (filtroVencIni || filtroVencFim) {
+        const d = parseDDMMYYYY(s.data_vencimento);
+        if (!d) {
+          passaVenc = false;
+        } else {
+          if (filtroVencIni && d < filtroVencIni) passaVenc = false;
+          if (filtroVencFim && d > filtroVencFim) passaVenc = false;
+        }
+      }
+
+      // filtro por faixa de solicitação (data_solicitacao em dd-mm-aaaa)
+      let passaSol = true;
+      if (filtroSolIni || filtroSolFim) {
+        const d = parseDDMMYYYY(s.data_solicitacao);
+        if (!d) {
+          passaSol = false;
+        } else {
+          if (filtroSolIni && d < filtroSolIni) passaSol = false;
+          if (filtroSolFim && d > filtroSolFim) passaSol = false;
+        }
+      }
+
+      return (
+        passaEmpresa &&
+        passaResp &&
+        passaGrupo &&
+        passaServico &&
+        passaCompetencia &&
+        passaDetalhes &&
+        passaVenc &&
+        passaSol
+      );
     });
   }, [solicitacoes, empresaByCodigo, filters, respById, grupoById]);
 
@@ -734,6 +793,10 @@ export default function ServicosSolicitados() {
       servicoId: '',
       competencia: '',
       detalhes: '',
+      data_vencimento_inicio: '',
+      data_vencimento_fim: '',
+      data_solicitacao_inicio: '',
+      data_solicitacao_fim: '',
     });
 
   return (
@@ -757,106 +820,145 @@ export default function ServicosSolicitados() {
 
       {/* Filtros */}
       <div className="servicos-filtros">
-        <div className="campo" style={{ minWidth: 220 }}>
-          <label>Empresa (código ou razão)</label>
-          <input
-            type="text"
-            value={filters.empresa}
-            onChange={handleFilterChange('empresa')}
-            placeholder="Ex.: 0123 ou ACME LTDA"
-          />
-        </div>
+        <div className="filtros-primarios">
+          <div className="campo">
+            <label>Empresa</label>
+            <input
+              type="text"
+              value={filters.empresa}
+              onChange={handleFilterChange('empresa')}
+              placeholder="Código ou Razão"
+            />
+          </div>
 
-        <div className="campo" style={{ minWidth: 130 }}>
-          <label>Responsável</label>
-          <select
-            value={filters.responsavelId}
-            onChange={handleFilterChange('responsavelId')}
-          >
-            <option value="">Todos</option>
-            {responsaveis.map((r) => (
-              <option key={r.id} value={r.id}>{r.nome}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="campo" style={{ minWidth: 110 }}>
-          <label>Grupo</label>
-        <select
-          value={filters.grupoId}
-          onChange={handleFilterChange('grupoId')}
-        >
-          <option value="">Todos</option>
-          {grupos
-            .slice()
-            .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'))
-            .map((g) => (
-              <option key={g.id} value={g.id}>{g.nome}</option>
-            ))}
-        </select>
-      </div>
-
-      <div className="campo" style={{ minWidth: 180 }}>
-        <label>Detalhes</label>
-        <input
-          type="text"
-          value={filters.detalhes}
-          onChange={handleFilterChange('detalhes')}
-          placeholder="Texto livre nos detalhes"
-        />
-      </div>
-
-        <div className="campo is-pequeno">
-          <label>Status</label>
-          <select value={filters.status} onChange={handleFilterChange('status')}>
-            <option value="todos">Todos</option>
-            <option value="aberto">Em aberto</option>
-            <option value="concluido">Concluídos</option>
-          </select>
-        </div>
-
-        <div className="campo is-pequeno">
-          <label>Prazo</label>
-          <select value={filters.prazo} onChange={handleFilterChange('prazo')}>
-            <option value="todos">Todos</option>
-            <option value="atrasados">Atrasados</option>
-            <option value="no_prazo">No Prazo</option>
-          </select>
-        </div>
-
-        <div className="campo is-pequeno" style={{ maxWidth: 10 }}>
-          <label>Serviço</label>
-          <select
-            value={filters.servicoId}
-            onChange={handleFilterChange('servicoId')}
-          >
-            <option value="">Todos</option>
-            {servicos
-              .slice()
-              .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
-              .map((s) => (
-                <option key={s.id} value={s.id}>{s.nome}</option>
+          <div className="campo">
+            <label>Responsável</label>
+            <select
+              value={filters.responsavelId}
+              onChange={handleFilterChange('responsavelId')}
+            >
+              <option value="">Todos</option>
+              {responsaveis.map((r) => (
+                <option key={r.id} value={r.id}>{r.nome}</option>
               ))}
-          </select>
+            </select>
+          </div>
+
+          <div className="campo">
+            <label>Grupo</label>
+            <select
+              value={filters.grupoId}
+              onChange={handleFilterChange('grupoId')}
+            >
+              <option value="">Todos</option>
+              {grupos
+                .slice()
+                .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'))
+                .map((g) => (
+                  <option key={g.id} value={g.id}>{g.nome}</option>
+                ))}
+            </select>
+          </div>
+
+          {/* Serviço */}
+          <div className="campo is-pequeno">
+            <label>Serviço</label>
+            <select
+              value={filters.servicoId}
+              onChange={handleFilterChange('servicoId')}
+            >
+              <option value="">Todos</option>
+              {servicos
+                .slice()
+                .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+                .map((s) => (
+                  <option key={s.id} value={s.id}>{s.nome}</option>
+                ))}
+            </select>
+          </div>
+
+          <div className="campo">
+            <label>Detalhes</label>
+            <input
+              type="text"
+              value={filters.detalhes}
+              onChange={handleFilterChange('detalhes')}
+              placeholder="Texto livre nos detalhes"
+            />
+          </div>
+
+          <div className="campo is-pequeno">
+            <label>Status</label>
+            <select value={filters.status} onChange={handleFilterChange('status')}>
+              <option value="todos">Todos</option>
+              <option value="aberto">Em aberto</option>
+              <option value="concluido">Concluídos</option>
+            </select>
+          </div>
+
+          <div className="campo is-pequeno">
+            <label>Prazo</label>
+            <select value={filters.prazo} onChange={handleFilterChange('prazo')}>
+              <option value="todos">Todos</option>
+              <option value="atrasados">Atrasados</option>
+              <option value="no_prazo">No Prazo</option>
+            </select>
+          </div>
+
+          <div className="campo is-pequeno">
+            <label>Competência</label>
+            <input
+              type="text"
+              value={filters.competencia}
+              onChange={handleFilterChange('competencia')}
+              placeholder="Ex.: 092025"
+              maxLength={6}
+            />
+          </div>
+
+          <div className="campo campo-range">
+            <label>Vencimento</label>
+            <div className="range-vertical">
+              <input
+                type="date"
+                value={filters.data_vencimento_inicio}
+                onChange={handleFilterChange('data_vencimento_inicio')}
+                title="De"
+              />
+              <input
+                type="date"
+                value={filters.data_vencimento_fim}
+                onChange={handleFilterChange('data_vencimento_fim')}
+                title="Até"
+              />
+            </div>
+          </div>
+
+          <div className="campo campo-range">
+            <label>Solicitação</label>
+            <div className="range-vertical">
+              <input
+                type="date"
+                value={filters.data_solicitacao_inicio}
+                onChange={handleFilterChange('data_solicitacao_inicio')}
+                title="De"
+              />
+              <input
+                type="date"
+                value={filters.data_solicitacao_fim}
+                onChange={handleFilterChange('data_solicitacao_fim')}
+                title="Até"
+              />
+            </div>
+          </div>
+
+          <div className="campo campo-acao">
+            <button type="button" onClick={limparFiltros} title="Limpar filtros">
+              Limpar
+            </button>
+          </div>
         </div>
 
-        <div className="campo is-pequeno" style={{ width: 10 }}>
-          <label>Competência</label>
-          <input
-            type="text"
-            value={filters.competencia}
-            onChange={handleFilterChange('competencia')}
-            placeholder="Ex.: 092025"
-            maxLength={6}
-          />
-        </div>
-
-
-        <div className="filtros-actions">
-          <button type="button" onClick={limparFiltros} title="Limpar filtros">
-            Limpar
-          </button>
-        </div>
       </div>
 
       <table>

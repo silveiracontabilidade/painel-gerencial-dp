@@ -361,7 +361,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
       setResponsaveis([]);
     }
     if (incluirEmpresas) {
-      const resEmp = await api.get('/api/empresas/', { params: { page: 1, page_size: 2000 } });
+      const resEmp = await api.get('/api/empresas/', { params: { page: 1, page_size: 5_000_000 } });
       setEmpresas(resEmp.data.results || resEmp.data);
       setEmpresaDetalhe(null);
     } else {

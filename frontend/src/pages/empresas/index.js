@@ -54,7 +54,7 @@ export default function Empresas() {
 const [empresas, setEmpresas] = useState([]);
 const [loading, setLoading] = useState(false);
 const [page, setPage] = useState(1);
-const pageSize = 2000; // ou outro valor conforme necessário 
+const pageSize = 5_000_000; // ou outro valor conforme necessário 
 const [modalDelegarAberto, setModalDelegarAberto] = useState(false);
 const [novoResponsavel, setNovoResponsavel] = useState('');
 const [ordenacao, setOrdenacao] = useState({ campo: '', direcao: 'asc' });
@@ -772,6 +772,7 @@ const salvarEmpresa = async (empresa) => {
                   <option value="Ativo">Ativo</option>
                   <option value="Inativo">Inativo</option>
                   <option value="Suspenso">Suspenso</option>
+                  <option value="Em Proposta">Em Proposta</option>
                 </select>
               </th>
               <th className="col-data">
@@ -994,7 +995,7 @@ const salvarEmpresa = async (empresa) => {
 
                   await Promise.all(promises);
                   alert("Delegação concluída.");
-                  const { data } = await api.get('api/empresas/', { params: { page: 1, page_size: 20000 } });
+                  const { data } = await api.get('api/empresas/', { params: { page: 1, page_size: 5_000_000 } });
                   setEmpresas(data.results);
                   setModalDelegarAberto(false);
                   setNovoResponsavel('');

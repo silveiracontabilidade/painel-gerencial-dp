@@ -76,7 +76,7 @@ class ServicoSolicitadoViewSet(viewsets.ModelViewSet):
     class ServicoSolicitadoPagination(PageNumberPagination):
         page_size = 100
         page_size_query_param = 'page_size'
-        max_page_size = 5000
+        max_page_size = 5_000_000
 
     queryset = (
         ServicoSolicitado.objects
@@ -90,7 +90,7 @@ class ServicoSolicitadoViewSet(viewsets.ModelViewSet):
 class EmpresaPagination(PageNumberPagination):
     # page_size = 10
     page_size_query_param = 'page_size'
-    max_page_size = 2000
+    max_page_size = 5_000_000
 
 class PlanilhaGerencialFilter(FilterSet):
     cod_folha = CharFilter(lookup_expr='icontains')

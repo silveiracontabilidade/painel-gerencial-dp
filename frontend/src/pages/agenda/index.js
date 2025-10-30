@@ -178,7 +178,7 @@ export default function AgendaBase() {
   }, []);
 
   useEffect(() => {
-    api.get('/api/servicos/', { params: { page: 1, page_size: 1000 } })
+    api.get('/api/servicos/', { params: { page: 1, page_size: 5_000_000 } })
       .then((res) => setServicos(res.data.results || res.data))
       .catch((err) => console.error('Erro ao carregar serviços:', err));
   }, []);
