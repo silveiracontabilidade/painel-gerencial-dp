@@ -771,8 +771,9 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                         filtros['responsavel'] = responsavel_destino
 
                     filtros['empresa'] = codigo_int
+                    filtros['id_agenda'] = str(item.id)
 
-                    chave_dup = (codigo_int, responsavel_destino.id if responsavel_destino else None, item.servico_id, competencia)
+                    chave_dup = (codigo_int, responsavel_destino.id if responsavel_destino else None, item.servico_id, competencia, item.id)
                     if chave_dup in chaves_criadas:
                         duplicados_item += 1
                         continue
@@ -796,6 +797,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                             avulso_valor=Decimal('0'),
                             multa_valor=Decimal('0'),
                             status='PENDENTE',
+                            id_agenda=str(item.id),
                         )
                     )
                     criados_item += 1
@@ -817,9 +819,10 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                             'competencia': competencia,
                             'responsavel': resp_destino,
                             'empresa__isnull': True,
+                            'id_agenda': str(item.id),
                         }
 
-                        chave_dup = (None, resp_destino.id, item.servico_id, competencia)
+                        chave_dup = (None, resp_destino.id, item.servico_id, competencia, item.id)
                         if chave_dup in chaves_criadas:
                             duplicados_item += 1
                             continue
@@ -843,6 +846,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                                 avulso_valor=Decimal('0'),
                                 multa_valor=Decimal('0'),
                                 status='PENDENTE',
+                                id_agenda=str(item.id),
                             )
                         )
                         criados_item += 1

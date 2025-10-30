@@ -223,7 +223,7 @@ const handleChange = (campo) => (e) => {
     visitacao: ['MENSAL', 'BIMESTRAL', 'TRIMESTRAL', 'SEMESTRAL', 'ANUAL', 'N/A'],
     matriz: ['SIM', 'NÃO'],
     enviadctf: ['SIM', 'NÃO'],
-    classificacao2: ['BPO FIN', 'BPO RH', 'CARNÊ LEÃO', 'CONSULTORIA', 'DOM S/ MOV', 'DOMÉSTICA', 'FACULTATIVO', 'FATOR R', 'FATOR R + FUNCS', 'FOLHA COM DADOS', 'FOLHA SEM DADOS', 'PRÓ LABORE', 'TIME OUT', 'SEM MOVIMENTO'],
+    classificacao2: ['BPO FIN', 'BPO RH', 'CARNÊ LEÃO', 'CONSULTORIA', 'DOMÉSTICA SEM DADOS', 'DOMÉSTICA COM DADOS', 'FACULTATIVO', 'FATOR R', 'FATOR R + FUNCS', 'FOLHA COM DADOS', 'FOLHA SEM DADOS', 'PRÓ LABORE', 'TIME OUT', 'SEM MOVIMENTO'],
     sim_nao:['SIM', 'NÃO'],
     tipo_ponto:['CARTOGRÁFICO', 'FOLHA'],
     motivo_termino:[

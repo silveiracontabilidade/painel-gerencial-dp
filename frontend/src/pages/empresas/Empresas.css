@@ -350,15 +350,16 @@
   color: #000000;
 }
 
-/* DOM S/ MOV */
-.empresas-table td.classificacao2.DOM-S-MOV,
-.empresas-table td.classificacao2.DOM-S\/-MOV {
+/* DOMÉSTICA SEM DADOS */
+.empresas-table td.classificacao2.DOMÉSTICA-SEM-DADOS,
+.empresas-table td.classificacao2.DOMESTICA-SEM-DADOS {
   background-color: #a6c9ec;
   color: #000000;
 }
 
-/* DOMESTICA */
-.empresas-table td.classificacao2.DOMESTICA {
+/* DOMÉSTICA COM DADOS */
+.empresas-table td.classificacao2.DOMÉSTICA-COM-DADOS,
+.empresas-table td.classificacao2.DOMESTICA-COM-DADOS {
   background-color: #a6c9ec;
   color: #000000;
 }
