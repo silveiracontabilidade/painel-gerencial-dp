@@ -569,7 +569,10 @@ export default function AgendaBase() {
               const empresas = Array.isArray(resp.empresas) && resp.empresas.length > 0
                 ? ` [empresas: ${resp.empresas.join(', ')}]`
                 : '';
-              return `${resp.nome}${empresas}`;
+              const grupos = Array.isArray(resp.grupos) && resp.grupos.length > 0
+                ? ` [grupos: ${resp.grupos.join(', ')}]`
+                : '';
+              return `${resp.nome}${empresas}${grupos}`;
             })
             .join('; ');
           linhas.push(`  Responsáveis gerados: ${responsaveis}`);

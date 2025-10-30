@@ -644,11 +644,65 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                             'responsavel': resp_obj,
                             'vencimento': vencimento,
                             'empresas': [],
+                            'grupos': set(),
                         }
                     )
                     if vencimento and (info['vencimento'] is None or vencimento < info['vencimento']):
                         info['vencimento'] = vencimento
                     info['empresas'].append(codigo_int)
+                    grupo_original = (getattr(empresa, 'grupo', '') or '').strip()
+                    if grupo_original:
+                        info['grupos'].add(grupo_original)
+                    empresas_processadas += 1
+                    continue
+
+                if tipo == 'coordenador':
+                    grupo_emp = normalizar_texto(getattr(empresa, 'grupo', ''))
+                    if not grupo_emp:
+                        if item.id not in itens_sem_destino:
+                            itens_sem_destino.append(item.id)
+                        detalhes.append({
+                            **detalhe_comum,
+                            'status': 'ignorado',
+                            'motivo': f'Empresa {codigo_empresa}: grupo não informado para distribuição por coordenador.',
+                            'criadas': 0,
+                            'duplicadas': 0,
+                        })
+                        continue
+
+                    coordenadores_destino = coordenadores_por_grupo.get(grupo_emp)
+                    if not coordenadores_destino:
+                        grupo_original = (getattr(empresa, 'grupo', '') or '').strip()
+                        coordenadores_nao_encontrados.add(grupo_original or grupo_emp)
+                        if item.id not in itens_sem_destino:
+                            itens_sem_destino.append(item.id)
+                        detalhes.append({
+                            **detalhe_comum,
+                            'status': 'ignorado',
+                            'motivo': f'Empresa {codigo_empresa}: nenhum coordenador encontrado para o grupo {grupo_original or grupo_emp}.',
+                            'criadas': 0,
+                            'duplicadas': 0,
+                        })
+                        continue
+
+                    grupo_original = (getattr(empresa, 'grupo', '') or '').strip()
+
+                    for coord in coordenadores_destino:
+                        info = agregados_por_responsavel.setdefault(
+                            coord.id,
+                            {
+                                'responsavel': coord,
+                                'vencimento': vencimento,
+                                'empresas': [],
+                                'grupos': set(),
+                            }
+                        )
+                        if vencimento and (info['vencimento'] is None or vencimento < info['vencimento']):
+                            info['vencimento'] = vencimento
+                        info['empresas'].append(codigo_int)
+                        if grupo_original:
+                            info['grupos'].add(grupo_original)
+
                     empresas_processadas += 1
                     continue
 
@@ -669,12 +723,14 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                         analistas_nao_encontrados.add(nome_resp)
 
                 if tipo in ('coordenador', 'analista e coordenador'):
-                    grupo_emp = normalizar_texto(getattr(empresa, 'grupo', ''))
+                    grupo_emp_raw = getattr(empresa, 'grupo', '')
+                    grupo_emp = normalizar_texto(grupo_emp_raw)
                     if grupo_emp and coordenadores_por_grupo.get(grupo_emp):
                         responsaveis_destino.extend(coordenadores_por_grupo[grupo_emp])
                     else:
+                        grupo_original = (grupo_emp_raw or '').strip()
                         if grupo_emp:
-                            coordenadores_nao_encontrados.add(grupo_emp)
+                            coordenadores_nao_encontrados.add(grupo_original or grupo_emp)
 
                 if tipo == 'empresa':
                     destinos_empresa = [None]
@@ -744,12 +800,12 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     )
                     criados_item += 1
 
-            if tipo == 'analista':
+            if tipo in ('analista', 'coordenador'):
                 if not agregados_por_responsavel:
                     detalhes.append({
                         **detalhe_comum,
                         'status': 'ignorado',
-                        'motivo': 'Nenhum responsável elegível encontrado nas empresas do filtro.',
+                        'motivo': 'Nenhum responsável elegível encontrado nas empresas do filtro.' if tipo == 'analista' else 'Nenhum coordenador elegível encontrado nas empresas do filtro.',
                         'criadas': 0,
                         'duplicadas': 0,
                     })
@@ -794,6 +850,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                             'id': resp_destino.id,
                             'nome': resp_destino.nome,
                             'empresas': sorted(set(info['empresas'])),
+                            'grupos': sorted({g for g in info.get('grupos', set()) if g}),
                         })
 
 
@@ -809,7 +866,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                 'analistas_nao_encontrados': sorted(analistas_nao_encontrados),
                 'coordenadores_nao_encontrados': sorted(coordenadores_nao_encontrados),
             }
-            if tipo == 'analista':
+            if tipo in ('analista', 'coordenador'):
                 detalhe_item['responsaveis_gerados'] = responsaveis_gerados
 
             detalhes.append(detalhe_item)
