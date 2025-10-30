@@ -2,6 +2,7 @@
 .servicos-sol-container {
   padding: 24px;
   font-family: Arial, sans-serif;
+  overflow-x: hidden; /* evita barra horizontal */
 }
 
 .servicos-header {
@@ -35,20 +36,41 @@
 /* -------- Filtros -------- */
 .servicos-filtros {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 8px;
   border: 1px solid #ddd;
   border-radius: 6px;
-  padding: 10px 12px;
+  padding: 6px 8px;
   background: #1a1f3a18;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.filtros-primarios,
+.filtros-secundarios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: flex-end;
 }
 
 .servicos-filtros .campo { 
   display: flex;
   flex-direction: column;
-  min-width: 180px;
+  flex: 1 1 150px;
+  min-width: 0;
+}
+
+.servicos-filtros .campo.is-pequeno {
+  flex: 1 1 110px;
+}
+
+.servicos-filtros .campo.toggle-filtros {
+  flex: 0 0 auto;
+  align-self: flex-end;
 }
 
 .servicos-filtros label {
@@ -61,13 +83,37 @@
 .servicos-filtros input,
 .servicos-filtros select {
   box-sizing: border-box;
-  height: 30px;
-  line-height: 22px;
-  padding: 6px 10px;
+  height: 28px;
+  line-height: 20px;
+  padding: 4px 8px;
   border-radius: 4px;
   border: 1px solid #ccc;
-  font-size: 11px;
+  font-size: 10px;
   background-color: #fff;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* faixas de data compactas lado a lado, sem estourar */
+.servicos-filtros .campo .range {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.servicos-filtros .campo .range input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.servicos-filtros .campo-range {
+  flex: 1 1 180px;
+}
+
+.range-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .servicos-filtros input:focus,
@@ -75,6 +121,21 @@
   outline: none;
   border-color: #1a1f3a;
   box-shadow: 0 0 0 2px rgba(43,159,174,0.15);
+}
+
+
+.filtros-secundarios {
+  width: 100%;
+}
+
+.toggle-filtros {
+  align-self: end;
+  justify-self: end;
+}
+
+/* realce de filtro ativo (opcional) */
+.filtro-ativo {
+  border-color: #1a1f3a !important;
 }
 
 .servicos-filtros button {
