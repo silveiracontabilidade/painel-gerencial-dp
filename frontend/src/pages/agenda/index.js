@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Plus, Pencil, Trash2, Check, X, Play } from 'lucide-react';
 import api from '../../api/axios';
 import './Agenda.css';
@@ -166,6 +166,9 @@ export default function AgendaBase() {
   const [regrasTemp, setRegrasTemp] = useState([]);
   const [regraItemId, setRegraItemId] = useState(null);
   const [perfilUsuario, setPerfilUsuario] = useState(null);
+  const [selecionados, setSelecionados] = useState([]);
+  const [modoGeracao, setModoGeracao] = useState('todos');
+  const seletorTodosRef = useRef(null);
 
   useEffect(() => {
     api.get('/api/me')
@@ -199,6 +202,10 @@ export default function AgendaBase() {
       };
     });
     setItens(normalizados);
+    setSelecionados((prev) => {
+      const validos = new Set(normalizados.map((item) => String(item.id)));
+      return prev.filter((id) => validos.has(id));
+    });
   };
 
   /* ---------- ordenação ---------- */
@@ -250,6 +257,56 @@ export default function AgendaBase() {
     );
   }, [itensOrdenados, filtros]);
 
+  const selecionadosSet = useMemo(() => new Set(selecionados.map(String)), [selecionados]);
+  const itensSelecionaveisVisiveis = useMemo(
+    () => itensFiltrados.filter((item) => item.id !== ID_TEMP),
+    [itensFiltrados]
+  );
+  const nenhumSelecionado = selecionados.length === 0;
+  const todosVisiveisSelecionados = itensSelecionaveisVisiveis.length > 0
+    && itensSelecionaveisVisiveis.every((item) => selecionadosSet.has(String(item.id)));
+  const algumVisivelSelecionado = itensSelecionaveisVisiveis.some((item) =>
+    selecionadosSet.has(String(item.id))
+  );
+
+  useEffect(() => {
+    if (seletorTodosRef.current) {
+      seletorTodosRef.current.indeterminate = algumVisivelSelecionado && !todosVisiveisSelecionados;
+    }
+  }, [algumVisivelSelecionado, todosVisiveisSelecionados]);
+
+  const alternarSelecaoItem = (id) => {
+    const chave = String(id);
+    if (chave === ID_TEMP) {
+      return;
+    }
+    setSelecionados((prev) => {
+      const atual = new Set(prev);
+      if (atual.has(chave)) {
+        atual.delete(chave);
+      } else {
+        atual.add(chave);
+      }
+      return Array.from(atual);
+    });
+  };
+
+  const alternarSelecionarTodosVisiveis = () => {
+    setSelecionados((prev) => {
+      const atual = new Set(prev);
+      if (todosVisiveisSelecionados) {
+        itensSelecionaveisVisiveis.forEach((item) => {
+          atual.delete(String(item.id));
+        });
+      } else {
+        itensSelecionaveisVisiveis.forEach((item) => {
+          atual.add(String(item.id));
+        });
+      }
+      return Array.from(atual);
+    });
+  };
+
   const abrirModalLote = () => {
     if (!podeEditar) return;
     const hoje = new Date();
@@ -259,6 +316,7 @@ export default function AgendaBase() {
     });
     setResultadoLote(null);
     setErroLote('');
+    setModoGeracao(selecionados.length ? 'selecionados' : 'todos');
     setModalLoteAberto(true);
   };
 
@@ -294,12 +352,32 @@ export default function AgendaBase() {
       return;
     }
 
+    const payload = {
+      mes: mesNumero,
+      ano: anoNumero,
+    };
+
+    if (modoGeracao === 'selecionados') {
+      const idsNumericos = selecionados
+        .map((id) => Number(id))
+        .filter((valor) => !Number.isNaN(valor));
+
+      if (!idsNumericos.length) {
+        setErroLote('Selecione ao menos um item válido da agenda.');
+        return;
+      }
+
+      if (idsNumericos.length !== selecionados.length) {
+        setErroLote('Não foi possível identificar todos os itens selecionados. Atualize a seleção e tente novamente.');
+        return;
+      }
+
+      payload.agenda_ids = idsNumericos;
+    }
+
     setProcessandoLote(true);
     try {
-      const res = await api.post('/api/agenda-base/gerar-servicos/', {
-        mes: mesNumero,
-        ano: anoNumero,
-      });
+      const res = await api.post('/api/agenda-base/gerar-servicos/', payload);
       setResultadoLote(res.data);
     } catch (err) {
       const mensagem = err.response?.data?.detail || 'Falha ao gerar serviços.';
@@ -512,6 +590,23 @@ export default function AgendaBase() {
     linhas.push(`Serviços criados: ${resultadoLote.total_criados ?? 0}`);
     linhas.push(`Já existiam: ${resultadoLote.total_duplicados ?? 0}`);
     linhas.push('');
+
+    if (Array.isArray(resultadoLote.itens_solicitados)) {
+      const totalSelecionados = resultadoLote.itens_solicitados.length;
+      const totalProcessados = Array.isArray(resultadoLote.itens_processados_ids)
+        ? resultadoLote.itens_processados_ids.length
+        : 0;
+      const totalNaoEncontrados = Array.isArray(resultadoLote.itens_nao_encontrados)
+        ? resultadoLote.itens_nao_encontrados.length
+        : 0;
+      linhas.push('Seleção aplicada:');
+      linhas.push(`- Itens selecionados: ${totalSelecionados}`);
+      linhas.push(`- Itens processados: ${totalProcessados}`);
+      if (totalNaoEncontrados > 0) {
+        linhas.push(`- Itens ignorados (não disponíveis): ${totalNaoEncontrados}`);
+      }
+      linhas.push('');
+    }
 
     const detalhes = Array.isArray(resultadoLote.detalhes) ? resultadoLote.detalhes : [];
     const idsSemDestino = new Set((resultadoLote.itens_sem_destino || []).map((valor) => Number(valor)));
@@ -734,6 +829,15 @@ export default function AgendaBase() {
       <table>
         <thead>
           <tr>
+            <th className="agenda-col-selecao">
+              <input
+                ref={seletorTodosRef}
+                type="checkbox"
+                checked={todosVisiveisSelecionados && itensSelecionaveisVisiveis.length > 0}
+                onChange={alternarSelecionarTodosVisiveis}
+                disabled={!podeEditar || itensSelecionaveisVisiveis.length === 0}
+              />
+            </th>
             <th onClick={() => handleOrdenar('nome')}>
               Nome {ordenacao.campo === 'nome' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
             </th>
@@ -762,6 +866,7 @@ export default function AgendaBase() {
 
           {/* linha de filtros */}
           <tr className="linha-filtros">
+            <th className="agenda-col-selecao"></th>
             <th>
               <input type="text" value={filtros.nome} onChange={handleFiltro('nome')} />
             </th>
@@ -825,6 +930,16 @@ export default function AgendaBase() {
 
             return (
               <tr key={item.id}>
+                <td className="agenda-col-selecao">
+                  {item.id !== ID_TEMP ? (
+                    <input
+                      type="checkbox"
+                      checked={selecionadosSet.has(String(item.id))}
+                      onChange={() => alternarSelecaoItem(item.id)}
+                      disabled={!podeEditar}
+                    />
+                  ) : null}
+                </td>
                 <td>
                   {emEdicao ? (
                     <textarea
@@ -1020,6 +1135,22 @@ export default function AgendaBase() {
               </label>
             </div>
 
+            <div className="agenda-modal-campos">
+              <label>
+                Itens a processar
+                <select value={modoGeracao} onChange={(e) => setModoGeracao(e.target.value)}>
+                  <option value="todos">Todos</option>
+                  <option value="selecionados">Selecionados</option>
+                </select>
+              </label>
+            </div>
+
+            {modoGeracao === 'selecionados' && nenhumSelecionado && (
+              <div className="agenda-modal-info">
+                Selecione itens na agenda para usar esta opção.
+              </div>
+            )}
+
             {erroLote && <div className="agenda-modal-alerta">{erroLote}</div>}
 
             {resultadoLote && (
@@ -1048,7 +1179,11 @@ export default function AgendaBase() {
                 Fechar
               </button>
               {!resultadoLote && (
-                <button type="button" onClick={executarLote} disabled={processandoLote}>
+                <button
+                  type="button"
+                  onClick={executarLote}
+                  disabled={processandoLote || (modoGeracao === 'selecionados' && nenhumSelecionado)}
+                >
                   {processandoLote ? 'Gerando...' : 'Executar'}
                 </button>
               )}

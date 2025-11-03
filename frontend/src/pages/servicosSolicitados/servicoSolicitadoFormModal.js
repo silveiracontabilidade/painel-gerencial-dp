@@ -405,6 +405,47 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     return razao ? `${codigo} - ${razao}` : String(codigo);
   }, [empresaDetalhe, dados]);
 
+  const responsavelById = useMemo(() => {
+    const mapa = new Map();
+    (responsaveis || []).forEach((resp) => mapa.set(String(resp.id), resp));
+    return mapa;
+  }, [responsaveis]);
+
+  const responsavelByNomeUpper = useMemo(() => {
+    const mapa = new Map();
+    (responsaveis || []).forEach((resp) => {
+      mapa.set(String(resp.nome || '').toUpperCase(), resp);
+    });
+    return mapa;
+  }, [responsaveis]);
+
+  const executorSelecionadoInfo = useMemo(() => {
+    const idSelecionado = form.processo_realizado_por;
+    if (idSelecionado) {
+      const existente = responsavelById.get(String(idSelecionado));
+      if (existente) {
+        return existente;
+      }
+    }
+
+    const nomeFallback = form.processo_realizado_por_nome || '';
+
+    if (nomeFallback) {
+      return responsavelByNomeUpper.get(String(nomeFallback).toUpperCase()) || null;
+    }
+
+    return null;
+  }, [
+    form.processo_realizado_por,
+    form.processo_realizado_por_nome,
+    responsavelById,
+    responsavelByNomeUpper,
+  ]);
+
+  const grupoExecutorSelecionado = executorSelecionadoInfo?.grupo_nome
+    ? String(executorSelecionadoInfo.grupo_nome).toUpperCase()
+    : '';
+
   // ===== Handlers =====
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -666,6 +707,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
       }
     });
         delete payload.empresa_id;
+        delete payload.processo_realizado_por_nome;
         return payload;
       };
 
@@ -1257,11 +1299,28 @@ const renderBlocoMulta = () => (
         {/* Processo Realizado Por */}
         <div className="linha">
           <div className="campo campo-medio">
+            <label>GRUPO DO EXECUTOR</label>
+            <input
+              type="text"
+              value={grupoExecutorSelecionado || '—'}
+              readOnly
+              disabled
+            />
+          </div>
+          <div className="campo campo-medio">
             <label>PROCESSO REALIZADO POR</label>
             <select
               name="processo_realizado_por"
               value={form.processo_realizado_por || ''}
-              onChange={(e) => setForm((prev) => ({ ...prev, processo_realizado_por: e.target.value }))}
+              onChange={(e) => {
+                const valor = e.target.value;
+                const info = responsavelById.get(String(valor)) || null;
+                setForm((prev) => ({
+                  ...prev,
+                  processo_realizado_por: valor,
+                  processo_realizado_por_nome: info?.nome || '',
+                }));
+              }}
             >
               <option value="">--</option>
               {responsaveis.map((r) => (

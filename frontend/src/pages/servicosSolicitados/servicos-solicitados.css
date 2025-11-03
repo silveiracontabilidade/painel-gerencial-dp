@@ -27,10 +27,16 @@
   cursor: pointer;
   display: flex;
   align-items: center;
+  gap: 6px;
 }
 
 .servicos-header button:hover {
   background-color: #C3996B;
+}
+
+.servicos-header button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* -------- Filtros -------- */
@@ -158,6 +164,7 @@
   border-collapse: collapse;
   background-color: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  table-layout: fixed;
 }
 
 .servicos-sol-container th,
@@ -175,6 +182,23 @@
 .servicos-sol-container th {
   background-color: #1a1f3a;
   color: white;
+  white-space: nowrap;
+}
+
+.col-selecao-col,
+.col-selecao {
+  width: 26px !important;
+  min-width: 26px !important;
+  max-width: 26px !important;
+  text-align: center;
+  padding: 0 !important;
+}
+.col-selecao input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  margin: 0 auto;
+  display: block;
 }
 
 .sortable-header {
@@ -550,4 +574,47 @@ td:nth-child(9) {
 .servicos-filtros .filtros-actions {
   margin-left: auto;
   flex: 0 0 auto;
+}
+table col.col-empresa { width: 120px !important; }
+table col.col-responsavel { width: 100px !important; }
+table col.col-executado { width: 100px !important; }
+table col.col-servico { width: 100px !important; }
+table col.col-detalhes { width: 250px !important; }
+table col.col-pequena { width: 70px !important; }
+table col.col-acoes { width: 20px !important; }
+table col.col-materiais { width: 80px !important; }
+
+.col-servico-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.servicos-sol-container td:nth-child(2),
+.servicos-sol-container td:nth-child(3),
+.servicos-sol-container td:nth-child(4),
+.servicos-sol-container td:nth-child(5),
+.servicos-sol-container td:nth-child(7),
+.servicos-sol-container td:nth-child(8),
+.servicos-sol-container td:nth-child(9),
+.servicos-sol-container td:nth-child(10),
+.servicos-sol-container td:nth-child(11),
+.servicos-sol-container td:nth-child(12),
+.servicos-sol-container td:nth-child(13) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.servicos-sol-container td:nth-child(6) {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.servicos-sol-container td:nth-child(2),
+.servicos-sol-container td:nth-child(3),
+.servicos-sol-container td:nth-child(4) {
+  white-space: normal;
+  word-break: break-word;
 }

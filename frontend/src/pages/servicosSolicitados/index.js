@@ -1,5 +1,5 @@
 // ServicosSolicitados.js
-import React, { useEffect, useState, useMemo  } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Plus, Pencil, Trash2, FileText, CheckCircle, Loader2 } from 'lucide-react';
 import EmpresaFormModal from '../empresas/EmpresaFormModal'
 import api from '../../api/axios';
@@ -45,6 +45,9 @@ export default function ServicosSolicitados() {
   const [itensPorPagina, setItensPorPagina] = useState(10);
   const [loading, setLoading] = useState(false);
   const [mostrarMais, setMostrarMais] = useState(false);
+  const [perfilUsuario, setPerfilUsuario] = useState(null);
+  const [selecionados, setSelecionados] = useState(() => new Set());
+  const cabecalhoSelecaoRef = useRef(null);
   
   const handleExportar = () => {
     const headers = [
@@ -184,6 +187,7 @@ export default function ServicosSolicitados() {
     return (
       (filters.empresa && filters.empresa.trim() !== '') ||
       (filters.responsavelId && String(filters.responsavelId) !== '') ||
+      (filters.executadoPorId && String(filters.executadoPorId) !== '') ||
       (filters.grupoId && String(filters.grupoId) !== '') ||
       (filters.servicoId && String(filters.servicoId) !== '') ||
       (filters.competencia && filters.competencia.trim() !== '') ||
@@ -395,6 +399,12 @@ export default function ServicosSolicitados() {
     return m;
   }, [responsaveis]);
 
+  const respByNomeUpper = useMemo(() => {
+    const m = new Map();
+    responsaveis.forEach((r) => m.set(String(r.nome || '').toUpperCase(), r));
+    return m;
+  }, [responsaveis]);
+
   const grupoById = useMemo(() => {
     const m = new Map();
     grupos.forEach(g => m.set(String(g.id), g));
@@ -502,9 +512,9 @@ export default function ServicosSolicitados() {
       // filtro por detalhes
       let passaDetalhes = true;
       if (alvoDetalhes) {
-        const detalhesStr = normalize(renderDetalhes(s));
-        passaDetalhes = detalhesStr.includes(alvoDetalhes);
-      }
+      const detalhesStr = normalize(renderDetalhes(s));
+      passaDetalhes = detalhesStr.includes(alvoDetalhes);
+    }
 
       // filtro por faixa de vencimento (data_vencimento em dd-mm-aaaa)
       let passaVenc = true;
@@ -528,6 +538,13 @@ export default function ServicosSolicitados() {
           if (filtroSolIni && d < filtroSolIni) passaSol = false;
           if (filtroSolFim && d > filtroSolFim) passaSol = false;
         }
+      }
+
+      const executado = String(s.processo_realizado_por || '');
+      const filtroExecutadoVal = String(filters.executadoPorId || '');
+
+      if (filtroExecutadoVal) {
+        if (executado !== filtroExecutadoVal) return false;
       }
 
       return (
@@ -609,6 +626,12 @@ export default function ServicosSolicitados() {
     carregarSolicitacoes();
   }, [paginaAtual, itensPorPagina, temFiltro]);
 
+  useEffect(() => {
+    api.get('/api/me')
+      .then(({ data }) => setPerfilUsuario(data.perfil))
+      .catch(() => setPerfilUsuario(null));
+  }, []);
+
   // Quando filtros mudam, volta para página 1
   useEffect(() => {
     setPaginaAtual(1);
@@ -628,6 +651,76 @@ export default function ServicosSolicitados() {
     setItensPorPagina(novoValor);
     setPaginaAtual(1);
   };
+
+  const todosFiltradosSelecionados = useMemo(() => (
+    solicitacoesOrdenadas.length > 0
+    && solicitacoesOrdenadas.every((item) => selecionados.has(item.id))
+  ), [solicitacoesOrdenadas, selecionados]);
+
+  const algumFiltradoSelecionado = useMemo(
+    () => solicitacoesOrdenadas.some((item) => selecionados.has(item.id)),
+    [solicitacoesOrdenadas, selecionados]
+  );
+
+  const algumSelecionado = selecionados.size > 0;
+
+  useEffect(() => {
+    if (cabecalhoSelecaoRef.current) {
+      cabecalhoSelecaoRef.current.indeterminate =
+        algumFiltradoSelecionado && !todosFiltradosSelecionados;
+    }
+  }, [algumFiltradoSelecionado, todosFiltradosSelecionados]);
+
+  const handleToggleSelecionado = (id) => {
+    setSelecionados((prev) => {
+      const novo = new Set(prev);
+      if (novo.has(id)) {
+        novo.delete(id);
+      } else {
+        novo.add(id);
+      }
+      return novo;
+    });
+  };
+
+  const handleToggleSelecaoCabecalho = () => {
+    if (!solicitacoesOrdenadas.length) return;
+    setSelecionados((prev) => {
+      const novo = new Set(prev);
+      if (todosFiltradosSelecionados) {
+        solicitacoesOrdenadas.forEach((item) => novo.delete(item.id));
+      } else {
+        solicitacoesOrdenadas.forEach((item) => novo.add(item.id));
+      }
+      return novo;
+    });
+  };
+
+  const handleExcluirSelecionados = async () => {
+    if (!selecionados.size) return;
+    if (!window.confirm(`Confirma a exclusão de ${selecionados.size} serviço(s) selecionado(s)?`)) return;
+
+    setLoading(true);
+    try {
+      const ids = Array.from(selecionados);
+      await Promise.all(ids.map((id) => api.delete(`/api/solicitacoes/${id}/`)));
+      setSelecionados(new Set());
+      await carregarSolicitacoes();
+    } catch (err) {
+      console.error('Erro ao excluir serviços selecionados:', err.response?.data || err);
+      alert('Falha ao excluir os serviços selecionados. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setSelecionados((prev) => {
+      const idsDisponiveis = new Set(solicitacoes.map((item) => item.id));
+      const novo = new Set(Array.from(prev).filter((id) => idsDisponiveis.has(id)));
+      return novo;
+    });
+  }, [solicitacoes]);
 
   const irParaPagina = (alvo) => {
     if (alvo < 1 || alvo > totalPaginas) return;
@@ -770,6 +863,26 @@ export default function ServicosSolicitados() {
     return renderResponsavelBadge(nomeResp, emp.grupo || '');
   };
 
+  const renderExecutadoPor = (solicitacao) => {
+    const idExecutado = solicitacao?.processo_realizado_por;
+    let executor = idExecutado ? respById.get(String(idExecutado)) : null;
+
+    let nomeExecutado = executor?.nome || solicitacao?.processo_realizado_por_nome || '';
+
+    if (!executor && nomeExecutado) {
+      executor = respByNomeUpper.get(String(nomeExecutado).toUpperCase()) || null;
+    }
+
+    if (!nomeExecutado) {
+      return '—';
+    }
+
+    const grupoExecutor = executor?.grupo_nome
+      || (executor?.grupo ? grupoById.get(String(executor.grupo))?.nome : '');
+
+    return renderResponsavelBadge(String(nomeExecutado).toUpperCase(), grupoExecutor || '');
+  };
+
   const renderGrupo = (valorEmpresa) => {
     const cod = String(valorEmpresa ?? '');
     const emp = empresaByCodigo.get(cod);
@@ -787,6 +900,7 @@ export default function ServicosSolicitados() {
     setFilters({
       empresa: '',
       responsavelId: '',
+      executadoPorId: '',
       grupoId: '',
       status: 'aberto',
       prazo: 'todos',
@@ -809,11 +923,20 @@ export default function ServicosSolicitados() {
       <div className="servicos-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h2>To Do</h2>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={handleExportar} title="Exportar CSV">
-            Exportar
-          </button>
           <button onClick={() => abrirModal()} title="Novo Serviço">
             <Plus size={18} /> Novo
+          </button>
+          {perfilUsuario === 'admin' && (
+            <button
+              onClick={handleExcluirSelecionados}
+              title="Excluir selecionados"
+              disabled={!algumSelecionado}
+            >
+              Excluir selecionados
+            </button>
+          )}
+          <button onClick={handleExportar} title="Exportar CSV">
+            Exportar
           </button>
         </div>
       </div>
@@ -831,17 +954,28 @@ export default function ServicosSolicitados() {
             />
           </div>
 
-          <div className="campo">
-            <label>Responsável</label>
-            <select
-              value={filters.responsavelId}
-              onChange={handleFilterChange('responsavelId')}
-            >
-              <option value="">Todos</option>
-              {responsaveis.map((r) => (
-                <option key={r.id} value={r.id}>{r.nome}</option>
-              ))}
-            </select>
+          <div className="campo campo-range">
+            <label>Responsável/Executor</label>
+            <div className="range-vertical">
+              <select
+                value={filters.responsavelId}
+                onChange={handleFilterChange('responsavelId')}
+              >
+                <option value="">Todos</option>
+                {responsaveis.map((r) => (
+                  <option key={r.id} value={r.id}>{r.nome}</option>
+                ))}
+              </select>
+              <select
+                value={filters.executadoPorId}
+                onChange={handleFilterChange('executadoPorId')}
+              >
+                <option value="">Todos</option>
+                {responsaveis.map((r) => (
+                  <option key={r.id} value={r.id}>{r.nome}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="campo">
@@ -962,14 +1096,39 @@ export default function ServicosSolicitados() {
       </div>
 
       <table>
+        <colgroup>
+          <col className="col-selecao-col" />
+          <col className="col-empresa" />
+          <col className="col-responsavel" />
+          <col className="col-executado" />
+          <col className="col-servico" />
+          <col className="col-detalhes" />
+          <col className="col-pequena" />
+          <col className="col-pequena" />
+          <col className="col-pequena" />
+          <col className="col-pequena" />
+          <col className="col-pequena" />
+          <col className="col-acoes" />
+          <col className="col-materiais" />
+        </colgroup>
         <thead>
           <tr>
+            <th className="col-selecao">
+              <input
+                ref={cabecalhoSelecaoRef}
+                type="checkbox"
+                checked={todosFiltradosSelecionados && solicitacoesOrdenadas.length > 0}
+                onChange={handleToggleSelecaoCabecalho}
+                disabled={solicitacoesOrdenadas.length === 0}
+              />
+            </th>
             <th className="sortable-header" onClick={() => alternarOrdenacao('empresa')}>
               Empresa {iconeOrdenacao('empresa')}
             </th>
             <th className="sortable-header" onClick={() => alternarOrdenacao('responsavel')}>
               Responsável {iconeOrdenacao('responsavel')}
             </th>
+            <th className="col-executado">Executor</th>
             <th className="sortable-header" onClick={() => alternarOrdenacao('servico_nome')}>
               Serviço {iconeOrdenacao('servico_nome')}
             </th>
@@ -984,7 +1143,7 @@ export default function ServicosSolicitados() {
               Vencimento {iconeOrdenacao('data_vencimento')}
             </th>
             <th className="sortable-header" onClick={() => alternarOrdenacao('data_para_resposta')}>
-              Data de Resposta {iconeOrdenacao('data_para_resposta')}
+              Resposta {iconeOrdenacao('data_para_resposta')}
             </th>
             <th className="sortable-header" onClick={() => alternarOrdenacao('data_conclusao')}>
               Conclusão {iconeOrdenacao('data_conclusao')}
@@ -996,9 +1155,17 @@ export default function ServicosSolicitados() {
         <tbody>
           {(temFiltro ? solicitacoesPagina : solicitacoesOrdenadas).map((s) => (
             <tr key={s.id} className={s.data_conclusao ? 'linha-concluida' : ''}>
+              <td className="col-selecao">
+                <input
+                  type="checkbox"
+                  checked={selecionados.has(s.id)}
+                  onChange={() => handleToggleSelecionado(s.id)}
+                />
+              </td>
               <td>{renderEmpresa(s)}</td>
               <td>{renderResp(s)}</td>
-              <td>{s.servico_nome}</td>
+              <td className="col-executado">{renderExecutadoPor(s)}</td>
+              <td className="col-servico-cell" title={s.servico_nome}>{s.servico_nome}</td>
               <td>{renderDetalhes(s)}</td>
               <td>{s.competencia}</td>
               <td>{s.data_solicitacao}</td>
@@ -1065,7 +1232,7 @@ export default function ServicosSolicitados() {
 
           {solicitacoesFiltradas.length === 0 && (
             <tr>
-              <td colSpan={11} style={{ textAlign: 'center', opacity: 0.7, padding: '8px 0' }}>
+              <td colSpan={13} style={{ textAlign: 'center', opacity: 0.7, padding: '8px 0' }}>
                 Nenhum registro encontrado com os filtros atuais.
               </td>
             </tr>
@@ -1124,7 +1291,7 @@ export default function ServicosSolicitados() {
         <div className="paginacao-page-size">
           <label>Itens por página</label>
           <select value={itensPorPagina} onChange={handleItensPorPaginaChange}>
-            {[10, 20, 30, 40, 50].map((qtd) => (
+            {[10, 20, 30, 40, 50, 100, 150].map((qtd) => (
               <option key={qtd} value={qtd}>
                 {qtd}
               </option>
