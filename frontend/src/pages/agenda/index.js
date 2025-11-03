@@ -193,11 +193,14 @@ export default function AgendaBase() {
       const usaAgenda = (item.usa_data_agenda === undefined || item.usa_data_agenda === null)
         ? true
         : Boolean(item.usa_data_agenda);
+      const periodoConfigurado = (item.periodo || '').toLowerCase().trim();
       return {
         ...item,
         regras: item.regras || [],
         usa_data_agenda: usaAgenda,
         campo_periodo_empresa: item.campo_periodo_empresa ?? '',
+        periodo: usaAgenda ? periodoConfigurado : 'mensal',
+        periodo_configurado: periodoConfigurado,
         tipo_distribuicao: item.tipo_distribuicao ? item.tipo_distribuicao.toLowerCase().trim() : '',
       };
     });
@@ -241,28 +244,38 @@ export default function AgendaBase() {
   };
 
   const itensFiltrados = useMemo(() => {
-    return itensOrdenados.filter((i) =>
-      (!filtros.periodo || i.periodo?.toLowerCase().includes(filtros.periodo.toLowerCase())) &&
-      (!filtros.dia || String(i.dia).includes(filtros.dia)) &&
-      (!filtros.mes || String(i.mes).includes(filtros.mes)) &&
-      (!filtros.nome || i.nome?.toLowerCase().includes(filtros.nome.toLowerCase())) &&
-      (!filtros.descricao || i.descricao?.toLowerCase().includes(filtros.descricao.toLowerCase())) &&
-      (!filtros.servico || String(i.servico ?? '') === filtros.servico) &&
-      (!filtros.tipo_distribuicao || i.tipo_distribuicao?.toLowerCase() === filtros.tipo_distribuicao.toLowerCase()) &&
-      (!filtros.fonte_data || (
-        filtros.fonte_data === 'agenda'
-          ? (i.usa_data_agenda ?? true)
-          : (i.usa_data_agenda === false && i.campo_periodo_empresa === filtros.fonte_data)
-      ))
-    );
+    const filtroPeriodo = (filtros.periodo || '').toLowerCase();
+    return itensOrdenados.filter((i) => {
+      const periodoItem = (i.usa_data_agenda === false ? 'mensal' : (i.periodo || '')).toLowerCase();
+      return (
+        (!filtros.periodo || periodoItem.includes(filtroPeriodo)) &&
+        (!filtros.dia || String(i.dia).includes(filtros.dia)) &&
+        (!filtros.mes || String(i.mes).includes(filtros.mes)) &&
+        (!filtros.nome || i.nome?.toLowerCase().includes(filtros.nome.toLowerCase())) &&
+        (!filtros.descricao || i.descricao?.toLowerCase().includes(filtros.descricao.toLowerCase())) &&
+        (!filtros.servico || String(i.servico ?? '') === filtros.servico) &&
+        (!filtros.tipo_distribuicao || i.tipo_distribuicao?.toLowerCase() === filtros.tipo_distribuicao.toLowerCase()) &&
+        (!filtros.fonte_data || (
+          filtros.fonte_data === 'agenda'
+            ? (i.usa_data_agenda ?? true)
+            : (i.usa_data_agenda === false && i.campo_periodo_empresa === filtros.fonte_data)
+        ))
+      );
+    });
   }, [itensOrdenados, filtros]);
 
   const selecionadosSet = useMemo(() => new Set(selecionados.map(String)), [selecionados]);
+  const totalSelecionadosValidos = useMemo(() => {
+    return selecionados.reduce((acc, valor) => {
+      const texto = String(valor).trim();
+      return /^\d+$/.test(texto) ? acc + 1 : acc;
+    }, 0);
+  }, [selecionados]);
   const itensSelecionaveisVisiveis = useMemo(
     () => itensFiltrados.filter((item) => item.id !== ID_TEMP),
     [itensFiltrados]
   );
-  const nenhumSelecionado = selecionados.length === 0;
+  const nenhumSelecionadoValido = totalSelecionadosValidos === 0;
   const todosVisiveisSelecionados = itensSelecionaveisVisiveis.length > 0
     && itensSelecionaveisVisiveis.every((item) => selecionadosSet.has(String(item.id)));
   const algumVisivelSelecionado = itensSelecionaveisVisiveis.some((item) =>
@@ -358,21 +371,27 @@ export default function AgendaBase() {
     };
 
     if (modoGeracao === 'selecionados') {
-      const idsNumericos = selecionados
-        .map((id) => Number(id))
-        .filter((valor) => !Number.isNaN(valor));
+      const idsLimpos = Array.from(new Set(
+        selecionados
+          .map((id) => String(id).trim())
+          .filter((texto) => /^\d+$/.test(texto))
+          .map((texto) => Number(texto))
+          .filter((valor) => Number.isInteger(valor) && valor > 0)
+      ));
 
-      if (!idsNumericos.length) {
-        setErroLote('Selecione ao menos um item válido da agenda.');
+      if (!idsLimpos.length) {
+        setErroLote('Selecione ao menos uma atividade salva para processar.');
         return;
       }
 
-      if (idsNumericos.length !== selecionados.length) {
-        setErroLote('Não foi possível identificar todos os itens selecionados. Atualize a seleção e tente novamente.');
+      if (idsLimpos.length !== totalSelecionadosValidos) {
+        setErroLote('Algumas atividades selecionadas não podem ser processadas. Ajuste a seleção e tente novamente.');
         return;
       }
 
-      payload.agenda_ids = idsNumericos;
+      payload.agenda_ids = idsLimpos;
+      payload.somente_selecionados = true;
+      payload.total_itens_solicitados = idsLimpos.length;
     }
 
     setProcessandoLote(true);
@@ -417,7 +436,7 @@ export default function AgendaBase() {
       : Boolean(item.usa_data_agenda);
     setDados({
       ...item,
-      periodo: (item.periodo || '').toLowerCase().trim(),
+      periodo: (item.periodo_configurado || item.periodo || '').toLowerCase().trim(),
       dia: item.dia !== undefined && item.dia !== null ? String(item.dia) : '1',
       mes: item.mes !== undefined && item.mes !== null ? String(item.mes) : '',
       servico: item.servico ? String(item.servico) : '',
@@ -922,7 +941,7 @@ export default function AgendaBase() {
             const emEdicao = editandoId === item.id;
             const usaAgendaLinha = emEdicao ? (dados.usa_data_agenda !== false) : (item.usa_data_agenda ?? true);
             const servicoNome = item.servico_nome || servicosMap.get(String(item.servico))?.nome || '-';
-            const periodoMostrar = usaAgendaLinha ? (item.periodo || '') : '';
+            const periodoMostrar = usaAgendaLinha ? (item.periodo || '') : (item.periodo || 'mensal');
             const diaMostrar = usaAgendaLinha && item.dia !== undefined && item.dia !== null ? item.dia : '';
             const mesMostrar = usaAgendaLinha && item.periodo !== 'mensal' && item.mes !== undefined && item.mes !== null
               ? item.mes
@@ -1018,7 +1037,7 @@ export default function AgendaBase() {
                 <td>
                   {emEdicao ? (
                     <select
-                      value={dados.usa_data_agenda ? dados.periodo : ''}
+                      value={dados.usa_data_agenda ? (dados.periodo ?? '') : 'mensal'}
                       disabled={!dados.usa_data_agenda}
                       onChange={(e) => {
                         const valor = e.target.value;
@@ -1145,9 +1164,14 @@ export default function AgendaBase() {
               </label>
             </div>
 
-            {modoGeracao === 'selecionados' && nenhumSelecionado && (
+            {modoGeracao === 'selecionados' && nenhumSelecionadoValido && (
               <div className="agenda-modal-info">
                 Selecione itens na agenda para usar esta opção.
+              </div>
+            )}
+            {modoGeracao === 'selecionados' && !nenhumSelecionadoValido && (
+              <div className="agenda-modal-info">
+                Atividades selecionadas: <strong>{totalSelecionadosValidos}</strong>
               </div>
             )}
 
@@ -1164,6 +1188,16 @@ export default function AgendaBase() {
                 <p>
                   Já existiam: <strong>{resultadoLote.total_duplicados}</strong>
                 </p>
+                {resultadoLote?.somente_selecionados && (
+                  <p>
+                    Atividades processadas: <strong>{resultadoLote.itens_processados ?? 0}</strong>
+                    {typeof resultadoLote.total_itens_solicitados === 'number' && (
+                      <>
+                        {' '}de <strong>{resultadoLote.total_itens_solicitados}</strong>
+                      </>
+                    )}
+                  </p>
+                )}
                 <button
                   type="button"
                   className="agenda-modal-log"
@@ -1182,7 +1216,7 @@ export default function AgendaBase() {
                 <button
                   type="button"
                   onClick={executarLote}
-                  disabled={processandoLote || (modoGeracao === 'selecionados' && nenhumSelecionado)}
+                  disabled={processandoLote || (modoGeracao === 'selecionados' && nenhumSelecionadoValido)}
                 >
                   {processandoLote ? 'Gerando...' : 'Executar'}
                 </button>

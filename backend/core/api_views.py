@@ -14,6 +14,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 import calendar
 import unicodedata
+import json
 from collections import defaultdict
 from django.db.models import Q
 
@@ -288,6 +289,8 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
             return min(day, ultimo_dia)
 
         def deve_rodar(item):
+            if not item.usa_data_agenda:
+                return True
             periodo = (item.periodo or '').lower()
             alvo_mes = item.mes
 
@@ -312,6 +315,15 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                 return ''
             texto = unicodedata.normalize('NFKD', str(valor)).encode('ascii', 'ignore').decode('ascii')
             return texto.strip().lower()
+
+        def interpretar_booleano(valor):
+            if isinstance(valor, bool):
+                return valor
+            if isinstance(valor, (int, float)):
+                return valor != 0
+            if isinstance(valor, str):
+                return valor.strip().lower() in {'1', 'true', 't', 'sim', 's', 'yes'}
+            return False
 
         def construir_q(regras):
             if not regras:
@@ -404,24 +416,112 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
             return date(ano, mes, clamp_day(ano, mes, periodo_obj.dia))
 
         def calcular_datas_item(item, empresa, periodo_por_descricao):
+            dia_base = item.dia or 1
             if item.usa_data_agenda or not item.campo_periodo_empresa:
-                vencimento = date(ano, mes, clamp_day(ano, mes, item.dia))
-                return vencimento
+                vencimento = date(ano, mes, clamp_day(ano, mes, dia_base))
+                return vencimento, 'agenda'
 
             campo = item.campo_periodo_empresa
             valor_periodo = getattr(empresa, campo, None)
-            if not valor_periodo:
-                return None
+            if valor_periodo is None or str(valor_periodo).strip() == '':
+                return None, 'empresa'
 
             chave = normalizar_texto(valor_periodo)
+            if not chave or chave == 'agenda':
+                vencimento = date(ano, mes, clamp_day(ano, mes, dia_base))
+                return vencimento, 'agenda'
+
             periodo = periodo_por_descricao.get(chave)
             if not periodo:
-                return None
+                return None, 'empresa'
 
-            return calcular_data_por_periodo(periodo, ano, mes)
+            return calcular_data_por_periodo(periodo, ano, mes), 'empresa'
 
         hoje = date.today()
-        agenda_itens = list(self.get_queryset())
+        queryset_base = self.get_queryset()
+        ids_solicitados = None
+        itens_nao_encontrados = []
+        somente_selecionados = interpretar_booleano(request.data.get('somente_selecionados'))
+        total_itens_solicitados = request.data.get('total_itens_solicitados', None)
+        if total_itens_solicitados is not None:
+            try:
+                total_itens_solicitados = int(str(total_itens_solicitados).strip())
+            except (TypeError, ValueError):
+                total_itens_solicitados = None
+
+        selecionados_bruto = request.data.get('agenda_ids', None)
+        if selecionados_bruto is not None:
+            if isinstance(selecionados_bruto, str):
+                texto = selecionados_bruto.strip()
+                if not texto:
+                    valores_base = []
+                else:
+                    try:
+                        possivel_json = json.loads(texto)
+                    except ValueError:
+                        valores_base = [parte.strip() for parte in texto.split(',') if parte.strip()]
+                    else:
+                        if isinstance(possivel_json, (list, tuple, set)):
+                            valores_base = list(possivel_json)
+                        else:
+                            valores_base = [possivel_json]
+            elif isinstance(selecionados_bruto, (list, tuple, set)):
+                valores_base = list(selecionados_bruto)
+            else:
+                valores_base = [selecionados_bruto]
+
+            ids_temp = []
+            vistos = set()
+            for valor in valores_base:
+                try:
+                    ident = int(str(valor).strip())
+                except (TypeError, ValueError):
+                    return Response(
+                        {'detail': 'Parâmetro agenda_ids contém valores inválidos.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                if ident <= 0 or ident in vistos:
+                    continue
+                vistos.add(ident)
+                ids_temp.append(ident)
+
+            if not ids_temp:
+                return Response(
+                    {'detail': 'Nenhum item da agenda foi selecionado.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            ids_solicitados = ids_temp
+
+        if ids_solicitados is not None and total_itens_solicitados is not None:
+            if total_itens_solicitados != len(ids_solicitados):
+                return Response(
+                    {'detail': 'Quantidade de itens selecionados divergente do informado.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        if ids_solicitados is not None:
+            queryset_selecionada = queryset_base.filter(id__in=ids_solicitados)
+            agenda_itens = list(queryset_selecionada)
+            ids_encontrados = {item.id for item in agenda_itens}
+            itens_nao_encontrados = [ident for ident in ids_solicitados if ident not in ids_encontrados]
+            ordem_ids = {ident: idx for idx, ident in enumerate(ids_solicitados)}
+            agenda_itens.sort(key=lambda item: ordem_ids.get(item.id, len(ordem_ids)))
+        else:
+            if somente_selecionados:
+                return Response(
+                    {'detail': 'Nenhum item da agenda foi selecionado.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            agenda_itens = list(queryset_base)
+
+        if not agenda_itens:
+            mensagem = 'Nenhum item da agenda encontrado para processamento.'
+            if ids_solicitados is not None:
+                mensagem = 'Nenhum item da agenda encontrado para os IDs selecionados.'
+            return Response({'detail': mensagem}, status=status.HTTP_400_BAD_REQUEST)
+
+        agenda_ids_processados = [item.id for item in agenda_itens]
         servicos_sem_relacionamento = []
         itens_sem_destino = []
         itens_fora_periodo = []
@@ -471,6 +571,12 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                 'coordenadores_ativos': sum(len(v) for v in coordenadores_por_grupo.values()),
             }
         })
+        if ids_solicitados is not None:
+            detalhes.append({
+                'ids_solicitados': ids_solicitados,
+                'ids_processados': agenda_ids_processados,
+                'ids_nao_encontrados': itens_nao_encontrados,
+            })
 
         chaves_criadas = set()
         objetos_para_criar = []
@@ -587,11 +693,12 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                 'agenda_id': item.id,
                 'nome': item.nome,
                 'tipo_distribuicao': item.tipo_distribuicao,
-                'periodo': item.periodo,
+                'periodo': 'mensal' if not item.usa_data_agenda else item.periodo,
                 'dia': item.dia,
                 'mes': item.mes,
                 'usa_data_agenda': item.usa_data_agenda,
                 'campo_periodo_empresa': item.campo_periodo_empresa,
+                'fonte_data': 'empresa' if not item.usa_data_agenda else 'agenda',
             }
 
             criados_item = 0
@@ -609,7 +716,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                 except (TypeError, ValueError):
                     continue
 
-                vencimento = calcular_datas_item(item, empresa, periodo_por_descricao)
+                vencimento, _ = calcular_datas_item(item, empresa, periodo_por_descricao)
                 if not vencimento:
                     itens_sem_data.append(item.id)
                     detalhes.append({
@@ -892,11 +999,18 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
             'itens_sem_data': itens_sem_data,
             'campos_regra_invalidos': {k: v for k, v in campos_regra_invalidos.items()},
             'detalhes': detalhes,
+            'somente_selecionados': ids_solicitados is not None,
+            'total_itens_solicitados': len(ids_solicitados) if ids_solicitados is not None else len(agenda_itens),
             'resumo_destinos': {
                 'analistas_ativos': len(responsaveis_por_nome),
                 'coordenadores_ativos': sum(len(v) for v in coordenadores_por_grupo.values()),
             },
         }
+
+        if ids_solicitados is not None:
+            resposta['itens_solicitados'] = ids_solicitados
+            resposta['itens_processados_ids'] = agenda_ids_processados
+            resposta['itens_nao_encontrados'] = itens_nao_encontrados
 
         return Response(resposta, status=status.HTTP_200_OK)
 
