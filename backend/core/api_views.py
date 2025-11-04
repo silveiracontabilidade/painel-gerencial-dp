@@ -16,7 +16,9 @@ import calendar
 import unicodedata
 import json
 from collections import defaultdict
-from django.db.models import Q
+from django.db.models import Q, Count, Value
+from django.db.models.functions import Coalesce, Upper
+from django.utils.dateparse import parse_date
 
 from .models import (
     GrupoGerencial,
@@ -1106,6 +1108,109 @@ class TipoAdmissaoViewSet(viewsets.ModelViewSet):
     search_fields = ['descricao', 'mensagem']
     ordering_fields = ['id', 'descricao']
     ordering = ['descricao']
+
+
+def _parse_periodo(request):
+    inicio = request.query_params.get('start_date')
+    fim = request.query_params.get('end_date')
+    data_inicio = parse_date(inicio) if inicio else None
+    data_fim = parse_date(fim) if fim else None
+
+    if data_inicio and data_fim and data_inicio > data_fim:
+        data_inicio, data_fim = data_fim, data_inicio
+
+    return data_inicio, data_fim
+
+
+def _aplica_periodo_existencia(qs, data_inicio, data_fim):
+    if data_fim:
+        qs = qs.filter(Q(inicio_contrato__isnull=True) | Q(inicio_contrato__lte=data_fim))
+    if data_inicio:
+        qs = qs.filter(Q(termino_contrato__isnull=True) | Q(termino_contrato__gte=data_inicio))
+    return qs
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def dashboard_empresas(request):
+    data_inicio, data_fim = _parse_periodo(request)
+
+    qs_base = PlanilhaGerencial.objects.all()
+    qs_periodo = _aplica_periodo_existencia(qs_base, data_inicio, data_fim)
+
+    ativos = qs_periodo.filter(status_do_cliente__iexact='ATIVO').count()
+    inativos = qs_periodo.filter(status_do_cliente__iexact='INATIVO').count()
+    total = qs_periodo.count()
+
+    novas_qs = qs_base.exclude(inicio_contrato__isnull=True)
+    if data_inicio:
+        novas_qs = novas_qs.filter(inicio_contrato__gte=data_inicio)
+    if data_fim:
+        novas_qs = novas_qs.filter(inicio_contrato__lte=data_fim)
+    novas = novas_qs.count()
+
+    saidas_qs = qs_base.exclude(termino_contrato__isnull=True)
+    if data_inicio:
+        saidas_qs = saidas_qs.filter(termino_contrato__gte=data_inicio)
+    if data_fim:
+        saidas_qs = saidas_qs.filter(termino_contrato__lte=data_fim)
+    saidas = saidas_qs.count()
+
+    classificacao_counts = (
+        qs_periodo
+        .filter(status_do_cliente__iexact='ATIVO')
+        .annotate(classificacao_upper=Upper('classificacao'))
+        .values('classificacao_upper')
+        .annotate(total=Count('cod_folha'))
+    )
+
+    categorias_alvo = {'BRONZE', 'PRATA', 'OURO', 'DIAMANTE'}
+    classificacao_resposta = {cat.lower(): 0 for cat in categorias_alvo}
+    nao_classificadas = 0
+    outros = 0
+    for item in classificacao_counts:
+        categoria = (item['classificacao_upper'] or '').strip().upper()
+        if not categoria:
+            nao_classificadas += item['total']
+        elif categoria in categorias_alvo:
+            classificacao_resposta[categoria.lower()] = item['total']
+        elif categoria:
+            outros += item['total']
+    classificacao_resposta['nao_classificadas'] = nao_classificadas
+    classificacao_resposta['outros'] = outros
+    classificacao_resposta['total'] = sum(classificacao_resposta.values())
+
+    motivos_saida = [
+        {
+            'motivo': entrada['motivo_normalizado'],
+            'quantidade': entrada['total']
+        }
+        for entrada in (
+            saidas_qs
+            .annotate(motivo_normalizado=Coalesce(Upper('motivo_termino'), Value('NÃO INFORMADO')))
+            .values('motivo_normalizado')
+            .annotate(total=Count('cod_folha'))
+            .order_by('-total', 'motivo_normalizado')
+        )
+    ]
+
+    return Response({
+        'periodo': {
+            'inicio': data_inicio.isoformat() if data_inicio else None,
+            'fim': data_fim.isoformat() if data_fim else None,
+        },
+        'empresas_geral': {
+            'ativas': ativos,
+            'inativas': inativos,
+            'total': total,
+        },
+        'movimentacao': {
+            'novas': novas,
+            'saidas': saidas,
+        },
+        'classificacao_ativas': classificacao_resposta,
+        'motivos_saida': motivos_saida,
+    })
 
 
 #--------- ALTERAÇÃO DE SENHA ------------

@@ -59,7 +59,7 @@ const Header = () => {
         {/* Navegação */}
         <nav className="header__nav">
           <ul className="menu__top">
-            <li><NavLink to="/">Dashboard</NavLink></li>
+            <li><NavLink to="/dashboard">Dashboard</NavLink></li>
 
             <li onMouseEnter={() => toggleMenu('principal')} onMouseLeave={() => toggleMenu(null)}>
               <span className="menu__title">Principal</span>

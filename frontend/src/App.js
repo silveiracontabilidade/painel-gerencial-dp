@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import './App.css';
+import Dashboard from './pages/dashboard';
 import Empresas from './pages/empresas';
 import Grupos from './pages/grupos';
 import Responsaveis from './pages/responsaveis';
@@ -40,11 +41,12 @@ function App() {
       )}
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Navigate to="/empresas" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
         {/* Rota protegida + layout com Outlet */}
         <Route path="/" element={<RequireAuth />}>
           <Route element={<Layout />}>
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="empresas" element={<Empresas />} />
             <Route path="servicos" element={<Servicos />} />
             <Route path="grupos" element={<Grupos />} />
