@@ -164,6 +164,108 @@
   font-weight: 600;
 }
 
+.dashboard-card__table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+  min-width: 920px;
+  table-layout: fixed;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  text-align: right;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.dashboard-table thead th {
+  text-align: center;
+}
+
+.dashboard-table thead tr:first-child th {
+  background: #1a1f3a;
+  color: #ffffff;
+  border-bottom: none;
+}
+
+.dashboard-table thead tr:nth-child(2) th {
+  background: #C3996B;
+  color: #1a1f3a;
+  font-size: 0.68rem;
+  letter-spacing: 0.01em;
+}
+
+.dashboard-table thead th[colspan="2"] {
+  font-weight: 600;
+}
+
+.dashboard-table tbody th,
+.dashboard-table tbody td {
+  background: #ffffff;
+}
+
+.dashboard-table tbody th:first-child,
+.dashboard-table tbody td:first-child {
+  text-align: left;
+  font-weight: 600;
+  position: sticky;
+  left: 0;
+  background: #f9fafb;
+  z-index: 1;
+}
+
+.dashboard-table tbody td:first-child {
+  font-weight: 500;
+}
+
+.dashboard-table__col-grupo {
+  width: 150px;
+}
+
+.dashboard-table__col-colab,
+.dashboard-table__colab {
+  width: 60px;
+  text-align: center;
+}
+
+.dashboard-table__col-resp {
+  width: 180px;
+  text-align: left;
+}
+
+.dashboard-table__col-qtd,
+.dashboard-table__qtd {
+  width: 34px;
+}
+
+.dashboard-table__col-valor,
+.dashboard-table__valor {
+  width: 104px;
+}
+
+.dashboard-table__total-row td,
+.dashboard-table__total-row th {
+  background: #eef2ff;
+  font-weight: 700;
+}
+
+.dashboard-table__empty {
+  text-align: center;
+  padding: 24px 0;
+  color: #6b7280;
+  font-style: italic;
+}
+
 .dashboard-card__list li {
   display: flex;
   align-items: center;

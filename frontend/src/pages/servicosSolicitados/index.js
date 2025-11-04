@@ -202,16 +202,26 @@ export default function ServicosSolicitados() {
   }, [filters]);
 
   const carregarSolicitacoes = async () => {
+    const requerColecaoCompleta = temFiltro || Boolean(ordenacao.campo);
+    if (requerColecaoCompleta && paginaAtual !== 1) {
+      return;
+    }
+
     setLoading(true);
-    const params = temFiltro
+    const params = requerColecaoCompleta
       ? { page: 1, page_size: 5_000_000 }
       : { page: paginaAtual, page_size: itensPorPagina };
     try {
       const res = await api.get('/api/solicitacoes/', { params });
       const results = res.data?.results ?? res.data;
       setSolicitacoes(results);
-      if (!temFiltro) {
-        const count = typeof res.data?.count === 'number' ? res.data.count : (Array.isArray(results) ? results.length : 0);
+      if (requerColecaoCompleta) {
+        const total = Array.isArray(results) ? results.length : 0;
+        setTotalCount(total);
+      } else {
+        const count = typeof res.data?.count === 'number'
+          ? res.data.count
+          : (Array.isArray(results) ? results.length : 0);
         setTotalCount(count);
       }
     } finally {
@@ -360,6 +370,14 @@ export default function ServicosSolicitados() {
     // adicione mais cores aqui
   };
 
+  const normalizarGrupo = (nome) =>
+    String(nome || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // remove acentos
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toUpperCase();
+
   // Decide se o texto deve ser preto ou branco baseado na cor de fundo
   function getContrastColor(hex) {
     // Remove o "#" e expande formatos curtos tipo #FFF
@@ -423,12 +441,15 @@ export default function ServicosSolicitados() {
       }
       return { campo, direcao: 'asc' };
     });
+    setPaginaAtual(1);
   };
 
   const iconeOrdenacao = (campo) => {
     if (ordenacao.campo !== campo) return '';
     return ordenacao.direcao === 'asc' ? '▲' : '▼';
   };
+
+  const usaPaginacaoCliente = temFiltro || Boolean(ordenacao.campo);
 
   // Aplica filtros
   const solicitacoesFiltradas = useMemo(() => {
@@ -564,6 +585,33 @@ export default function ServicosSolicitados() {
     setPaginaAtual(1);
   }, [filters]);
 
+  const normalizarDataOrdenacao = (valor) => {
+    if (!valor) return '';
+    const texto = String(valor).trim();
+    if (!texto) return '';
+    const semHora = texto.split(' ')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(semHora)) {
+      return semHora;
+    }
+    const semBarras = semHora.replace(/\//g, '-');
+    const partes = semBarras.split('-').filter(Boolean);
+    if (partes.length === 3) {
+      const [primeiro, segundo, terceiro] = partes;
+      if (terceiro.length === 4) {
+        const dia = primeiro.padStart(2, '0');
+        const mes = segundo.padStart(2, '0');
+        return `${terceiro}-${mes}-${dia}`;
+      }
+      if (primeiro.length === 4) {
+        const ano = primeiro;
+        const mes = segundo.padStart(2, '0');
+        const dia = terceiro.padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+      }
+    }
+    return semBarras;
+  };
+
   const obterValorOrdenacao = (solicitacao, campo) => {
     switch (campo) {
       case 'empresa': {
@@ -588,13 +636,13 @@ export default function ServicosSolicitados() {
       case 'competencia':
         return String(solicitacao.competencia ?? '');
       case 'data_solicitacao':
-        return String(solicitacao.data_solicitacao ?? '');
+        return normalizarDataOrdenacao(solicitacao.data_solicitacao);
       case 'data_vencimento':
-        return String(solicitacao.data_vencimento ?? '');
+        return normalizarDataOrdenacao(solicitacao.data_vencimento);
       case 'data_para_resposta':
-        return String(solicitacao.data_para_resposta ?? '');
+        return normalizarDataOrdenacao(solicitacao.data_para_resposta);
       case 'data_conclusao':
-        return String(solicitacao.data_conclusao ?? '');
+        return normalizarDataOrdenacao(solicitacao.data_conclusao);
       default:
         return '';
     }
@@ -614,7 +662,7 @@ export default function ServicosSolicitados() {
   }, [solicitacoesFiltradas, ordenacao]);
 
   // Se houver filtro, total passa a ser o tamanho filtrado desta coleção carregada
-  const totalRegistros = temFiltro ? solicitacoesOrdenadas.length : totalCount;
+  const totalRegistros = usaPaginacaoCliente ? solicitacoesOrdenadas.length : totalCount;
   const totalPaginas = Math.max(1, Math.ceil((totalRegistros || 0) / itensPorPagina) || 1);
 
   useEffect(() => {
@@ -624,7 +672,7 @@ export default function ServicosSolicitados() {
   // Recarrega da API quando paginação muda ou filtros (com estratégia condicional)
   useEffect(() => {
     carregarSolicitacoes();
-  }, [paginaAtual, itensPorPagina, temFiltro]);
+  }, [paginaAtual, itensPorPagina, temFiltro, ordenacao.campo]);
 
   useEffect(() => {
     api.get('/api/me')
@@ -639,10 +687,10 @@ export default function ServicosSolicitados() {
 
   // Paginação em memória quando há filtro ativo
   const solicitacoesPagina = useMemo(() => {
-    if (!temFiltro) return solicitacoesOrdenadas;
+    if (!usaPaginacaoCliente) return solicitacoesOrdenadas;
     const inicio = (paginaAtual - 1) * itensPorPagina;
     return solicitacoesOrdenadas.slice(inicio, inicio + itensPorPagina);
-  }, [temFiltro, solicitacoesOrdenadas, paginaAtual, itensPorPagina]);
+  }, [usaPaginacaoCliente, solicitacoesOrdenadas, paginaAtual, itensPorPagina]);
 
   // Paginação agora é no servidor; não fatiar novamente no cliente
 
@@ -803,8 +851,8 @@ export default function ServicosSolicitados() {
   };
  
   const renderResponsavelBadge = (nomeExibicao, grupoNome) => {
-    const grupoUpper = String(grupoNome || '').toUpperCase();
-    const corFundo = GRUPO_CORES[grupoUpper] || '#1a1f3a';
+    const grupoNormalizado = normalizarGrupo(grupoNome);
+    const corFundo = GRUPO_CORES[grupoNormalizado] || '#1a1f3a';
     const corTexto = getContrastColor(corFundo);
     return (
       <span
@@ -1153,7 +1201,7 @@ export default function ServicosSolicitados() {
           </tr>
         </thead>
         <tbody>
-          {(temFiltro ? solicitacoesPagina : solicitacoesOrdenadas).map((s) => (
+          {(usaPaginacaoCliente ? solicitacoesPagina : solicitacoesOrdenadas).map((s) => (
             <tr key={s.id} className={s.data_conclusao ? 'linha-concluida' : ''}>
               <td className="col-selecao">
                 <input

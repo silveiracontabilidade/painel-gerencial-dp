@@ -16,8 +16,8 @@ import calendar
 import unicodedata
 import json
 from collections import defaultdict
-from django.db.models import Q, Count, Value
-from django.db.models.functions import Coalesce, Upper
+from django.db.models import Q, Count, Value, Sum
+from django.db.models.functions import Coalesce, Upper, Trim
 from django.utils.dateparse import parse_date
 
 from .models import (
@@ -1138,7 +1138,8 @@ def dashboard_empresas(request):
     qs_base = PlanilhaGerencial.objects.all()
     qs_periodo = _aplica_periodo_existencia(qs_base, data_inicio, data_fim)
 
-    ativos = qs_periodo.filter(status_do_cliente__iexact='ATIVO').count()
+    ativos_qs = qs_periodo.filter(status_do_cliente__iexact='ATIVO')
+    ativos = ativos_qs.count()
     inativos = qs_periodo.filter(status_do_cliente__iexact='INATIVO').count()
     total = qs_periodo.count()
 
@@ -1156,29 +1157,229 @@ def dashboard_empresas(request):
         saidas_qs = saidas_qs.filter(termino_contrato__lte=data_fim)
     saidas = saidas_qs.count()
 
-    classificacao_counts = (
-        qs_periodo
-        .filter(status_do_cliente__iexact='ATIVO')
-        .annotate(classificacao_upper=Upper('classificacao'))
-        .values('classificacao_upper')
-        .annotate(total=Count('cod_folha'))
+    categorias_alvo = ['BRONZE', 'PRATA', 'OURO', 'DIAMANTE']
+    categoria_chaves = [cat.lower() for cat in categorias_alvo] + ['nao_classificadas']
+
+    def mapear_classificacao(valor):
+        if not valor:
+            return 'nao_classificadas'
+        normalizado = valor.strip().upper()
+        if normalizado in categorias_alvo:
+            return normalizado.lower()
+        return 'nao_classificadas'
+
+    classificacao_por_grupo_qs = (
+        ativos_qs
+        .annotate(grupo_label=Trim(Coalesce('grupo', Value('Sem Grupo'))))
+        .annotate(grupo_chave=Upper('grupo_label'))
+        .annotate(classificacao_valor=Trim(Coalesce('classificacao', Value(''))))
+        .annotate(classificacao_upper=Upper('classificacao_valor'))
+        .values('grupo_label', 'grupo_chave', 'classificacao_upper')
+        .annotate(
+            total=Count('cod_folha'),
+            honorarios_total=Coalesce(Sum('honorarios'), Value(Decimal('0')))
+        )
     )
 
-    categorias_alvo = {'BRONZE', 'PRATA', 'OURO', 'DIAMANTE'}
-    classificacao_resposta = {cat.lower(): 0 for cat in categorias_alvo}
-    nao_classificadas = 0
-    outros = 0
-    for item in classificacao_counts:
-        categoria = (item['classificacao_upper'] or '').strip().upper()
-        if not categoria:
-            nao_classificadas += item['total']
-        elif categoria in categorias_alvo:
-            classificacao_resposta[categoria.lower()] = item['total']
-        elif categoria:
-            outros += item['total']
-    classificacao_resposta['nao_classificadas'] = nao_classificadas
-    classificacao_resposta['outros'] = outros
-    classificacao_resposta['total'] = sum(classificacao_resposta.values())
+    responsaveis_por_grupo = defaultdict(set)
+    for item in ativos_qs.values('grupo', 'resp_dp'):
+        grupo_nome = (item.get('grupo') or 'Sem Grupo').strip() or 'Sem Grupo'
+        resp_nome = (item.get('resp_dp') or '').strip()
+        if not resp_nome:
+            continue
+        chave_grupo = grupo_nome.upper()
+        responsaveis_por_grupo[chave_grupo].add(resp_nome.upper())
+
+    zero_decimal = Decimal('0')
+
+    def novo_registro_grupo(label):
+        registro = {'grupo': label, 'colab': 0}
+        for chave in categoria_chaves:
+            registro[chave] = {'qtd': 0, 'honorarios': zero_decimal}
+        registro['total'] = {'qtd': 0, 'honorarios': zero_decimal}
+        return registro
+
+    classificacao_por_grupo_map = {}
+    totais_classificacao = {
+        chave: {'qtd': 0, 'honorarios': zero_decimal}
+        for chave in categoria_chaves
+    }
+    totais_classificacao['total'] = {'qtd': 0, 'honorarios': zero_decimal}
+
+    for item in classificacao_por_grupo_qs:
+        grupo_label = item.get('grupo_label') or 'Sem Grupo'
+        grupo_chave = (item.get('grupo_chave') or grupo_label).upper()
+        chave_classificacao = mapear_classificacao(item.get('classificacao_upper') or '')
+        quantidade = int(item.get('total') or 0)
+        honorarios = item.get('honorarios_total') or zero_decimal
+
+        grupo_dados = classificacao_por_grupo_map.get(grupo_chave)
+        if grupo_dados is None:
+            grupo_dados = novo_registro_grupo(grupo_label)
+            classificacao_por_grupo_map[grupo_chave] = grupo_dados
+        elif (
+            grupo_label
+            and grupo_dados['grupo']
+            and grupo_dados['grupo'].upper() == grupo_dados['grupo']
+        ):
+            grupo_dados['grupo'] = grupo_label
+
+        grupo_dados[chave_classificacao]['qtd'] += quantidade
+        grupo_dados[chave_classificacao]['honorarios'] += honorarios
+        grupo_dados['total']['qtd'] += quantidade
+        grupo_dados['total']['honorarios'] += honorarios
+
+        totais_classificacao[chave_classificacao]['qtd'] += quantidade
+        totais_classificacao[chave_classificacao]['honorarios'] += honorarios
+        totais_classificacao['total']['qtd'] += quantidade
+        totais_classificacao['total']['honorarios'] += honorarios
+
+    def decimal_para_float(valor):
+        if valor is None:
+            return 0.0
+        if not isinstance(valor, Decimal):
+            valor = Decimal(valor)
+        return float(valor.quantize(Decimal('0.01')))
+
+    classificacao_por_grupo = []
+    total_colaboradores = 0
+    for _, dados in sorted(
+        classificacao_por_grupo_map.items(),
+        key=lambda par: (par[1].get('grupo') or par[0]).upper()
+    ):
+        linha = {'grupo': dados.get('grupo') or 'Sem Grupo'}
+        grupo_chave = (linha['grupo'] or 'Sem Grupo').strip().upper()
+        colab = len(responsaveis_por_grupo.get(grupo_chave, set()))
+        linha['colab'] = colab
+        total_colaboradores += colab
+        for chave in categoria_chaves:
+            info = dados[chave]
+            linha[chave] = {
+                'qtd': info['qtd'],
+                'honorarios': decimal_para_float(info['honorarios']),
+            }
+        total_info = dados['total']
+        linha['total'] = {
+            'qtd': total_info['qtd'],
+            'honorarios': decimal_para_float(total_info['honorarios']),
+        }
+        classificacao_por_grupo.append(linha)
+
+    classificacao_totais = {}
+    for chave in categoria_chaves:
+        info = totais_classificacao[chave]
+        classificacao_totais[chave] = {
+            'qtd': info['qtd'],
+            'honorarios': decimal_para_float(info['honorarios']),
+        }
+    info_total = totais_classificacao['total']
+    classificacao_totais['total'] = {
+        'qtd': info_total['qtd'],
+        'honorarios': decimal_para_float(info_total['honorarios']),
+    }
+
+    classificacao_resposta = {
+        'bronze': classificacao_totais['bronze']['qtd'],
+        'prata': classificacao_totais['prata']['qtd'],
+        'ouro': classificacao_totais['ouro']['qtd'],
+        'diamante': classificacao_totais['diamante']['qtd'],
+        'nao_classificadas': classificacao_totais['nao_classificadas']['qtd'],
+        'total': classificacao_totais['total']['qtd'],
+    }
+
+    total_colaboradores = sum(linha.get('colab', 0) for linha in classificacao_por_grupo)
+
+    movimento_por_resp = {}
+    totais_movimento = {
+        'entrada': {'qtd': 0, 'honorarios': zero_decimal},
+        'saida': {'qtd': 0, 'honorarios': zero_decimal},
+    }
+
+    def registrar_movimento(tipo, grupo_nome, resp_nome, qtd, honorarios):
+        grupo_label = (grupo_nome or 'Sem Grupo').strip() or 'Sem Grupo'
+        resp_label = (resp_nome or 'Sem Responsável').strip() or 'Sem Responsável'
+        chave = (grupo_label.upper(), resp_label.upper())
+        linha = movimento_por_resp.get(chave)
+        if linha is None:
+            linha = {
+                'grupo': grupo_label,
+                'responsavel': resp_label,
+                'entrada': {'qtd': 0, 'honorarios': zero_decimal},
+                'saida': {'qtd': 0, 'honorarios': zero_decimal},
+            }
+            movimento_por_resp[chave] = linha
+        bloco = linha[tipo]
+        bloco['qtd'] += int(qtd or 0)
+        bloco['honorarios'] += honorarios or zero_decimal
+        total_tipo = totais_movimento[tipo]
+        total_tipo['qtd'] += int(qtd or 0)
+        total_tipo['honorarios'] += honorarios or zero_decimal
+
+    entradas_por_resp = (
+        novas_qs
+        .annotate(grupo_label=Trim(Coalesce('grupo', Value('Sem Grupo'))))
+        .annotate(resp_label=Trim(Coalesce('resp_dp', Value('Sem Responsável'))))
+        .values('grupo_label', 'resp_label')
+        .annotate(
+            total=Count('cod_folha'),
+            honorarios_total=Coalesce(Sum('honorarios'), Value(Decimal('0')))
+        )
+    )
+
+    for item in entradas_por_resp:
+        registrar_movimento(
+            'entrada',
+            item.get('grupo_label'),
+            item.get('resp_label'),
+            item.get('total'),
+            item.get('honorarios_total'),
+        )
+
+    saidas_por_resp = (
+        saidas_qs
+        .annotate(grupo_label=Trim(Coalesce('grupo', Value('Sem Grupo'))))
+        .annotate(resp_label=Trim(Coalesce('resp_dp', Value('Sem Responsável'))))
+        .values('grupo_label', 'resp_label')
+        .annotate(
+            total=Count('cod_folha'),
+            honorarios_total=Coalesce(Sum('honorarios'), Value(Decimal('0')))
+        )
+    )
+
+    for item in saidas_por_resp:
+        registrar_movimento(
+            'saida',
+            item.get('grupo_label'),
+            item.get('resp_label'),
+            item.get('total'),
+            item.get('honorarios_total'),
+        )
+
+    movimento_detalhado_linhas = []
+    for _, linha in sorted(
+        movimento_por_resp.items(),
+        key=lambda par: (par[1]['grupo'].upper(), par[1]['responsavel'].upper())
+    ):
+        movimento_detalhado_linhas.append({
+            'grupo': linha['grupo'],
+            'responsavel': linha['responsavel'],
+            'entrada': {
+                'qtd': linha['entrada']['qtd'],
+                'honorarios': decimal_para_float(linha['entrada']['honorarios']),
+            },
+            'saida': {
+                'qtd': linha['saida']['qtd'],
+                'honorarios': decimal_para_float(linha['saida']['honorarios']),
+            },
+        })
+
+    movimento_detalhado_totais = {
+        tipo: {
+            'qtd': valores['qtd'],
+            'honorarios': decimal_para_float(valores['honorarios']),
+        }
+        for tipo, valores in totais_movimento.items()
+    }
 
     motivos_saida = [
         {
@@ -1209,6 +1410,14 @@ def dashboard_empresas(request):
             'saidas': saidas,
         },
         'classificacao_ativas': classificacao_resposta,
+        'classificacao_por_grupo': classificacao_por_grupo,
+        'classificacao_totais': classificacao_totais,
+        'classificacao_colunas': categoria_chaves,
+        'colaboradores_total': total_colaboradores,
+        'movimentacao_detalhada': {
+            'linhas': movimento_detalhado_linhas,
+            'totais': movimento_detalhado_totais,
+        },
         'motivos_saida': motivos_saida,
     })
 
