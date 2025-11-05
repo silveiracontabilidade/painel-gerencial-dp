@@ -184,14 +184,14 @@ class AgendaBaseListView(ListView):
 @method_decorator(decoradores, name='dispatch')
 class AgendaBaseCreateView(CreateView):
     model = AgendaBase
-    fields = ['periodo', 'dia', 'mes', 'nome', 'descricao', 'servico', 'tipo_distribuicao', 'usa_data_agenda', 'campo_periodo_empresa', 'responsabilidade', 'observacao']
+    fields = ['periodo', 'dia', 'mes', 'nome', 'descricao', 'servico', 'tipo_distribuicao', 'usa_data_agenda', 'ativo', 'campo_periodo_empresa', 'responsabilidade', 'observacao']
     template_name = 'agenda_base/form.html'
     success_url = reverse_lazy('agenda_base_listar')
 
 @method_decorator(decoradores, name='dispatch')
 class AgendaBaseUpdateView(UpdateView):
     model = AgendaBase
-    fields = ['periodo', 'dia', 'mes', 'nome', 'descricao', 'servico', 'tipo_distribuicao', 'usa_data_agenda', 'campo_periodo_empresa', 'responsabilidade', 'observacao']
+    fields = ['periodo', 'dia', 'mes', 'nome', 'descricao', 'servico', 'tipo_distribuicao', 'usa_data_agenda', 'ativo', 'campo_periodo_empresa', 'responsabilidade', 'observacao']
     template_name = 'agenda_base/form.html' 
     success_url = reverse_lazy('agenda_base_listar')
 

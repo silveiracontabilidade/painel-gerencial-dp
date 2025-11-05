@@ -17,7 +17,8 @@ from .api_views import (
     MotivoRescisaoViewSet,
     TipoAdmissaoViewSet,
     ChangePasswordView,
-    dashboard_empresas
+    dashboard_empresas,
+    dashboard_servicos
 )
 from django.urls import path, include
 from django.conf import settings
@@ -44,6 +45,7 @@ urlpatterns = router.urls + [
     path("permissoes/mine/", minhas_permissoes),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('dashboard/empresas/', dashboard_empresas, name='dashboard-empresas'),
+    path('dashboard/servicos/', dashboard_servicos, name='dashboard-servicos'),
     ]
 
 

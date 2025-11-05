@@ -86,6 +86,7 @@ export default function AgendaBase() {
     servico: '',
     tipo_distribuicao: '',
     usa_data_agenda: true,
+    ativo: true,
     campo_periodo_empresa: '',
     regras: [],
   });
@@ -155,6 +156,7 @@ export default function AgendaBase() {
     servico: '',
     tipo_distribuicao: '',
     fonte_data: '',
+    ativo: '',
   });
   const [servicos, setServicos] = useState([]);
   const [modalLoteAberto, setModalLoteAberto] = useState(false);
@@ -194,10 +196,14 @@ export default function AgendaBase() {
         ? true
         : Boolean(item.usa_data_agenda);
       const periodoConfigurado = (item.periodo || '').toLowerCase().trim();
+      const ativo = (item.ativo === undefined || item.ativo === null)
+        ? true
+        : Boolean(item.ativo);
       return {
         ...item,
         regras: item.regras || [],
         usa_data_agenda: usaAgenda,
+        ativo,
         campo_periodo_empresa: item.campo_periodo_empresa ?? '',
         periodo: usaAgenda ? periodoConfigurado : 'mensal',
         periodo_configurado: periodoConfigurado,
@@ -222,8 +228,18 @@ export default function AgendaBase() {
   const itensOrdenados = useMemo(() => {
     if (!ordenacao.campo) return itens;
     return [...itens].sort((a, b) => {
-      const valA = (a[ordenacao.campo] || '').toString().toUpperCase();
-      const valB = (b[ordenacao.campo] || '').toString().toUpperCase();
+      const campo = ordenacao.campo;
+      let valA;
+      let valB;
+
+      if (campo === 'ativo') {
+        valA = a.ativo === false ? 0 : 1;
+        valB = b.ativo === false ? 0 : 1;
+      } else {
+        valA = (a[campo] ?? '').toString().toUpperCase();
+        valB = (b[campo] ?? '').toString().toUpperCase();
+      }
+
       if (valA < valB) return ordenacao.direcao === 'asc' ? -1 : 1;
       if (valA > valB) return ordenacao.direcao === 'asc' ? 1 : -1;
       return 0;
@@ -255,6 +271,7 @@ export default function AgendaBase() {
         (!filtros.descricao || i.descricao?.toLowerCase().includes(filtros.descricao.toLowerCase())) &&
         (!filtros.servico || String(i.servico ?? '') === filtros.servico) &&
         (!filtros.tipo_distribuicao || i.tipo_distribuicao?.toLowerCase() === filtros.tipo_distribuicao.toLowerCase()) &&
+        (!filtros.ativo || ((i.ativo === false ? 'nao' : 'sim') === filtros.ativo)) &&
         (!filtros.fonte_data || (
           filtros.fonte_data === 'agenda'
             ? (i.usa_data_agenda ?? true)
@@ -420,6 +437,7 @@ export default function AgendaBase() {
       servico_nome: '',
       tipo_distribuicao: '',
       usa_data_agenda: true,
+      ativo: true,
       campo_periodo_empresa: '',
       regras: [],
     };
@@ -434,6 +452,9 @@ export default function AgendaBase() {
     const usaAgenda = (item.usa_data_agenda === undefined || item.usa_data_agenda === null)
       ? true
       : Boolean(item.usa_data_agenda);
+    const ativoPadrao = (item.ativo === undefined || item.ativo === null)
+      ? true
+      : Boolean(item.ativo);
     setDados({
       ...item,
       periodo: (item.periodo_configurado || item.periodo || '').toLowerCase().trim(),
@@ -442,6 +463,7 @@ export default function AgendaBase() {
       servico: item.servico ? String(item.servico) : '',
       tipo_distribuicao: item.tipo_distribuicao ? item.tipo_distribuicao.toLowerCase().trim() : '',
       usa_data_agenda: usaAgenda,
+      ativo: ativoPadrao,
       campo_periodo_empresa: item.campo_periodo_empresa ?? '',
       regras: (item.regras || []).map((regra, index) => construirRegraNormalizada(regra, index)),
     });
@@ -461,6 +483,7 @@ export default function AgendaBase() {
       servico: '',
       tipo_distribuicao: '',
       usa_data_agenda: true,
+      ativo: true,
       campo_periodo_empresa: '',
       regras: [],
     });
@@ -521,6 +544,7 @@ export default function AgendaBase() {
         ? dados.tipo_distribuicao.toLowerCase().trim()
         : null,
       usa_data_agenda: usaAgenda,
+      ativo: dados.ativo !== false,
       campo_periodo_empresa: usaAgenda
         ? null
         : (dados.campo_periodo_empresa || null),
@@ -857,6 +881,9 @@ export default function AgendaBase() {
                 disabled={!podeEditar || itensSelecionaveisVisiveis.length === 0}
               />
             </th>
+            <th className="agenda-col-status" onClick={() => handleOrdenar('ativo')}>
+              Status {ordenacao.campo === 'ativo' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
+            </th>
             <th onClick={() => handleOrdenar('nome')}>
               Nome {ordenacao.campo === 'nome' && (ordenacao.direcao === 'asc' ? '▲' : '▼')}
             </th>
@@ -886,6 +913,13 @@ export default function AgendaBase() {
           {/* linha de filtros */}
           <tr className="linha-filtros">
             <th className="agenda-col-selecao"></th>
+            <th className="agenda-col-status">
+              <select value={filtros.ativo} onChange={handleFiltro('ativo')}>
+                <option value="">Todos</option>
+                <option value="sim">Sim</option>
+                <option value="nao">Não</option>
+              </select>
+            </th>
             <th>
               <input type="text" value={filtros.nome} onChange={handleFiltro('nome')} />
             </th>
@@ -940,6 +974,7 @@ export default function AgendaBase() {
           {itensFiltrados.map((item) => {
             const emEdicao = editandoId === item.id;
             const usaAgendaLinha = emEdicao ? (dados.usa_data_agenda !== false) : (item.usa_data_agenda ?? true);
+            const ativoLinha = emEdicao ? (dados.ativo !== false) : (item.ativo ?? true);
             const servicoNome = item.servico_nome || servicosMap.get(String(item.servico))?.nome || '-';
             const periodoMostrar = usaAgendaLinha ? (item.periodo || '') : (item.periodo || 'mensal');
             const diaMostrar = usaAgendaLinha && item.dia !== undefined && item.dia !== null ? item.dia : '';
@@ -958,6 +993,25 @@ export default function AgendaBase() {
                       disabled={!podeEditar}
                     />
                   ) : null}
+                </td>
+                <td className="agenda-col-status">
+                  {emEdicao ? (
+                    <select
+                      value={dados.ativo !== false ? 'sim' : 'nao'}
+                      onChange={(e) => setDados({ ...dados, ativo: e.target.value === 'sim' })}
+                    >
+                      <option value="sim">Sim</option>
+                      <option value="nao">Não</option>
+                    </select>
+                  ) : (
+                    <span
+                      className={`agenda-status ${ativoLinha ? 'agenda-status--ativa' : 'agenda-status--inativa'}`}
+                      title={ativoLinha ? 'Ativa' : 'Inativa'}
+                      aria-label={ativoLinha ? 'Ativa' : 'Inativa'}
+                    >
+                      <span className="agenda-status__dot" />
+                    </span>
+                  )}
                 </td>
                 <td>
                   {emEdicao ? (

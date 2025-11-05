@@ -65,6 +65,9 @@ class PlanilhaGerencial(models.Model):
     visitacao = models.CharField(max_length=100, db_column='Visitacao', null=True, blank=True)
     matriz = models.CharField(max_length=100, db_column='Matriz', null=True, blank=True)
     tempo_demandado = models.CharField(max_length=100, db_column='Tempo_Demandado', null=True, blank=True)
+    demanda_folha = models.CharField(max_length=100, db_column='DEMANDA_FOLHA', null=True, blank=True)
+    demanda_13 = models.CharField(max_length=100, db_column='DEMANDA_13', null=True, blank=True)
+    demanda_ad_13 = models.CharField(max_length=100, db_column='DEMANDA_AD_13', null=True, blank=True)
     enviadctf = models.CharField(max_length=100, db_column='EnviaDCTF', null=True, blank=True)
     classificacao2 = models.CharField(max_length=100, db_column='Classificacao2', null=True, blank=True)
     cod_folha_520 = models.CharField(max_length=100, db_column='cod_folha_520', null=True, blank=True)
@@ -310,6 +313,7 @@ class Servico(models.Model):
     prazo_dias = models.DecimalField(max_digits=5, decimal_places=2)
     tempo_execucao = models.DurationField(default=timedelta)
     mensagem = models.CharField(max_length=250, null=True, blank=True)
+    categoria = models.CharField(max_length=100, null=True, blank=True)
 
     checklist = models.FileField(upload_to='servicos/checklists/', null=True, blank=True)
     instrucao_trabalho = models.FileField(upload_to='servicos/instrucoes/', null=True, blank=True)
@@ -349,6 +353,7 @@ class AgendaBase(models.Model):
     )
     tipo_distribuicao = models.CharField(max_length=255, null=True, blank=True)
     usa_data_agenda = models.BooleanField(default=True)
+    ativo = models.BooleanField(default=True)
     campo_periodo_empresa = models.CharField(max_length=100, null=True, blank=True)
     observacao = models.TextField(null=True, blank=True)
 

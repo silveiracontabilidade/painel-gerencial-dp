@@ -433,7 +433,7 @@ const handleChange = (campo) => (e) => {
 
     if (minutos > 59) minutos = 59; // só trava minutos
 
-    return `${horas}:${String(minutos).padStart(2, "0")}`;
+    return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}`;
   };
 
 
@@ -772,9 +772,12 @@ const handleChange = (campo) => (e) => {
             <div className="bloco">
               <h4>DADOS CONTRATUAIS</h4>
               <div className="linha">
+                {renderText('demanda_folha', 'DEMANDA FOLHA', 'campo-curto', 'text', null, 'duration')}
+                {renderText('demanda_13', 'DEMANDA 13º', 'campo-curto', 'text', null, 'duration')}
+                {renderText('demanda_ad_13', 'DEMANDA AD. 13º', 'campo-curto', 'text', null, 'duration')}
                 {renderText('inicio_contrato', 'INÍCIO CONTRATO', 'campo-curto', 'text',null, 'date')}
                 {renderText('termino_contrato', 'TÉRMINO CONTRATO', 'campo-curto', 'text',null, 'date')}
-                {renderSelect('motivo_termino', 'MOTIVO TÉRMINO', opcoes.motivo_termino,'campo-medio', empresa.motivo_termino)}
+                {renderSelect('motivo_termino', 'MOTIVO TÉRMINO', opcoes.motivo_termino,'campo-longo', empresa.motivo_termino)}
               </div>
             </div>
           </>

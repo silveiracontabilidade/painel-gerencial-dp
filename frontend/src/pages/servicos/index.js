@@ -46,6 +46,7 @@ export default function Servicos() {
     const dadosFormatados = (res.data.results || res.data).map(s => ({
         ...s,
       tempo_execucao: s.tempo_execucao || '00:00',
+      categoria: s.categoria || '',
     }));
     setServicos(dadosFormatados);
   };
@@ -64,10 +65,11 @@ export default function Servicos() {
     setCarregando(true);
     try {
       const formData = new FormData();
-      formData.append("nome", dadosEditados.nome);
-      formData.append("prazo_dias", dadosEditados.prazo_dias);
-      formData.append("tempo_execucao", dadosEditados.tempo_execucao);
-      formData.append("mensagem", dadosEditados.mensagem);
+      formData.append("nome", dadosEditados.nome || "");
+      formData.append("prazo_dias", dadosEditados.prazo_dias ?? "");
+      formData.append("tempo_execucao", dadosEditados.tempo_execucao || "");
+      formData.append("mensagem", dadosEditados.mensagem || "");
+      formData.append("categoria", dadosEditados.categoria || "");
 
       // anexos
       const campos = ["checklist","instrucao_trabalho","video_explicativo","topico_rapido"];
@@ -100,6 +102,8 @@ export default function Servicos() {
   formData.append("nome", "Novo Serviço");
   formData.append("prazo_dias", 0);
   formData.append("tempo_execucao", "00:00");
+  formData.append("mensagem", "");
+  formData.append("categoria", "");
 
   const res = await api.post("/api/servicos/", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -110,6 +114,8 @@ export default function Servicos() {
     nome: "Novo Serviço",
     prazo_dias: 0,
     tempo_execucao: "00:00",
+    mensagem: "",
+    categoria: "",
     __novo: true, // 🔥 marca como novo
   };
 
@@ -232,6 +238,9 @@ export default function Servicos() {
               <th onClick={() => handleOrdenar("nome")} style={{cursor:"pointer"}} className='col-nome'>
                 Nome {ordenacao.campo==="nome" && (ordenacao.direcao==="asc"?"▲":"▼")}
               </th>
+              <th onClick={() => handleOrdenar("categoria")} style={{cursor:"pointer"}} className='col-categoria'>
+                Categoria {ordenacao.campo==="categoria" && (ordenacao.direcao==="asc"?"▲":"▼")}
+              </th>
               <th onClick={() => handleOrdenar("prazo_dias")} style={{cursor:"pointer"}}>
                 Prazo (dias) {ordenacao.campo==="prazo_dias" && (ordenacao.direcao==="asc"?"▲":"▼")}
               </th>
@@ -252,18 +261,29 @@ export default function Servicos() {
                 <td>
                   {editandoId === servico.id ? (
                     <input
-                      value={dadosEditados.nome}
+                      value={dadosEditados.nome || ""}
                       onChange={(e) => setDadosEditados({ ...dadosEditados, nome: e.target.value })}
                     />
                   ) : (
                     servico.nome
                   )}
                 </td>
-                <td>
+                <td className="col-categoria">
+                  {editandoId === servico.id ? (
+                    <input
+                      type="text"
+                      value={dadosEditados.categoria || ""}
+                      onChange={(e) => setDadosEditados({ ...dadosEditados, categoria: e.target.value })}
+                    />
+                  ) : (
+                    servico.categoria || "-"
+                  )}
+                </td>
+                <td className="col-prazo">
                   {editandoId === servico.id ? (
                     <input
                       type="number"
-                      value={dadosEditados.prazo_dias}
+                      value={dadosEditados.prazo_dias ?? ""}
                       onChange={(e) => setDadosEditados({ ...dadosEditados, prazo_dias: e.target.value })}
                     />
                   ) : (
@@ -274,7 +294,7 @@ export default function Servicos() {
                   {editandoId === servico.id ? (
                     <input
                       type="text"
-                      value={dadosEditados.tempo_execucao}
+                      value={dadosEditados.tempo_execucao || ""}
                       onChange={(e) => setDadosEditados({ ...dadosEditados, tempo_execucao: e.target.value })}
                       placeholder="HH:MM"
                     />
@@ -286,7 +306,7 @@ export default function Servicos() {
                   {editandoId === servico.id ? (
                     <input
                       type="text"
-                      value={dadosEditados.mensagem}
+                      value={dadosEditados.mensagem || ""}
                       onChange={(e) => setDadosEditados({ ...dadosEditados, mensagem: e.target.value })}
                     />
                   ) : (

@@ -129,11 +129,12 @@ td.acoes button:hover svg {
 }
 
 /* ===== Largura das colunas ===== */
-th.col-nome  { width: 20%; }
-th.col-prazo { width: 5%; }
-th.col-tempo { width: 5%; }
-th.col-mensagem { width: 30%; }
-th.col-acoes { width: 5%; }
+th.col-nome { width: 20%; }
+th.col-categoria, td.col-categoria { width: 15%; }
+th.col-prazo, td.col-prazo { width: 6%; }
+th.col-tempo { width: 6%; }
+th.col-mensagem { width: 28%; }
+th.col-acoes { width: 6%; }
 
 /* ===== Colunas de anexos ===== */
 th.col-anexo,
