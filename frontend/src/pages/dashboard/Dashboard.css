@@ -139,6 +139,28 @@
   margin: 0;
 }
 
+.dashboard-card__title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dashboard-card__select {
+  min-width: 160px;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #111827;
+  background-color: #ffffff;
+}
+
+.dashboard-card__select:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
 .dashboard-card__spinner {
   animation: dashboard-spin 1s linear infinite;
   color: #2563eb;
@@ -169,10 +191,26 @@
   overflow-x: auto;
 }
 
+.dashboard-card__table-wrapper--fixed {
+  position: relative;
+  height: 300px;
+  max-height: 300px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.dashboard-card__table-wrapper--fixed thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #1a1f3a;
+  color: #ffffff;
+}
+
 .dashboard-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.83rem;
+  font-size: 0.71rem;
   min-width: 920px;
   table-layout: fixed;
   white-space: nowrap;
@@ -196,6 +234,132 @@
   background: #1a1f3a;
   color: #ffffff;
   border-bottom: none;
+}
+
+.dashboard-table__sort-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dashboard-table__sort-button:hover {
+  color: #facc15;
+}
+
+.dashboard-table__sort-button:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+.dashboard-table__sort-indicator {
+  font-size: 0.65rem;
+}
+
+.dashboard-table__row--clickable {
+  cursor: pointer;
+}
+
+.dashboard-table__row--clickable td {
+  cursor: pointer;
+}
+
+.dashboard-table__row--clickable:hover td {
+  background-color: #f3f4f6;
+}
+
+.dashboard-table__row--clickable:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: -2px;
+}
+
+.dashboard-table__row--clickable:focus-visible td {
+  background-color: #eef2ff;
+}
+
+.dashboard-table--tempo {
+  min-width: 640px;
+}
+
+.dashboard-table--servicos-list {
+  min-width: 100%;
+  white-space: normal;
+}
+
+.dashboard-table--servicos-resumo {
+  min-width: 540px;
+}
+
+.dashboard-tempo__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-classificacao__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-tempo__toggle {
+  border: none;
+  background: none;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #111827;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dashboard-tempo__toggle:hover {
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.dashboard-tempo__toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.dashboard-tempo__no-toggle {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+}
+
+.dashboard-tempo__cell--label,
+.dashboard-tempo__cell--child {
+  text-align: left !important;
+}
+
+.dashboard-classificacao__cell--label {
+  text-align: left !important;
+}
+
+.dashboard-tempo__cell--child {
+  font-weight: 500;
+  padding-left: 38px !important;
+}
+
+.dashboard-classificacao__cell--child {
+  font-weight: 500;
+  padding-left: 52px !important;
+}
+
+.dashboard-classificacao__colab-child {
+  text-align: center !important;
+  font-weight: 400;
 }
 
 .dashboard-table thead tr:nth-child(2) th {
@@ -243,6 +407,25 @@
   text-align: left;
 }
 
+.dashboard-table__col-empresa {
+  width: 220px;
+  text-align: left;
+}
+
+.dashboard-table__col-servico {
+  width: 200px;
+  text-align: left;
+}
+
+.dashboard-table__col-detalhe {
+  width: 260px;
+  text-align: left;
+}
+
+.dashboard-table__col-data {
+  width: 110px;
+}
+
 .dashboard-table__col-qtd,
 .dashboard-table__qtd {
   width: 34px;
@@ -251,6 +434,38 @@
 .dashboard-table__col-valor,
 .dashboard-table__valor {
   width: 104px;
+}
+
+.dashboard-table--servicos-list col.dashboard-table__col-resp {
+  width: 22%;
+}
+
+.dashboard-table--servicos-list col.dashboard-table__col-empresa {
+  width: 24%;
+}
+
+.dashboard-table--servicos-list col.dashboard-table__col-servico {
+  width: 18%;
+}
+
+.dashboard-table--servicos-list col.dashboard-table__col-detalhe {
+  width: 22%;
+}
+
+.dashboard-table--servicos-list col.dashboard-table__col-data {
+  width: 9%;
+}
+
+.dashboard-table--servicos-list col.dashboard-table__col-qtd {
+  width: 5%;
+}
+
+.dashboard-table--servicos-list td.dashboard-table__col-empresa,
+.dashboard-table--servicos-list td.dashboard-table__col-detalhe,
+.dashboard-table--servicos-list td.dashboard-table__col-servico {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .dashboard-table__total-row td,
@@ -295,6 +510,33 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.dashboard-modal__loading {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.dashboard-modal__loading-content {
+  background: #ffffff;
+  padding: 18px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.25);
+  font-size: 0.9rem;
+  color: #1f2937;
+}
+
+.dashboard-modal__loading-icon {
+  animation: dashboard-spin 1s linear infinite;
+  color: #1a1f3a;
 }
 
 @media (max-width: 720px) {

@@ -377,6 +377,15 @@
   background-color: #C3996B;
 }
 
+.botoes button.concluir {
+  background-color: #047857;
+  color: #ffffff;
+}
+
+.botoes button.concluir:hover {
+  background-color: #065f46;
+}
+
 .modal-form {
   display: flex;
   flex-direction: column;

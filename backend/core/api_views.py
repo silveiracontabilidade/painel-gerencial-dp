@@ -15,6 +15,7 @@ from decimal import Decimal
 import calendar
 import unicodedata
 import json
+import re
 from collections import defaultdict
 from django.db.models import Q, Count, Value, Sum
 from django.db.models.functions import Coalesce, Upper, Trim
@@ -523,6 +524,22 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                 mensagem = 'Nenhum item da agenda encontrado para os IDs selecionados.'
             return Response({'detail': mensagem}, status=status.HTTP_400_BAD_REQUEST)
 
+        agenda_itens_inativos = [
+            item for item in agenda_itens
+            if getattr(item, 'ativo', True) is False
+        ]
+        agenda_itens = [
+            item for item in agenda_itens
+            if getattr(item, 'ativo', True) is not False
+        ]
+
+        if not agenda_itens:
+            mensagem = 'Nenhum item da agenda ativo encontrado para processamento.'
+            resposta = {'detail': mensagem}
+            if agenda_itens_inativos:
+                resposta['itens_inativos'] = [item.id for item in agenda_itens_inativos]
+            return Response(resposta, status=status.HTTP_400_BAD_REQUEST)
+
         agenda_ids_processados = [item.id for item in agenda_itens]
         servicos_sem_relacionamento = []
         itens_sem_destino = []
@@ -533,6 +550,24 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
         total_criados = 0
         total_duplicados = 0
         detalhes = []
+
+        if agenda_itens_inativos:
+            for item in agenda_itens_inativos:
+                detalhes.append({
+                    'agenda_id': item.id,
+                    'nome': item.nome,
+                    'tipo_distribuicao': item.tipo_distribuicao,
+                    'periodo': item.periodo,
+                    'dia': item.dia,
+                    'mes': item.mes,
+                    'usa_data_agenda': item.usa_data_agenda,
+                    'campo_periodo_empresa': item.campo_periodo_empresa,
+                    'ativo': False,
+                    'status': 'ignorado',
+                    'motivo': 'Atividade marcada como inativa.',
+                    'criadas': 0,
+                    'duplicadas': 0,
+                })
 
         periodos_lista = list(PeriodoEntrega.objects.all())
         periodo_por_descricao = {}
@@ -584,6 +619,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
         objetos_para_criar = []
 
         for item in agenda_itens:
+            ativo_item = getattr(item, 'ativo', True)
             if not item.servico:
                 servicos_sem_relacionamento.append(item.id)
                 detalhes.append({
@@ -595,6 +631,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     'mes': item.mes,
                     'usa_data_agenda': item.usa_data_agenda,
                     'campo_periodo_empresa': item.campo_periodo_empresa,
+                    'ativo': ativo_item,
                     'status': 'ignorado',
                     'motivo': 'Item sem serviço associado.',
                     'criadas': 0,
@@ -613,6 +650,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     'mes': item.mes,
                     'usa_data_agenda': item.usa_data_agenda,
                     'campo_periodo_empresa': item.campo_periodo_empresa,
+                    'ativo': ativo_item,
                     'status': 'ignorado',
                     'motivo': 'Itens do período não correspondem ao mês informado.',
                     'criadas': 0,
@@ -643,6 +681,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     'mes': item.mes,
                     'usa_data_agenda': item.usa_data_agenda,
                     'campo_periodo_empresa': item.campo_periodo_empresa,
+                    'ativo': ativo_item,
                     'status': 'ignorado',
                     'motivo': f"Campo de período '{item.campo_periodo_empresa}' não é suportado.",
                     'criadas': 0,
@@ -661,6 +700,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     'mes': item.mes,
                     'usa_data_agenda': item.usa_data_agenda,
                     'campo_periodo_empresa': item.campo_periodo_empresa,
+                    'ativo': ativo_item,
                     'status': 'ignorado',
                     'motivo': 'Nenhuma empresa atende às regras configuradas.',
                     'criadas': 0,
@@ -684,6 +724,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                     'mes': item.mes,
                     'usa_data_agenda': item.usa_data_agenda,
                     'campo_periodo_empresa': item.campo_periodo_empresa,
+                    'ativo': ativo_item,
                     'status': 'ignorado',
                     'motivo': 'Tipo de distribuição não reconhecido.',
                     'criadas': 0,
@@ -700,6 +741,7 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                 'mes': item.mes,
                 'usa_data_agenda': item.usa_data_agenda,
                 'campo_periodo_empresa': item.campo_periodo_empresa,
+                'ativo': ativo_item,
                 'fonte_data': 'empresa' if not item.usa_data_agenda else 'agenda',
             }
 
@@ -1009,6 +1051,9 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
             },
         }
 
+        if agenda_itens_inativos:
+            resposta['itens_inativos'] = [item.id for item in agenda_itens_inativos]
+
         if ids_solicitados is not None:
             resposta['itens_solicitados'] = ids_solicitados
             resposta['itens_processados_ids'] = agenda_ids_processados
@@ -1234,6 +1279,35 @@ def dashboard_empresas(request):
         totais_classificacao['total']['qtd'] += quantidade
         totais_classificacao['total']['honorarios'] += honorarios
 
+    classificacao_responsaveis_map = defaultdict(
+        lambda: defaultdict(
+            lambda: {
+                'label': '',
+                'dados': {
+                    chave: {'qtd': 0, 'honorarios': zero_decimal}
+                    for chave in categoria_chaves
+                },
+                'total': {'qtd': 0, 'honorarios': zero_decimal},
+            }
+        )
+    )
+
+    for empresa in ativos_qs.values('grupo', 'resp_dp', 'classificacao', 'honorarios'):
+        grupo_label = (empresa.get('grupo') or 'Sem Grupo').strip() or 'Sem Grupo'
+        responsavel_label = (empresa.get('resp_dp') or 'Sem Responsável').strip() or 'Sem Responsável'
+        grupo_chave = grupo_label.upper()
+        responsavel_chave = responsavel_label.upper()
+        classificacao_chave = mapear_classificacao((empresa.get('classificacao') or '').strip())
+        honorarios_empresa = empresa.get('honorarios') or zero_decimal
+        info_resp = classificacao_responsaveis_map[grupo_chave][responsavel_chave]
+        if not info_resp['label']:
+            info_resp['label'] = responsavel_label
+        dados_classe = info_resp['dados'][classificacao_chave]
+        dados_classe['qtd'] += 1
+        dados_classe['honorarios'] += honorarios_empresa
+        info_resp['total']['qtd'] += 1
+        info_resp['total']['honorarios'] += honorarios_empresa
+
     def decimal_para_float(valor):
         if valor is None:
             return 0.0
@@ -1263,6 +1337,26 @@ def dashboard_empresas(request):
             'qtd': total_info['qtd'],
             'honorarios': decimal_para_float(total_info['honorarios']),
         }
+        responsaveis_raw = classificacao_responsaveis_map.get(grupo_chave, {})
+        responsaveis_linha = []
+        for resp_chave, resp_info in sorted(responsaveis_raw.items(), key=lambda par: par[0]):
+            colunas_resp = {}
+            for chave in categoria_chaves:
+                dados_col = resp_info['dados'][chave]
+                colunas_resp[chave] = {
+                    'qtd': dados_col['qtd'],
+                    'honorarios': decimal_para_float(dados_col['honorarios']),
+                }
+            total_resp = resp_info['total']
+            responsaveis_linha.append({
+                'responsavel': resp_info['label'] or resp_chave,
+                'colunas': colunas_resp,
+                'total': {
+                    'qtd': total_resp['qtd'],
+                    'honorarios': decimal_para_float(total_resp['honorarios']),
+                },
+            })
+        linha['responsaveis'] = responsaveis_linha
         classificacao_por_grupo.append(linha)
 
     classificacao_totais = {}
@@ -1381,6 +1475,229 @@ def dashboard_empresas(request):
         for tipo, valores in totais_movimento.items()
     }
 
+    def parse_duracao(valor):
+        if valor is None:
+            return 0
+        if isinstance(valor, timedelta):
+            return max(0, int(round(valor.total_seconds() / 60)))
+        if isinstance(valor, Decimal):
+            try:
+                numero = float(valor)
+                return max(0, int(round(numero)))
+            except Exception:
+                pass
+        if isinstance(valor, (int, float)):
+            return max(0, int(round(valor)))
+        texto = str(valor).strip()
+        if not texto:
+            return 0
+        texto = texto.replace(' ', '').replace(',', ':').replace('h', ':').replace('H', ':')
+        if ':' in texto:
+            partes = texto.split(':')
+            try:
+                horas = int(partes[0] or '0')
+            except ValueError:
+                horas = 0
+            try:
+                minutos = int(partes[1] or '0')
+            except ValueError:
+                minutos = 0
+            minutos = max(0, min(minutos, 59))
+            return max(0, horas) * 60 + minutos
+        if texto.isdigit():
+            if len(texto) <= 2:
+                return int(texto)
+            horas = int(texto[:-2])
+            minutos = int(texto[-2:])
+            minutos = max(0, min(minutos, 59))
+            return max(0, horas) * 60 + minutos
+        match = re.match(r'^\D*(\d+)\D+(\d{1,2})\D*$', texto)
+        if match:
+            horas = int(match.group(1) or 0)
+            minutos = int(match.group(2) or 0)
+            minutos = max(0, min(minutos, 59))
+            return max(0, horas) * 60 + minutos
+        return 0
+
+    def formatar_minutos(total_minutos):
+        if total_minutos is None:
+            total_minutos = 0
+        minutos = int(total_minutos)
+        if minutos < 0:
+            minutos = 0
+        horas, resto = divmod(minutos, 60)
+        return f"{horas:02d}:{resto:02d}"
+
+    empresas_info = []
+    empresas_lookup = {}
+    codigos_int_ativos = set()
+
+    for empresa in ativos_qs.values(
+        'cod_folha',
+        'grupo',
+        'resp_dp',
+        'tempo_demandado',
+        'demanda_folha',
+        'demanda_13',
+        'demanda_ad_13',
+    ):
+        cod_bruto = str(empresa.get('cod_folha') or '').strip()
+        if not cod_bruto:
+            continue
+        cod_str = cod_bruto
+        try:
+            cod_int = str(int(cod_bruto))
+        except (TypeError, ValueError):
+            cod_int = None
+
+        grupo_label = (empresa.get('grupo') or 'Sem Grupo').strip() or 'Sem Grupo'
+        responsavel_label = (empresa.get('resp_dp') or 'Sem Responsável').strip() or 'Sem Responsável'
+
+        tempo_estimado_min = parse_duracao(empresa.get('tempo_demandado'))
+        demandas = {
+            'demanda_folha': parse_duracao(empresa.get('demanda_folha')),
+            'demanda_13': parse_duracao(empresa.get('demanda_13')),
+            'demanda_ad_13': parse_duracao(empresa.get('demanda_ad_13')),
+        }
+
+        info = {
+            'cod_principal': cod_str,
+            'codigos': {cod_str},
+            'grupo': grupo_label.upper(),
+            'responsavel': responsavel_label.upper(),
+            'tempo_estimado_min': tempo_estimado_min,
+            'demandas': demandas,
+        }
+        if cod_int:
+            info['codigos'].add(cod_int)
+            codigos_int_ativos.add(int(cod_int))
+        else:
+            try:
+                codigos_int_ativos.add(int(cod_str))
+            except ValueError:
+                pass
+
+        empresas_info.append(info)
+        for codigo in info['codigos']:
+            empresas_lookup[codigo] = info
+
+    grupos_map = {}
+    total_estimado_min = 0
+    total_efetivo_min = 0
+
+    for info in empresas_info:
+        grupo_key = info['grupo']
+        responsavel_key = info['responsavel']
+        tempo_est = info['tempo_estimado_min']
+        grupo_dados = grupos_map.setdefault(
+            grupo_key,
+            {
+                'grupo': grupo_key,
+                'tempo_estimado': 0,
+                'tempo_efetivo': 0,
+                'responsaveis': {},
+            }
+        )
+        grupo_dados['tempo_estimado'] += tempo_est
+        responsavel_dados = grupo_dados['responsaveis'].setdefault(
+            responsavel_key,
+            {
+                'responsavel': responsavel_key,
+                'tempo_estimado': 0,
+                'tempo_efetivo': 0,
+            }
+        )
+        responsavel_dados['tempo_estimado'] += tempo_est
+        total_estimado_min += tempo_est
+
+    EXCECOES_SERVICOS = {
+        'folha de pagamento': 'demanda_folha',
+        'folha 13º salario': 'demanda_13',
+        'folha 13º salario adiantamento': 'demanda_ad_13',
+    }
+
+    if codigos_int_ativos:
+        servicos_qs = (
+            ServicoSolicitado.objects
+            .filter(
+                empresa__in=list(codigos_int_ativos),
+                status='CONCLUIDO',
+            )
+            .select_related('servico')
+        )
+        if data_inicio:
+            servicos_qs = servicos_qs.filter(
+                Q(data_conclusao__gte=data_inicio) |
+                (Q(data_conclusao__isnull=True) & Q(data_solicitacao__gte=data_inicio))
+            )
+        if data_fim:
+            servicos_qs = servicos_qs.filter(
+                Q(data_conclusao__lte=data_fim) |
+                (Q(data_conclusao__isnull=True) & Q(data_solicitacao__lte=data_fim))
+            )
+
+        for item in servicos_qs.values('empresa', 'servico__nome', 'servico__tempo_execucao'):
+            empresa_codigo = item.get('empresa')
+            if empresa_codigo is None:
+                continue
+            info = empresas_lookup.get(str(empresa_codigo))
+            if not info:
+                continue
+
+            nome_servico = (item.get('servico__nome') or '').strip().lower()
+            campo_excecao = EXCECOES_SERVICOS.get(nome_servico)
+            if campo_excecao:
+                minutos = info['demandas'].get(campo_excecao) or 0
+            else:
+                minutos = parse_duracao(item.get('servico__tempo_execucao'))
+            if minutos <= 0:
+                continue
+
+            grupo_dados = grupos_map.setdefault(
+                info['grupo'],
+                {
+                    'grupo': info['grupo'],
+                    'tempo_estimado': 0,
+                    'tempo_efetivo': 0,
+                    'responsaveis': {},
+                }
+            )
+            grupo_dados['tempo_efetivo'] += minutos
+
+            responsavel_dados = grupo_dados['responsaveis'].setdefault(
+                info['responsavel'],
+                {
+                    'responsavel': info['responsavel'],
+                    'tempo_estimado': 0,
+                    'tempo_efetivo': 0,
+                }
+            )
+            responsavel_dados['tempo_efetivo'] += minutos
+            total_efetivo_min += minutos
+
+    tempos_por_grupo = []
+    for grupo_nome in sorted(grupos_map.keys()):
+        dados = grupos_map[grupo_nome]
+        responsaveis_lista = []
+        for responsavel_nome in sorted(dados['responsaveis'].keys()):
+            resp_dados = dados['responsaveis'][responsavel_nome]
+            responsaveis_lista.append({
+                'responsavel': responsavel_nome,
+                'tempo_estimado': formatar_minutos(resp_dados['tempo_estimado']),
+                'tempo_efetivo': formatar_minutos(resp_dados['tempo_efetivo']),
+            })
+        tempos_por_grupo.append({
+            'grupo': grupo_nome,
+            'tempo_estimado': formatar_minutos(dados['tempo_estimado']),
+            'tempo_efetivo': formatar_minutos(dados['tempo_efetivo']),
+            'responsaveis': responsaveis_lista,
+        })
+
+    tempos_totais = {
+        'tempo_estimado': formatar_minutos(total_estimado_min),
+        'tempo_efetivo': formatar_minutos(total_efetivo_min),
+    }
+
     motivos_saida = [
         {
             'motivo': entrada['motivo_normalizado'],
@@ -1419,6 +1736,244 @@ def dashboard_empresas(request):
             'totais': movimento_detalhado_totais,
         },
         'motivos_saida': motivos_saida,
+        'tempos_por_grupo': {
+            'linhas': tempos_por_grupo,
+            'totais': tempos_totais,
+        },
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def dashboard_servicos(request):
+    data_inicio, data_fim = _parse_periodo(request)
+    hoje = date.today()
+
+    empresas_map = {}
+    ativos_codigos = set()
+    responsavel_map = {
+        resp.id: (resp.nome or 'Sem Responsável').strip().upper() or 'SEM RESPONSÁVEL'
+        for resp in Responsavel.objects.all()
+    }
+
+    for item in PlanilhaGerencial.objects.values(
+        'cod_folha',
+        'razao_social',
+        'grupo',
+        'resp_dp',
+        'status_do_cliente'
+    ):
+        cod = str(item.get('cod_folha') or '').strip()
+        if not cod:
+            continue
+        grupo = (item.get('grupo') or 'Sem Grupo').strip() or 'Sem Grupo'
+        responsavel = (item.get('resp_dp') or 'Sem Responsável').strip() or 'Sem Responsável'
+        ativo = str(item.get('status_do_cliente') or '').strip().upper() == 'ATIVO'
+        info = {
+            'codigo': cod,
+            'razao_social': (item.get('razao_social') or '').strip() or cod,
+            'grupo': grupo.upper(),
+            'responsavel': responsavel.upper(),
+            'ativo': ativo,
+        }
+        empresas_map[cod] = info
+        if cod.isdigit():
+            empresas_map[str(int(cod))] = info
+            if ativo:
+                ativos_codigos.add(int(cod))
+        else:
+            try:
+                cod_int = int(cod)
+                empresas_map[str(cod_int)] = info
+                if ativo:
+                    ativos_codigos.add(cod_int)
+            except ValueError:
+                pass
+
+    STATUS_ABERTOS = ('PENDENTE', 'PAUSADO')
+
+    base_qs = ServicoSolicitado.objects.select_related('servico', 'responsavel')
+
+    atrasados = []
+    atrasados_qs = base_qs.filter(
+        status__in=STATUS_ABERTOS,
+        data_para_resposta__lt=hoje,
+        data_para_resposta__isnull=False,
+    ).order_by('data_para_resposta')
+
+    for item in atrasados_qs:
+        empresa_info = empresas_map.get(str(item.empresa))
+        if not empresa_info or not empresa_info['ativo']:
+            continue
+        data_resposta = item.data_para_resposta
+        dias_atraso = (hoje - data_resposta).days if data_resposta else 0
+        if dias_atraso < 0:
+            dias_atraso = 0
+        responsavel_label = item.responsavel.nome.upper() if item.responsavel else empresa_info['responsavel']
+        servico_nome = item.servico.nome if item.servico else ''
+        detalhe = (item.identificacao or '').strip() or (item.descricao_servico or '').strip()
+        atrasados.append({
+            'id': item.id,
+            'responsavel': responsavel_label or 'SEM RESPONSÁVEL',
+            'empresa': empresa_info['razao_social'],
+            'servico': servico_nome,
+            'detalhe': detalhe,
+            'data_resposta': data_resposta.isoformat() if data_resposta else None,
+            'dias_em_atraso': dias_atraso,
+        })
+
+    vencem_hoje = []
+    vencem_hoje_qs = base_qs.filter(
+        status__in=STATUS_ABERTOS,
+        data_para_resposta=hoje,
+    )
+
+    for item in vencem_hoje_qs:
+        empresa_info = empresas_map.get(str(item.empresa))
+        if not empresa_info or not empresa_info['ativo']:
+            continue
+        responsavel_label = item.responsavel.nome.upper() if item.responsavel else empresa_info['responsavel']
+        servico_nome = item.servico.nome if item.servico else ''
+        detalhe = (item.identificacao or '').strip() or (item.descricao_servico or '').strip()
+        vencem_hoje.append({
+            'id': item.id,
+            'responsavel': responsavel_label or 'SEM RESPONSÁVEL',
+            'empresa': empresa_info['razao_social'],
+            'servico': servico_nome,
+            'detalhe': detalhe,
+            'data_resposta': hoje.isoformat(),
+            'dias_em_atraso': 0,
+        })
+
+    resumo_por_grupo = {}
+    totais_resumo = {
+        'fechados_periodo': 0,
+        'vencer_7': 0,
+        'vencer_15': 0,
+        'vencer_30': 0,
+    }
+
+    def registrar_resumo(info_empresa, responsavel_label, chave):
+        grupo_chave = (info_empresa['grupo'] or 'SEM GRUPO').upper()
+        resp_chave = (responsavel_label or info_empresa['responsavel'] or 'SEM RESPONSÁVEL').upper()
+
+        grupo_dados = resumo_por_grupo.setdefault(
+            grupo_chave,
+            {
+                'grupo': grupo_chave,
+                'fechados_periodo': 0,
+                'vencer_7': 0,
+                'vencer_15': 0,
+                'vencer_30': 0,
+                'responsaveis': {},
+            }
+        )
+        grupo_dados[chave] += 1
+
+        responsavel_dados = grupo_dados['responsaveis'].setdefault(
+            resp_chave,
+            {
+                'responsavel': resp_chave,
+                'fechados_periodo': 0,
+                'vencer_7': 0,
+                'vencer_15': 0,
+                'vencer_30': 0,
+            }
+        )
+        responsavel_dados[chave] += 1
+        totais_resumo[chave] += 1
+
+    fechados_qs = base_qs.filter(
+        status='CONCLUIDO',
+        data_conclusao__isnull=False,
+    )
+    if data_inicio:
+        fechados_qs = fechados_qs.filter(data_conclusao__gte=data_inicio)
+    if data_fim:
+        fechados_qs = fechados_qs.filter(data_conclusao__lte=data_fim)
+
+    for item in fechados_qs:
+        empresa_info = empresas_map.get(str(item.empresa))
+        if not empresa_info or not empresa_info['ativo']:
+            continue
+        responsavel_label = item.responsavel.nome.upper() if item.responsavel else empresa_info['responsavel']
+        registrar_resumo(empresa_info, responsavel_label, 'fechados_periodo')
+
+    if ativos_codigos:
+        abertos_qs = base_qs.filter(
+            status__in=STATUS_ABERTOS,
+            empresa__in=list(ativos_codigos),
+            data_para_resposta__isnull=False,
+        )
+
+        for item in abertos_qs.values('empresa', 'data_para_resposta', 'responsavel_id'):
+            empresa_codigo = item.get('empresa')
+            info_empresa = empresas_map.get(str(empresa_codigo))
+            if not info_empresa or not info_empresa['ativo']:
+                continue
+
+            data_resposta = item.get('data_para_resposta')
+            if not data_resposta:
+                continue
+
+            if data_resposta < hoje:
+                continue
+
+            dias = (data_resposta - hoje).days
+            if dias <= 7:
+                chave = 'vencer_7'
+            elif dias <= 15:
+                chave = 'vencer_15'
+            elif dias <= 30:
+                chave = 'vencer_30'
+            else:
+                continue
+
+            responsavel_label = responsavel_map.get(item.get('responsavel_id')) if item.get('responsavel_id') else None
+            if not responsavel_label:
+                responsavel_label = info_empresa['responsavel']
+            registrar_resumo(info_empresa, responsavel_label, chave)
+
+    linhas_resumo = []
+    for grupo_nome in sorted(resumo_por_grupo.keys()):
+        dados = resumo_por_grupo[grupo_nome]
+        responsaveis_list = []
+        for resp_nome in sorted(dados['responsaveis'].keys()):
+            resp_dados = dados['responsaveis'][resp_nome]
+            responsaveis_list.append({
+                'responsavel': resp_dados['responsavel'],
+                'fechados_periodo': resp_dados['fechados_periodo'],
+                'vencer_7': resp_dados['vencer_7'],
+                'vencer_15': resp_dados['vencer_15'],
+                'vencer_30': resp_dados['vencer_30'],
+            })
+        linhas_resumo.append({
+            'grupo': dados['grupo'],
+            'fechados_periodo': dados['fechados_periodo'],
+            'vencer_7': dados['vencer_7'],
+            'vencer_15': dados['vencer_15'],
+            'vencer_30': dados['vencer_30'],
+            'responsaveis': responsaveis_list,
+        })
+
+    resumo_totais = {
+        'fechados_periodo': totais_resumo['fechados_periodo'],
+        'vencer_7': totais_resumo['vencer_7'],
+        'vencer_15': totais_resumo['vencer_15'],
+        'vencer_30': totais_resumo['vencer_30'],
+    }
+
+    return Response({
+        'periodo': {
+            'inicio': data_inicio.isoformat() if data_inicio else None,
+            'fim': data_fim.isoformat() if data_fim else None,
+        },
+        'atrasados': atrasados,
+        'vencem_hoje': vencem_hoje,
+        'resumo_grupo': {
+            'linhas': linhas_resumo,
+            'totais': resumo_totais,
+        },
     })
 
 
