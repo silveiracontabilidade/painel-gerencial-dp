@@ -273,6 +273,7 @@ class ServicoSolicitadoSerializer(BaseSerializer):
             'id', 'data_solicitacao', 'empresa',
             'responsavel', 'responsavel_nome',
             'servico', 'servico_nome', 'competencia', 'identificacao',
+            'ultimo_fup',
             'descricao_servico', 'data_vencimento', 'data_para_resposta', 'data_conclusao',
 
             # FÉRIAS

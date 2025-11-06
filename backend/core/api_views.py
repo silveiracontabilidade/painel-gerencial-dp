@@ -11,7 +11,7 @@ from rest_framework import generics, permissions
 from rest_framework import status
 from rest_framework.decorators import action
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import calendar
 import unicodedata
 import json
@@ -1175,6 +1175,187 @@ def _aplica_periodo_existencia(qs, data_inicio, data_fim):
     return qs
 
 
+def _montar_contexto_empresas():
+    empresas_map = {}
+    ativos_codigos = set()
+    responsavel_map = {
+        resp.id: (resp.nome or 'Sem Responsável').strip().upper() or 'SEM RESPONSÁVEL'
+        for resp in Responsavel.objects.all()
+    }
+
+    for item in PlanilhaGerencial.objects.values(
+        'cod_folha',
+        'razao_social',
+        'grupo',
+        'resp_dp',
+        'status_do_cliente'
+    ):
+        cod = str(item.get('cod_folha') or '').strip()
+        if not cod:
+            continue
+
+        grupo = (item.get('grupo') or 'Sem Grupo').strip() or 'Sem Grupo'
+        responsavel = (item.get('resp_dp') or 'Sem Responsável').strip() or 'Sem Responsável'
+        ativo = str(item.get('status_do_cliente') or '').strip().upper() == 'ATIVO'
+        info = {
+            'codigo': cod,
+            'razao_social': (item.get('razao_social') or '').strip() or cod,
+            'grupo': grupo.upper(),
+            'responsavel': responsavel.upper(),
+            'ativo': ativo,
+        }
+
+        empresas_map[cod] = info
+
+        if cod.isdigit():
+            empresas_map[str(int(cod))] = info
+            if ativo:
+                ativos_codigos.add(int(cod))
+        else:
+            try:
+                cod_int = int(cod)
+                empresas_map[str(cod_int)] = info
+                if ativo:
+                    ativos_codigos.add(cod_int)
+            except ValueError:
+                pass
+
+    return empresas_map, ativos_codigos, responsavel_map
+
+
+DETALHES_TIPO_LABELS = {
+    'fechados_periodo': 'Fechados no período',
+    'vencer_7': 'Vencem em até 7 dias',
+    'vencer_15': 'Vencem em até 15 dias',
+    'vencer_30': 'Vencem em até 30 dias',
+}
+
+
+def _obter_detalhes_servicos(tipo, data_inicio, data_fim, grupo_param=None, responsavel_param=None):
+    tipo_normalizado = (tipo or '').strip().lower()
+    if tipo_normalizado not in DETALHES_TIPO_LABELS:
+        raise ValueError('Tipo de resumo inválido.')
+
+    grupo_param = (grupo_param or '').strip().upper() or None
+    responsavel_param = (responsavel_param or '').strip().upper() or None
+
+    empresas_map, ativos_codigos, _ = _montar_contexto_empresas()
+    hoje = date.today()
+
+    base_qs = ServicoSolicitado.objects.select_related('servico', 'responsavel')
+    detalhes = []
+
+    def adicionar_item(item, data_referencia):
+        empresa_info = empresas_map.get(str(item.empresa))
+        if not empresa_info or not empresa_info['ativo']:
+            return
+
+        grupo_label = empresa_info['grupo']
+        responsavel_label = item.responsavel.nome.upper() if item.responsavel else empresa_info['responsavel']
+        if grupo_param and grupo_label != grupo_param:
+            return
+        if responsavel_param and responsavel_label != responsavel_param:
+            return
+
+        servico_nome = item.servico.nome if item.servico else ''
+        detalhe_texto = (item.identificacao or '').strip() or (item.descricao_servico or '').strip()
+
+        detalhes.append({
+            'id': item.id,
+            'grupo': grupo_label,
+            'responsavel': responsavel_label or 'SEM RESPONSÁVEL',
+            'empresa': empresa_info['razao_social'],
+            'servico': servico_nome,
+            'detalhe': detalhe_texto,
+            'data_resposta': data_referencia.isoformat() if data_referencia else None,
+        })
+
+    if tipo_normalizado == 'fechados_periodo':
+        fechados_qs = base_qs.filter(
+            status='CONCLUIDO',
+            data_conclusao__isnull=False,
+        )
+        if data_inicio:
+            fechados_qs = fechados_qs.filter(data_conclusao__gte=data_inicio)
+        if data_fim:
+            fechados_qs = fechados_qs.filter(data_conclusao__lte=data_fim)
+
+        for item in fechados_qs:
+            adicionar_item(item, item.data_conclusao)
+    else:
+        abertos_qs = base_qs.filter(
+            status__in=('PENDENTE', 'PAUSADO'),
+            data_para_resposta__isnull=False,
+        )
+        if ativos_codigos:
+            abertos_qs = abertos_qs.filter(empresa__in=list(ativos_codigos))
+
+        for item in abertos_qs:
+            data_meta = item.data_para_resposta
+            if not data_meta:
+                continue
+            if data_meta < hoje:
+                continue
+
+            dias = (data_meta - hoje).days
+            if tipo_normalizado == 'vencer_7' and dias <= 7:
+                adicionar_item(item, data_meta)
+            elif tipo_normalizado == 'vencer_15' and 7 < dias <= 15:
+                adicionar_item(item, data_meta)
+            elif tipo_normalizado == 'vencer_30' and 15 < dias <= 30:
+                adicionar_item(item, data_meta)
+
+    detalhes.sort(key=lambda item: (
+        item.get('responsavel') or '',
+        item.get('empresa') or '',
+        item.get('servico') or '',
+    ))
+
+    contexto = {
+        'tipo': tipo_normalizado,
+        'tipo_label': DETALHES_TIPO_LABELS[tipo_normalizado],
+        'grupo': grupo_param,
+        'responsavel': responsavel_param,
+        'periodo': {
+            'inicio': data_inicio.isoformat() if data_inicio else None,
+            'fim': data_fim.isoformat() if data_fim else None,
+        },
+    }
+
+    return {
+        'detalhes': detalhes,
+        'contexto': contexto,
+    }
+
+
+def _calcular_meta_proporcional(meta_mensal, data_inicio, data_fim):
+    meta = Decimal(meta_mensal)
+    if not data_inicio or not data_fim:
+        return meta
+
+    if data_inicio > data_fim:
+        data_inicio, data_fim = data_fim, data_inicio
+
+    total_meta = Decimal('0')
+    cursor = date(data_inicio.year, data_inicio.month, 1)
+
+    while cursor <= data_fim:
+        _, dias_mes = calendar.monthrange(cursor.year, cursor.month)
+        inicio_mes = date(cursor.year, cursor.month, 1)
+        fim_mes = date(cursor.year, cursor.month, dias_mes)
+
+        periodo_inicio = max(data_inicio, inicio_mes)
+        periodo_fim = min(data_fim, fim_mes)
+
+        dias_periodo = (periodo_fim - periodo_inicio).days + 1
+        proporcao = Decimal(dias_periodo) / Decimal(dias_mes)
+        total_meta += meta * proporcao
+
+        cursor = fim_mes + timedelta(days=1)
+
+    return total_meta.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def dashboard_empresas(request):
@@ -1739,46 +1920,22 @@ def dashboard_servicos(request):
     data_inicio, data_fim = _parse_periodo(request)
     hoje = date.today()
 
-    empresas_map = {}
-    ativos_codigos = set()
-    responsavel_map = {
-        resp.id: (resp.nome or 'Sem Responsável').strip().upper() or 'SEM RESPONSÁVEL'
-        for resp in Responsavel.objects.all()
-    }
+    detalhes_tipo = request.query_params.get('detalhes_tipo')
+    if detalhes_tipo:
+        try:
+            return Response(
+                _obter_detalhes_servicos(
+                    detalhes_tipo,
+                    data_inicio,
+                    data_fim,
+                    request.query_params.get('grupo'),
+                    request.query_params.get('responsavel'),
+                )
+            )
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-    for item in PlanilhaGerencial.objects.values(
-        'cod_folha',
-        'razao_social',
-        'grupo',
-        'resp_dp',
-        'status_do_cliente'
-    ):
-        cod = str(item.get('cod_folha') or '').strip()
-        if not cod:
-            continue
-        grupo = (item.get('grupo') or 'Sem Grupo').strip() or 'Sem Grupo'
-        responsavel = (item.get('resp_dp') or 'Sem Responsável').strip() or 'Sem Responsável'
-        ativo = str(item.get('status_do_cliente') or '').strip().upper() == 'ATIVO'
-        info = {
-            'codigo': cod,
-            'razao_social': (item.get('razao_social') or '').strip() or cod,
-            'grupo': grupo.upper(),
-            'responsavel': responsavel.upper(),
-            'ativo': ativo,
-        }
-        empresas_map[cod] = info
-        if cod.isdigit():
-            empresas_map[str(int(cod))] = info
-            if ativo:
-                ativos_codigos.add(int(cod))
-        else:
-            try:
-                cod_int = int(cod)
-                empresas_map[str(cod_int)] = info
-                if ativo:
-                    ativos_codigos.add(cod_int)
-            except ValueError:
-                pass
+    empresas_map, ativos_codigos, responsavel_map = _montar_contexto_empresas()
 
     STATUS_ABERTOS = ('PENDENTE', 'PAUSADO')
 
@@ -1810,6 +1967,7 @@ def dashboard_servicos(request):
             'detalhe': detalhe,
             'data_resposta': data_resposta.isoformat() if data_resposta else None,
             'dias_em_atraso': dias_atraso,
+            'grupo': empresa_info['grupo'],
         })
 
     vencem_hoje = []
@@ -1833,7 +1991,80 @@ def dashboard_servicos(request):
             'detalhe': detalhe,
             'data_resposta': hoje.isoformat(),
             'dias_em_atraso': 0,
+            'grupo': empresa_info['grupo'],
         })
+
+    competencia_atual_val = hoje.year * 100 + hoje.month
+
+    def montar_afastamento_registro(item):
+        empresa_info = empresas_map.get(str(item.empresa))
+        if not empresa_info or not empresa_info['ativo']:
+            return None
+
+        responsavel_label = item.responsavel.nome.upper() if item.responsavel else empresa_info['responsavel']
+        servico_nome = item.servico.nome if item.servico else ''
+        detalhe = (item.identificacao or '').strip() or (item.descricao_servico or '').strip()
+
+        registro = {
+            'id': item.id,
+            'responsavel': responsavel_label or 'SEM RESPONSÁVEL',
+            'grupo': empresa_info['grupo'],
+            'empresa': empresa_info['razao_social'],
+            'servico': servico_nome,
+            'detalhe': detalhe,
+            'data_solicitacao': item.data_solicitacao.isoformat() if item.data_solicitacao else None,
+            'ultimo_fup': None,
+            'ultimo_fup_status': 'NAO_INFORMADO',
+        }
+
+        ultimo_fup_raw = (item.ultimo_fup or '').strip()
+        if ultimo_fup_raw:
+            digits = ''.join(ch for ch in ultimo_fup_raw if ch.isdigit())
+            if len(digits) == 6:
+                try:
+                    mes = int(digits[:2])
+                    ano = int(digits[2:])
+                    if 1 <= mes <= 12 and ano >= 1900:
+                        competencia_val = ano * 100 + mes
+                        registro['ultimo_fup'] = f"{mes:02d}/{ano}"
+                        if competencia_val < competencia_atual_val:
+                            registro['ultimo_fup_status'] = 'ATRASADO'
+                        else:
+                            registro['ultimo_fup_status'] = 'EM_DIA'
+                except ValueError:
+                    pass
+
+        return registro
+
+    tipos_afastamento_sem_pericia = {
+        'AFASTAMENTO CAT',
+        'AFASTAMENTO DOENÇA',
+        'AFASTAMENTO INVALIDEZ',
+    }
+
+    afastamentos_sem_pericia = []
+    afastamentos_sem_retorno = []
+    afastamentos_ultimo_fup_pendente = []
+
+    afastamentos_qs = base_qs.filter(
+        (Q(afast_tipo__isnull=False) | Q(afast_ini__isnull=False)),
+        status__in=STATUS_ABERTOS,
+    )
+
+    for item in afastamentos_qs:
+        registro = montar_afastamento_registro(item)
+        if not registro:
+            continue
+
+        afast_tipo = (item.afast_tipo or '').strip().upper()
+        if afast_tipo in tipos_afastamento_sem_pericia and not (item.afast_pericia or '').strip():
+            afastamentos_sem_pericia.append(registro)
+
+        if not (item.afast_retorno or '').strip():
+            afastamentos_sem_retorno.append(registro)
+
+        if registro['ultimo_fup_status'] != 'EM_DIA':
+            afastamentos_ultimo_fup_pendente.append(registro)
 
     resumo_por_grupo = {}
     totais_resumo = {
@@ -1963,6 +2194,79 @@ def dashboard_servicos(request):
         'resumo_grupo': {
             'linhas': linhas_resumo,
             'totais': resumo_totais,
+        },
+        'afastamentos': {
+            'sem_pericia': afastamentos_sem_pericia,
+            'sem_retorno': afastamentos_sem_retorno,
+            'ultimo_fup_pendente': afastamentos_ultimo_fup_pendente,
+        },
+    })
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def dashboard_servicos_detalhes(request):
+    data_inicio, data_fim = _parse_periodo(request)
+    try:
+        return Response(
+            _obter_detalhes_servicos(
+                request.query_params.get('tipo'),
+                data_inicio,
+                data_fim,
+                request.query_params.get('grupo'),
+                request.query_params.get('responsavel'),
+            )
+        )
+    except ValueError as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def dashboard_resumo(request):
+    data_inicio, data_fim = _parse_periodo(request)
+
+    servicos_qs = ServicoSolicitado.objects.select_related('servico')
+    if data_inicio:
+        servicos_qs = servicos_qs.filter(data_solicitacao__gte=data_inicio)
+    if data_fim:
+        servicos_qs = servicos_qs.filter(data_solicitacao__lte=data_fim)
+
+    multas_qs = servicos_qs.filter(
+        Q(servico__nome__icontains='multa') |
+        Q(servico__categoria__icontains='multa')
+    )
+    multas_agregado = multas_qs.aggregate(
+        total_multa=Coalesce(Sum('multa_valor'), Decimal('0')),
+        total_avulso=Coalesce(Sum('avulso_valor'), Decimal('0')),
+    )
+    multas_total = multas_agregado['total_multa'] + multas_agregado['total_avulso']
+
+    avulsos_qs = servicos_qs.filter(
+        Q(servico__nome__icontains='avulso') |
+        Q(servico__categoria__icontains='avulso')
+    )
+    avulsos_agregado = avulsos_qs.aggregate(
+        total_multa=Coalesce(Sum('multa_valor'), Decimal('0')),
+        total_avulso=Coalesce(Sum('avulso_valor'), Decimal('0')),
+    )
+    avulsos_total = avulsos_agregado['total_avulso'] + avulsos_agregado['total_multa']
+
+    meta_multas = _calcular_meta_proporcional(Decimal('300.00'), data_inicio, data_fim)
+    meta_avulsos = _calcular_meta_proporcional(Decimal('4500.00'), data_inicio, data_fim)
+
+    return Response({
+        'periodo': {
+            'inicio': data_inicio.isoformat() if data_inicio else None,
+            'fim': data_fim.isoformat() if data_fim else None,
+        },
+        'quadro_01': {
+            'multas': {
+                'total': multas_total,
+                'meta': meta_multas,
+            },
+            'avulsos': {
+                'total': avulsos_total,
+                'meta': meta_avulsos,
+            },
         },
     })
 

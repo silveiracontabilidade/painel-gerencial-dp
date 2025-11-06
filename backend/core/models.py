@@ -241,6 +241,7 @@ class ServicoSolicitado(models.Model):
     )
     servico = models.ForeignKey('Servico', on_delete=models.CASCADE)
     competencia = models.CharField(max_length=6)
+    ultimo_fup = models.CharField(max_length=6, null=True, blank=True)
     identificacao = models.CharField(max_length=100, null=True, blank=True)
     descricao_servico = models.TextField(null=True, blank=True)
     data_vencimento = models.DateField(null=True, blank=True)

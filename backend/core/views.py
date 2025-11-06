@@ -28,7 +28,7 @@ def login_view(request):
         user = authenticate(request, username=usuario, password=senha)
         if user is not None:
             login(request, user)
-            return redirect('/')  # ou outra URL protegida
+            return redirect('/dashboard/')  # redireciona para o dashboard após login
         else:
             return render(request, 'login.html', {'erro': 'Usuário ou senha inválidos'})
     return render(request, 'login.html')

@@ -29,11 +29,30 @@ const normalizarCompetencia = (valor) => {
   return `${MM}${YYYY}`;
 };
 
+const competenciaParaNumero = (valor) => {
+  if (!valor) return null;
+  const digits = String(valor).replace(/\D/g, '');
+  if (digits.length !== 6) return null;
+  const mes = parseInt(digits.slice(0, 2), 10);
+  const ano = parseInt(digits.slice(2, 6), 10);
+  if (!Number.isFinite(mes) || !Number.isFinite(ano) || mes < 1 || mes > 12 || ano < 1900) {
+    return null;
+  }
+  return ano * 100 + mes;
+};
+
+const obterCompetenciaAtualNumero = () => {
+  const hoje = new Date();
+  return hoje.getFullYear() * 100 + (hoje.getMonth() + 1);
+};
+
 const toBRHifen = (iso) => (iso ? paraBR(iso).replace(/\//g, '-') : '');
 const toISO = (brOuBrHifen) => {
   if (!brOuBrHifen) return null;
   return paraISO(brOuBrHifen.replace(/\//g, '-'));
 };
+
+const dataEhValida = (valor) => Boolean(toISO(valor));
 
 const calcularDataRespostaPorPrazo = (dataVencimentoBR, prazoDias) => {
   if (!dataVencimentoBR) return null;
@@ -297,6 +316,8 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
           f[c] = f[c] ? toBRSafe(f[c]) : '';
         });
 
+        f.ultimo_fup = dados.ultimo_fup ? normalizarCompetencia(dados.ultimo_fup) : '';
+
         // Pré-preenche blocos dinâmicos a partir do back (1:1)
        setFerias({
         [FIELD_MAP.ferias.abono]: dados[FIELD_MAP.ferias.abono] || '',
@@ -314,16 +335,21 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
       setAdmissao({
         [FIELD_MAP.admissao.tipo]: dados[FIELD_MAP.admissao.tipo] || '',
         [FIELD_MAP.admissao.data_ini]: dados[FIELD_MAP.admissao.data_ini] ? toBRSafe(dados[FIELD_MAP.admissao.data_ini]) : '',
-        [FIELD_MAP.admissao.deslig_programado]: dados[FIELD_MAP.admissao.deslig_programado] || '',
+        [FIELD_MAP.admissao.deslig_programado]: dados[FIELD_MAP.admissao.deslig_programado]
+          ? toBRSafe(dados[FIELD_MAP.admissao.deslig_programado])
+          : '',
         [FIELD_MAP.admissao.preliminar]: dados[FIELD_MAP.admissao.preliminar] || '',
         [FIELD_MAP.admissao.observacao]: dados[FIELD_MAP.admissao.observacao] || '',
       });
       setAfast({
-        // [FIELD_MAP.afast.tipo]: dados[FIELD_MAP.afast.tipo] || '',
         [FIELD_MAP.afast.dias]: dados[FIELD_MAP.afast.dias] || '',
         [FIELD_MAP.afast.ini]: dados[FIELD_MAP.afast.ini] ? toBRSafe(dados[FIELD_MAP.afast.ini]) : '',
-        [FIELD_MAP.afast.pericia]: dados[FIELD_MAP.afast.pericia] || '',
-        [FIELD_MAP.afast_retorno]: dados[FIELD_MAP.afast_retorno] || '',
+        [FIELD_MAP.afast.pericia]: dados[FIELD_MAP.afast.pericia]
+          ? toBRSafe(dados[FIELD_MAP.afast.pericia])
+          : '',
+        [FIELD_MAP.afast.retorno]: dados[FIELD_MAP.afast.retorno]
+          ? toBRSafe(dados[FIELD_MAP.afast.retorno])
+          : '',
       });
       setAvulso({
         [FIELD_MAP.avulso.valor]: dados[FIELD_MAP.avulso.valor] || '',
@@ -337,7 +363,12 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
       setForm(f);
       } else {
         const hojeISO = new Date().toISOString().split('T')[0];
-        setForm((prev) => ({ ...prev, data_solicitacao: toBRSafe(hojeISO), status: 'PENDENTE' }));
+        setForm((prev) => ({
+          ...prev,
+          data_solicitacao: toBRSafe(hojeISO),
+          status: 'PENDENTE',
+          ultimo_fup: '',
+        }));
       }
     };
     init();
@@ -476,7 +507,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
 
   const handleFeriasDateChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFerias((prev) => ({ ...prev, [name]: value.replace(/[^\d-]/g, '') }));
+    setFerias((prev) => ({ ...prev, [name]: mascararData(value) }));
   }, []);
 
   const handleFeriasDateBlur = useCallback((e) => {
@@ -492,7 +523,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
 
   const handleRescisaoDateChange = useCallback((e) => {
     const { name, value } = e.target;
-    setRescisao((prev) => ({ ...prev, [name]: value.replace(/[^\d-]/g, '') }));
+    setRescisao((prev) => ({ ...prev, [name]: mascararData(value) }));
   }, []);
 
   const handleRescisaoDateBlur = useCallback((e) => {
@@ -512,7 +543,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
 
   const handleAdmissaoDateChange = useCallback((e) => {
     const { name, value } = e.target;
-    setAdmissao((prev) => ({ ...prev, [name]: value.replace(/[^\d-]/g, '') }));
+    setAdmissao((prev) => ({ ...prev, [name]: mascararData(value) }));
     clearFieldError(name);
   }, [clearFieldError]);
 
@@ -530,7 +561,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
 
   const handleAfastDateChange = useCallback((e) => {
     const { name, value } = e.target;
-    setAfast((prev) => ({ ...prev, [name]: value.replace(/[^\d-]/g, '') }));
+    setAfast((prev) => ({ ...prev, [name]: mascararData(value) }));
   }, []);
 
   const handleAfastDateBlur = useCallback((e) => {
@@ -574,9 +605,17 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     const empresaObrigatoria = !form.responsavel;
     if (empresaObrigatoria && !form.empresa) e.empresa = 'Selecione a empresa.';
     if (!form.servico) e.servico = 'Selecione o serviço.';
-    if (form.data_solicitacao) {
-      const iso = toISO(form.data_solicitacao);
-      if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) e.data_solicitacao = 'Data inválida. Use dd-mm-aaaa.';
+    if (form.data_solicitacao && !dataEhValida(form.data_solicitacao)) {
+      e.data_solicitacao = 'Data inválida. Verifique o dia, mês e ano.';
+    }
+    if (form.data_vencimento && !dataEhValida(form.data_vencimento)) {
+      e.data_vencimento = 'Data inválida. Verifique o dia, mês e ano.';
+    }
+    if (form.data_para_resposta && !dataEhValida(form.data_para_resposta)) {
+      e.data_para_resposta = 'Data inválida. Verifique o dia, mês e ano.';
+    }
+    if (form.data_conclusao && !dataEhValida(form.data_conclusao)) {
+      e.data_conclusao = 'Data inválida. Verifique o dia, mês e ano.';
     }
 
     // ✅ Validação COMPETÊNCIA MMAAAA
@@ -595,19 +634,27 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
       }
     }
 
+    if (form.ultimo_fup) {
+      const numeroCompetencia = competenciaParaNumero(form.ultimo_fup);
+      if (numeroCompetencia === null) {
+        e.ultimo_fup = 'Formato inválido. Use MMAAAA.';
+      } else if (numeroCompetencia > obterCompetenciaAtualNumero()) {
+        e.ultimo_fup = 'Competência futura não permitida.';
+      }
+    }
+
     // mínimos por tipo (exemplos)
     if (tipoServico === 'FERIAS') {
-      // se vier preenchida, garantir formato válido
       const campo = FIELD_MAP.ferias.data_ini;
-      if (ferias[campo] && !/^\d{2}-\d{2}-\d{4}$/.test(ferias[campo])) e[campo] = 'Data inválida.';
+      if (ferias[campo] && !dataEhValida(ferias[campo])) e[campo] = 'Data inválida.';
     }
     if (tipoServico === 'RESCISAO') {
       const campo = FIELD_MAP.rescisao.data_ini;
-      if (rescisao[campo] && !/^\d{2}-\d{2}-\d{4}$/.test(rescisao[campo])) e[campo] = 'Data inválida.';
+      if (rescisao[campo] && !dataEhValida(rescisao[campo])) e[campo] = 'Data inválida.';
     }
     if (tipoServico === 'ADMISSAO') {
       const campoDataIni = FIELD_MAP.admissao.data_ini;
-      if (admissao[campoDataIni] && !/^\d{2}-\d{2}-\d{4}$/.test(admissao[campoDataIni])) {
+      if (admissao[campoDataIni] && !dataEhValida(admissao[campoDataIni])) {
         e[campoDataIni] = 'Data inválida.';
       }
 
@@ -616,16 +663,20 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
       if (exigeDesligamentoProgramado) {
         if (!valorDeslig) {
           e[campoDeslig] = 'Informe a data do desligamento programado.';
-        } else if (!/^\d{2}-\d{2}-\d{4}$/.test(valorDeslig)) {
+        } else if (!dataEhValida(valorDeslig)) {
           e[campoDeslig] = 'Data inválida.';
         }
-      } else if (valorDeslig && !/^\d{2}-\d{2}-\d{4}$/.test(valorDeslig)) {
+      } else if (valorDeslig && !dataEhValida(valorDeslig)) {
         e[campoDeslig] = 'Data inválida.';
       }
     }
     if (tipoServico === 'AFASTAMENTO') {
       const inif = FIELD_MAP.afast.ini;
-      if (afast[inif] && !/^\d{2}-\d{2}-\d{4}$/.test(afast[inif])) e[inif] = 'Data inválida.';
+      if (afast[inif] && !dataEhValida(afast[inif])) e[inif] = 'Data inválida.';
+      const pericia = FIELD_MAP.afast.pericia;
+      if (afast[pericia] && !dataEhValida(afast[pericia])) e[pericia] = 'Data inválida.';
+      const retorno = FIELD_MAP.afast.retorno;
+      if (afast[retorno] && !dataEhValida(afast[retorno])) e[retorno] = 'Data inválida.';
     }
 
     setErrors(e);
@@ -657,6 +708,8 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
 
     // status
     if (FIELD_MAP.status) payload[FIELD_MAP.status] = payload.status || 'PENDENTE';
+
+    payload.ultimo_fup = payload.ultimo_fup ? normalizarCompetencia(payload.ultimo_fup) : null;
 
     // === FÉRIAS (CharField -> mantemos dd-mm-aaaa) ===
     Object.entries(ferias).forEach(([k, v]) => {
@@ -1034,7 +1087,7 @@ const renderBlocoAdmissao = () => (
           type="text"
           name={FIELD_MAP.admissao.deslig_programado}
           value={admissao[FIELD_MAP.admissao.deslig_programado] || ''}
-          onChange={handleAdmissaoChange}
+          onChange={handleAdmissaoDateChange}
           onBlur={handleAdmissaoDateBlur}
           placeholder="dd-mm-aaaa"
           maxLength={10}
@@ -1105,7 +1158,7 @@ const renderBlocoAfastamento = () => (
           type="text"
           name={FIELD_MAP.afast.pericia}
           value={afast[FIELD_MAP.afast.pericia] || ''}
-          onChange={handleAfastChange}
+          onChange={handleAfastDateChange}
           onBlur={handleAfastDateBlur}
           placeholder="dd-mm-aaaa"
           maxLength={10}
@@ -1260,6 +1313,7 @@ const renderBlocoMulta = () => (
 
           {renderInput('id_acessorias', 'ID ACESSÓRIAS', 'text', 'campo-curto')}  
           {renderInputCompetencia('competencia', 'COMPETÊNCIA', 'campo-curto')}
+          {renderInputCompetencia('ultimo_fup', 'ÚLTIMO FUP', 'campo-curto')}
 
           {/* Arquivos */}
           {/* <div className="campo campo-arquivos"> */}
