@@ -113,6 +113,17 @@ const normalize = (s) =>
     .trim()
     .toUpperCase();
 
+const SERVICOS_AFASTAMENTO_COM_FUP = new Set(
+  [
+    'Afastamento CAT',
+    'Afastamento Doença',
+    'Afastamento Invalidez',
+    'Afastamento Maternidade',
+    'Afastamento Militar',
+    'Afastamento Militiar',
+  ].map((nome) => normalize(nome))
+);
+
 const toBRSafe = (valor) => {
   if (!valor) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
@@ -418,6 +429,13 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     [servicos, form.servico]
   );
   const tipoServico = getTipoServico(servicoSelecionado?.nome);
+  const podeExibirUltimoFup = useMemo(() => {
+    if (tipoServico !== 'AFASTAMENTO') {
+      return false;
+    }
+    const nomeNormalizado = normalize(servicoSelecionado?.nome);
+    return SERVICOS_AFASTAMENTO_COM_FUP.has(nomeNormalizado);
+  }, [tipoServico, servicoSelecionado]);
   const tipoAdmissaoSelecionado = useMemo(
     () => tiposAdmissao.find(
       (t) => normalize(t.descricao) === normalize(admissao[FIELD_MAP.admissao.tipo])
@@ -435,6 +453,18 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     if (!codigo) return '';
     return razao ? `${codigo} - ${razao}` : String(codigo);
   }, [empresaDetalhe, dados]);
+
+  useEffect(() => {
+    if (!podeExibirUltimoFup && form.ultimo_fup) {
+      setForm((prev) => {
+        if (!prev.ultimo_fup) return prev;
+        return { ...prev, ultimo_fup: '' };
+      });
+    }
+    if (!podeExibirUltimoFup && errors.ultimo_fup) {
+      setErrors((prev) => ({ ...prev, ultimo_fup: undefined }));
+    }
+  }, [podeExibirUltimoFup, form.ultimo_fup, errors.ultimo_fup]);
 
   const responsavelById = useMemo(() => {
     const mapa = new Map();
@@ -1123,51 +1153,52 @@ const renderBlocoAdmissao = () => (
 );
 
 // === AFASTAMENTO ===
-const renderBlocoAfastamento = () => (
-  <div className="bloco">
-    <h4>Afastamento</h4>
-    <div className="linha">
-      <div className="campo campo-curto">
-        <label>Dias</label>
-        <input
-          type="text"
-          name={FIELD_MAP.afast.dias}
-          value={afast[FIELD_MAP.afast.dias] || ''}
-          onChange={handleAfastChange}
-        />
-      </div>
+const renderBlocoAfastamento = () => {
+  return (
+    <div className="bloco bloco-afastamento">
+      <h4>Afastamento</h4>
+      <div className="linha linha-afastamento">
+        <div className="campo campo-curto">
+          <label>Dias</label>
+          <input
+            type="text"
+            name={FIELD_MAP.afast.dias}
+            value={afast[FIELD_MAP.afast.dias] || ''}
+            onChange={handleAfastChange}
+          />
+        </div>
 
-      <div className="campo campo-curto">
-        <label>Início (dd-mm-aaaa)</label>
-        <input
-          type="text"
-          name={FIELD_MAP.afast.ini}
-          value={afast[FIELD_MAP.afast.ini] || ''}
-          onChange={handleAfastDateChange}
-          onBlur={handleAfastDateBlur}
-          placeholder="dd-mm-aaaa"
-          maxLength={10}
-          inputMode="numeric"
-          autoComplete="off"
-        />
-      </div>
+        <div className="campo campo-curto">
+          <label>Início</label>
+          <input
+            type="text"
+            name={FIELD_MAP.afast.ini}
+            value={afast[FIELD_MAP.afast.ini] || ''}
+            onChange={handleAfastDateChange}
+            onBlur={handleAfastDateBlur}
+            placeholder="dd-mm-aaaa"
+            maxLength={10}
+            inputMode="numeric"
+            autoComplete="off"
+          />
+        </div>
 
-      <div className="campo campo-curto">
-        <label>Perícia</label>
-        <input
-          type="text"
-          name={FIELD_MAP.afast.pericia}
-          value={afast[FIELD_MAP.afast.pericia] || ''}
-          onChange={handleAfastDateChange}
-          onBlur={handleAfastDateBlur}
-          placeholder="dd-mm-aaaa"
-          maxLength={10}
-          inputMode="numeric"
-          autoComplete="off"
-        />
-      </div>
-      <div className="campo campo-curto">
-          <label>Retorno (dd-mm-aaaa)</label>
+        <div className="campo campo-curto">
+          <label>Perícia</label>
+          <input
+            type="text"
+            name={FIELD_MAP.afast.pericia}
+            value={afast[FIELD_MAP.afast.pericia] || ''}
+            onChange={handleAfastDateChange}
+            onBlur={handleAfastDateBlur}
+            placeholder="dd-mm-aaaa"
+            maxLength={10}
+            inputMode="numeric"
+            autoComplete="off"
+          />
+        </div>
+        <div className="campo campo-curto">
+          <label>Retorno</label>
           <input
             type="text"
             name={FIELD_MAP.afast.retorno}
@@ -1180,9 +1211,12 @@ const renderBlocoAfastamento = () => (
             autoComplete="off"
           />
         </div>
+        {podeExibirUltimoFup &&
+          renderInputCompetencia('ultimo_fup', 'ÚLTIMO FUP', 'campo-curto campo-ultimo-fup')}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // === AVULSO ===
 const renderBlocoAvulso = () => (
@@ -1313,7 +1347,6 @@ const renderBlocoMulta = () => (
 
           {renderInput('id_acessorias', 'ID ACESSÓRIAS', 'text', 'campo-curto')}  
           {renderInputCompetencia('competencia', 'COMPETÊNCIA', 'campo-curto')}
-          {renderInputCompetencia('ultimo_fup', 'ÚLTIMO FUP', 'campo-curto')}
 
           {/* Arquivos */}
           {/* <div className="campo campo-arquivos"> */}

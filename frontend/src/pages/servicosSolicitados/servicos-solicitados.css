@@ -429,6 +429,21 @@
   font-size: 12px;
 }
 
+.bloco-afastamento .linha-afastamento {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bloco-afastamento .linha-afastamento .campo-curto {
+  flex: 1 1 105px;
+  min-width: 95px;
+  max-width: 115px;
+}
+
+.bloco-afastamento .linha-afastamento .campo-ultimo-fup {
+  max-width: 115px;
+}
+
 td:nth-child(9) { 
   font-weight: bold;
 }
