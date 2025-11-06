@@ -1340,22 +1340,23 @@ def dashboard_empresas(request):
         responsaveis_raw = classificacao_responsaveis_map.get(grupo_chave, {})
         responsaveis_linha = []
         for resp_chave, resp_info in sorted(responsaveis_raw.items(), key=lambda par: par[0]):
+            registro_resp = {'responsavel': resp_info['label'] or resp_chave}
             colunas_resp = {}
             for chave in categoria_chaves:
                 dados_col = resp_info['dados'][chave]
-                colunas_resp[chave] = {
+                valor_formatado = {
                     'qtd': dados_col['qtd'],
                     'honorarios': decimal_para_float(dados_col['honorarios']),
                 }
+                registro_resp[chave] = valor_formatado
+                colunas_resp[chave] = valor_formatado
             total_resp = resp_info['total']
-            responsaveis_linha.append({
-                'responsavel': resp_info['label'] or resp_chave,
-                'colunas': colunas_resp,
-                'total': {
-                    'qtd': total_resp['qtd'],
-                    'honorarios': decimal_para_float(total_resp['honorarios']),
-                },
-            })
+            registro_resp['total'] = {
+                'qtd': total_resp['qtd'],
+                'honorarios': decimal_para_float(total_resp['honorarios']),
+            }
+            registro_resp['colunas'] = colunas_resp
+            responsaveis_linha.append(registro_resp)
         linha['responsaveis'] = responsaveis_linha
         classificacao_por_grupo.append(linha)
 
@@ -1580,6 +1581,7 @@ def dashboard_empresas(request):
         empresas_info.append(info)
         for codigo in info['codigos']:
             empresas_lookup[codigo] = info
+            empresas_lookup[str(codigo)] = info
 
     grupos_map = {}
     total_estimado_min = 0
@@ -1610,70 +1612,58 @@ def dashboard_empresas(request):
         responsavel_dados['tempo_estimado'] += tempo_est
         total_estimado_min += tempo_est
 
-    EXCECOES_SERVICOS = {
-        'folha de pagamento': 'demanda_folha',
-        'folha 13º salario': 'demanda_13',
-        'folha 13º salario adiantamento': 'demanda_ad_13',
-    }
-
+    servicos_qs = (
+        ServicoSolicitado.objects
+        .select_related('servico', 'responsavel__grupo')
+        .filter(data_conclusao__isnull=False)
+    )
     if codigos_int_ativos:
-        servicos_qs = (
-            ServicoSolicitado.objects
-            .filter(
-                empresa__in=list(codigos_int_ativos),
-                status='CONCLUIDO',
-            )
-            .select_related('servico')
+        servicos_qs = servicos_qs.filter(empresa__in=list(codigos_int_ativos))
+    if data_inicio:
+        servicos_qs = servicos_qs.filter(data_conclusao__gte=data_inicio)
+    if data_fim:
+        servicos_qs = servicos_qs.filter(data_conclusao__lte=data_fim)
+
+    for solicitacao in servicos_qs:
+        tempo_execucao = solicitacao.servico.tempo_execucao if solicitacao.servico else None
+        minutos = parse_duracao(tempo_execucao)
+        if minutos <= 0:
+            continue
+
+        grupo_nome = 'SEM GRUPO'
+        responsavel_nome = 'SEM RESPONSÁVEL'
+
+        if solicitacao.responsavel:
+            responsavel_nome = (solicitacao.responsavel.nome or 'Sem Responsável').strip().upper() or 'SEM RESPONSÁVEL'
+            if solicitacao.responsavel.grupo:
+                grupo_nome = (solicitacao.responsavel.grupo.nome or 'Sem Grupo').strip().upper() or 'SEM GRUPO'
+        elif solicitacao.empresa is not None:
+            info = empresas_lookup.get(solicitacao.empresa) or empresas_lookup.get(str(solicitacao.empresa))
+            if info:
+                grupo_nome = info['grupo']
+                responsavel_nome = info['responsavel']
+
+        grupo_dados = grupos_map.setdefault(
+            grupo_nome,
+            {
+                'grupo': grupo_nome,
+                'tempo_estimado': 0,
+                'tempo_efetivo': 0,
+                'responsaveis': {},
+            }
         )
-        if data_inicio:
-            servicos_qs = servicos_qs.filter(
-                Q(data_conclusao__gte=data_inicio) |
-                (Q(data_conclusao__isnull=True) & Q(data_solicitacao__gte=data_inicio))
-            )
-        if data_fim:
-            servicos_qs = servicos_qs.filter(
-                Q(data_conclusao__lte=data_fim) |
-                (Q(data_conclusao__isnull=True) & Q(data_solicitacao__lte=data_fim))
-            )
+        grupo_dados['tempo_efetivo'] += minutos
 
-        for item in servicos_qs.values('empresa', 'servico__nome', 'servico__tempo_execucao'):
-            empresa_codigo = item.get('empresa')
-            if empresa_codigo is None:
-                continue
-            info = empresas_lookup.get(str(empresa_codigo))
-            if not info:
-                continue
-
-            nome_servico = (item.get('servico__nome') or '').strip().lower()
-            campo_excecao = EXCECOES_SERVICOS.get(nome_servico)
-            if campo_excecao:
-                minutos = info['demandas'].get(campo_excecao) or 0
-            else:
-                minutos = parse_duracao(item.get('servico__tempo_execucao'))
-            if minutos <= 0:
-                continue
-
-            grupo_dados = grupos_map.setdefault(
-                info['grupo'],
-                {
-                    'grupo': info['grupo'],
-                    'tempo_estimado': 0,
-                    'tempo_efetivo': 0,
-                    'responsaveis': {},
-                }
-            )
-            grupo_dados['tempo_efetivo'] += minutos
-
-            responsavel_dados = grupo_dados['responsaveis'].setdefault(
-                info['responsavel'],
-                {
-                    'responsavel': info['responsavel'],
-                    'tempo_estimado': 0,
-                    'tempo_efetivo': 0,
-                }
-            )
-            responsavel_dados['tempo_efetivo'] += minutos
-            total_efetivo_min += minutos
+        responsavel_dados = grupo_dados['responsaveis'].setdefault(
+            responsavel_nome,
+            {
+                'responsavel': responsavel_nome,
+                'tempo_estimado': 0,
+                'tempo_efetivo': 0,
+            }
+        )
+        responsavel_dados['tempo_efetivo'] += minutos
+        total_efetivo_min += minutos
 
     tempos_por_grupo = []
     for grupo_nome in sorted(grupos_map.keys()):
