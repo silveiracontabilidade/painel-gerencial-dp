@@ -1,5 +1,5 @@
 // ServicoSolicitadoFormModal.js
-import React, { Fragment, useEffect, useState, useMemo, useCallback  } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {FileText} from 'lucide-react'
 import api from '../../api/axios';
 import './servicos-solicitados.css';
@@ -826,36 +826,6 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     }
   };
 
-  const handleConcluir = async () => {
-    if (!dados?.id) return;
-
-    const nomeServico = (servicoSelecionado?.nome || dados?.servico_nome || '').toUpperCase();
-    if (nomeServico.includes('AFAST')) {
-      const retornoInformado =
-        afast[FIELD_MAP.afast.retorno] ||
-        dados?.[FIELD_MAP.afast.retorno] ||
-        dados?.afast_retorno ||
-        '';
-      if (!retornoInformado) {
-        window.alert('Não é possível concluir: informe a data de retorno do afastamento.');
-        return;
-      }
-    }
-
-    if (!window.confirm('Marcar esta solicitação como concluída?')) return;
-
-    const hojeISO = new Date().toISOString().slice(0, 10);
-
-    try {
-      await api.patch(`/api/solicitacoes/${dados.id}/`, { data_conclusao: hojeISO });
-      setForm((prev) => ({ ...prev, data_conclusao: toBRSafe(hojeISO) }));
-      fechar();
-    } catch (err) {
-      console.error('Erro ao concluir solicitação:', err.response?.data || err);
-      alert('Erro ao concluir a solicitação. Tente novamente.');
-    }
-  };
-
   const handleExcluir = async () => {
     if (!dados?.id) return;
     if (!window.confirm('Confirma a exclusão deste serviço solicitado?')) return;
@@ -1456,14 +1426,9 @@ const renderBlocoMulta = () => (
         {/* Botões */}
         <div className="botoes">
           {dados?.id && (
-            <Fragment>
-              <button type="button" className="excluir" onClick={handleExcluir}>
-                EXCLUIR
-              </button>
-              <button type="button" className="concluir" onClick={handleConcluir}>
-                CONCLUIR
-              </button>
-            </Fragment>
+            <button type="button" className="excluir" onClick={handleExcluir}>
+              EXCLUIR
+            </button>
           )}
           <button type="submit">SALVAR</button>
           <button type="button" className="cancelar" onClick={fechar}>
