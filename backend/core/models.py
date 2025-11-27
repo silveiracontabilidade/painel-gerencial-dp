@@ -292,11 +292,14 @@ class ServicoSolicitado(models.Model):
         'Responsavel', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='processos_realizados', db_column='processo_realizado_por'
     )
+    removido_em = models.DateTimeField(null=True, blank=True)
+    removido_por = models.CharField(max_length=150, null=True, blank=True)
 
     STATUS_CHOICES = [
         ("PENDENTE", "Pendente"),
         ("PAUSADO", "Pausado"),
         ("CONCLUIDO", "Concluído"),
+        ("REMOVIDO", "Removido"),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDENTE")
 

@@ -13,6 +13,7 @@ from decimal import Decimal
 from rest_framework.fields import CharField
 from django.db.models import Q
 from datetime import timedelta
+from django.utils import timezone
 from django.contrib.auth.password_validation import validate_password
 
 
@@ -303,7 +304,19 @@ class ServicoSolicitadoSerializer(BaseSerializer):
 
             # STATUS
             'status',
+            'removido_em', 'removido_por',
         ]
+
+    def update(self, instance, validated_data):
+        novo_status = validated_data.get('status', instance.status)
+
+        if novo_status == 'PENDENTE':
+            instance.removido_em = None
+            instance.removido_por = None
+        elif novo_status == 'REMOVIDO' and instance.removido_em is None:
+            instance.removido_em = timezone.now()
+
+        return super().update(instance, validated_data)
 
 
 

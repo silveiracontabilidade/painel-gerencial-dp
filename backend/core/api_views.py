@@ -19,6 +19,7 @@ import re
 from collections import defaultdict
 from django.db.models import Q, Count, Value, Sum
 from django.db.models.functions import Coalesce, Upper, Trim
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 
 from .models import (
@@ -87,6 +88,33 @@ class ServicoSolicitadoViewSet(viewsets.ModelViewSet):
         .select_related('servico', 'responsavel', 'processo_realizado_por')
         .order_by('-data_solicitacao', '-id')
     )
+
+    def get_queryset(self):
+        base_qs = self.queryset
+
+        status_param = (self.request.query_params.get('status') or '').upper()
+
+        # Listagens: não traz removidos por padrão; permite filtrar por status (incluindo REMOVIDO)
+        if getattr(self, 'action', None) == 'list':
+            if status_param:
+                return base_qs.filter(status=status_param)
+            return base_qs.exclude(status='REMOVIDO')
+
+        # Demais ações (retrieve/update etc.) enxergam todos os registros
+        return base_qs
+
+    def _usuario_nome(self):
+        user = getattr(self.request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
+            return None
+        return getattr(user, 'username', None) or getattr(user, 'email', None) or str(user)
+
+    def perform_destroy(self, instance):
+        if instance.status != 'REMOVIDO':
+            instance.status = 'REMOVIDO'
+            instance.removido_em = timezone.now()
+            instance.removido_por = self._usuario_nome()
+            instance.save(update_fields=['status', 'removido_em', 'removido_por'])
     serializer_class = ServicoSolicitadoSerializer
     pagination_class = ServicoSolicitadoPagination
 

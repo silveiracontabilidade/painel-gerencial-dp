@@ -838,6 +838,24 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     }
   };
 
+  const handleRecuperar = async () => {
+    if (!dados?.id) return;
+    try {
+      await api.patch(`/api/solicitacoes/${dados.id}/`, { status: 'PENDENTE' });
+      fechar();
+    } catch (err) {
+      console.error('Erro ao recuperar solicitação:', err.response?.data || err);
+      alert('Erro ao recuperar o serviço solicitado. Tente novamente.');
+    }
+  };
+
+  const formatarDataHora = (valor) => {
+    if (!valor) return '';
+    const d = new Date(valor);
+    if (Number.isNaN(d.getTime())) return valor;
+    return d.toLocaleString('pt-BR');
+  };
+
   // ===== Render helpers =====
   const renderInput = (name, label, tipo = 'text', classe = 'campo-medio', disabled = false) => (
     <div className={`campo ${classe}`} key={name}>
@@ -1423,11 +1441,24 @@ const renderBlocoMulta = () => (
           </div>
         )}        
 
+        {dados?.status === 'REMOVIDO' && (
+          <div className="mensagem-informativa" style={{ background: '#fff4e5', color: '#8a4b1d' }}>
+            <strong>Serviço removido</strong>
+            <div>Por: {dados.removido_por || '—'}</div>
+            <div>Em: {formatarDataHora(dados.removido_em) || '—'}</div>
+          </div>
+        )}
+
         {/* Botões */}
         <div className="botoes">
-          {dados?.id && (
+          {dados?.id && dados?.status !== 'REMOVIDO' && (
             <button type="button" className="excluir" onClick={handleExcluir}>
               EXCLUIR
+            </button>
+          )}
+          {dados?.id && dados?.status === 'REMOVIDO' && (
+            <button type="button" className="recuperar" onClick={handleRecuperar}>
+              RECUPERAR
             </button>
           )}
           <button type="submit">SALVAR</button>

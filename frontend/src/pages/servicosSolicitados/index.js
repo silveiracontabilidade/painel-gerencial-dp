@@ -1,5 +1,5 @@
 // ServicosSolicitados.js
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, Pencil, Trash2, FileText, CheckCircle, Loader2 } from 'lucide-react';
 import EmpresaFormModal from '../empresas/EmpresaFormModal'
 import api from '../../api/axios';
@@ -42,9 +42,8 @@ export default function ServicosSolicitados() {
   const [servicos, setServicos] = useState([]);
   const [ordenacao, setOrdenacao] = useState({ campo: '', direcao: 'asc' });
   const [paginaAtual, setPaginaAtual] = useState(1);
-  const [itensPorPagina, setItensPorPagina] = useState(10);
+  const [itensPorPagina, setItensPorPagina] = useState(150);
   const [loading, setLoading] = useState(false);
-  const [mostrarMais, setMostrarMais] = useState(false);
   const [perfilUsuario, setPerfilUsuario] = useState(null);
   const [selecionados, setSelecionados] = useState(() => new Set());
   const cabecalhoSelecaoRef = useRef(null);
@@ -161,12 +160,6 @@ export default function ServicosSolicitados() {
     return limpo.replace(/[^0-9.]/g, '');
   };
 
-  useEffect(() => {
-    carregarSolicitacoes();
-    carregarEmpresas();
-    carregarAuxiliares();
-  }, []);
-
   //retornar anexos em serviços
   useEffect(() => {
     api.get('/api/servicos/')
@@ -201,7 +194,7 @@ export default function ServicosSolicitados() {
     );
   }, [filters]);
 
-  const carregarSolicitacoes = async () => {
+  const carregarSolicitacoes = useCallback(async () => {
     const requerColecaoCompleta = temFiltro || Boolean(ordenacao.campo);
     if (requerColecaoCompleta && paginaAtual !== 1) {
       return;
@@ -211,6 +204,9 @@ export default function ServicosSolicitados() {
     const params = requerColecaoCompleta
       ? { page: 1, page_size: 5_000_000 }
       : { page: paginaAtual, page_size: itensPorPagina };
+    if (filters.status === 'removido') {
+      params.status = 'REMOVIDO'; // pede explicitamente os removidos (por padrão a API exclui)
+    }
     try {
       const res = await api.get('/api/solicitacoes/', { params });
       const results = res.data?.results ?? res.data;
@@ -227,21 +223,26 @@ export default function ServicosSolicitados() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters.status, itensPorPagina, ordenacao.campo, paginaAtual, temFiltro]);
 
-  const carregarEmpresas = async () => {
+  const carregarEmpresas = useCallback(async () => {
     const res = await api.get('/api/empresas/', { params: { page: 1, page_size: 5_000_000 } });
     setEmpresas(res.data.results || res.data);
-  };
+  }, []);
 
-  const carregarAuxiliares = async () => {
+  const carregarAuxiliares = useCallback(async () => {
     const [resResp, resGrupo] = await Promise.all([
       api.get('/api/responsaveis/'),
       api.get('/api/grupos/')
     ]);
     setResponsaveis(resResp.data);
     setGrupos(resGrupo.data);
-  };
+  }, []);
+
+  useEffect(() => {
+    carregarEmpresas();
+    carregarAuxiliares();
+  }, [carregarAuxiliares, carregarEmpresas]);
 
   const salvarEmpresaDetalhe = async (empresa) => {
     try {
@@ -429,6 +430,60 @@ export default function ServicosSolicitados() {
     return m;
   }, [grupos]);
 
+  const renderDetalhes = useCallback((s) => {
+    const tipo = (s.servico_nome || "").toUpperCase();
+    let partes = [];
+
+    if (s.descricao_servico) {
+      partes.push(s.descricao_servico);
+    }
+
+    if (tipo.includes("ADMISS")) {
+      partes.push(`Admissão: ${s.admissao_data_ini || '-'} ${s.admissao_tipo || ''}`);
+      if (s.admissao_deslig_programado)
+        partes.push(`Deslig. Prog.: ${s.admissao_deslig_programado}`);
+      if (s.admissao_preliminar) {
+        partes.push(`Preliminar Enviada: ${s.admissao_preliminar}`);
+      }
+    }
+    else if (tipo.includes("RESCIS")) {
+      partes.push(
+        `Rescisão: ${s.rescisao_tipo_aviso || '-'} ` +
+        `${s.rescisao_data_ini || '-'} ` +
+        (s.rescisao_dias_aviso ? `Aviso ${s.rescisao_dias_aviso}` : '') +
+        (s.rescisao_tipo ? ` (${s.rescisao_tipo})` : '')
+      );
+    }
+    else if (tipo.includes("FÉRIAS") || tipo.includes("FERIAS")) {
+      const detalhesFerias = [
+        `Férias: ${s.ferias_data_ini || '-'}`,
+        s.ferias_qtd_dias ? `${s.ferias_qtd_dias} dias` : null,
+        s.ferias_qtd_dias_abono ? `${s.ferias_qtd_dias_abono} dias abono` : null,
+        s.ferias_abono ? `Abono: ${s.ferias_abono}` : null,
+      ].filter(Boolean).join(' | ');
+      if (detalhesFerias) partes.push(detalhesFerias);
+    }
+    else if (tipo.includes("AFAST")) {
+      partes.push(
+        `Afast.: ${s.afast_tipo || '-'} ` +
+        `${s.afast_ini || ''} ` +
+        (s.afast_dias ? `(${s.afast_dias} dias)` : '') +
+        (s.afast_pericia ? ` Perícia: ${s.afast_pericia}` : '')
+      );
+    }
+    else {
+      if (s.identificacao) partes.push(s.identificacao);
+    }
+
+    const cod = String(s.empresa ?? '');
+    const emp = empresaByCodigo.get(cod);
+    if (emp && emp.sistema) {
+      partes.push(`Sistema: ${emp.sistema}`);
+    }
+
+    return partes.filter(Boolean).join(" | ");
+  }, [empresaByCodigo]);
+
   const normalize = (v) =>
     String(v ?? '')
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -509,6 +564,8 @@ export default function ServicosSolicitados() {
       const passaCompetencia = !filters.competencia || String(s.competencia || '').includes(filters.competencia);
 
       // filtro de status
+      if (filters.status !== 'removido' && s.status === 'REMOVIDO') return false;
+      if (filters.status === 'removido' && s.status !== 'REMOVIDO') return false;
       if (filters.status === "aberto" && s.data_conclusao) return false;
       if (filters.status === "concluido" && !s.data_conclusao) return false;
 
@@ -579,7 +636,7 @@ export default function ServicosSolicitados() {
         passaSol
       );
     });
-  }, [solicitacoes, empresaByCodigo, filters, respById, grupoById]);
+  }, [solicitacoes, empresaByCodigo, filters, respById, grupoById, renderDetalhes]);
 
   useEffect(() => {
     setPaginaAtual(1);
@@ -612,7 +669,7 @@ export default function ServicosSolicitados() {
     return semBarras;
   };
 
-  const obterValorOrdenacao = (solicitacao, campo) => {
+  const obterValorOrdenacao = useCallback((solicitacao, campo) => {
     switch (campo) {
       case 'empresa': {
         const cod = String(solicitacao.empresa ?? '');
@@ -646,7 +703,7 @@ export default function ServicosSolicitados() {
       default:
         return '';
     }
-  };
+  }, [empresaByCodigo]);
 
   const solicitacoesOrdenadas = useMemo(() => {
     if (!ordenacao.campo) return solicitacoesFiltradas;
@@ -659,7 +716,7 @@ export default function ServicosSolicitados() {
       return 0;
     });
     return lista;
-  }, [solicitacoesFiltradas, ordenacao]);
+  }, [solicitacoesFiltradas, ordenacao, obterValorOrdenacao]);
 
   // Se houver filtro, total passa a ser o tamanho filtrado desta coleção carregada
   const totalRegistros = usaPaginacaoCliente ? solicitacoesOrdenadas.length : totalCount;
@@ -672,7 +729,7 @@ export default function ServicosSolicitados() {
   // Recarrega da API quando paginação muda ou filtros (com estratégia condicional)
   useEffect(() => {
     carregarSolicitacoes();
-  }, [paginaAtual, itensPorPagina, temFiltro, ordenacao.campo]);
+  }, [carregarSolicitacoes, paginaAtual, itensPorPagina, temFiltro, ordenacao.campo]);
 
   useEffect(() => {
     api.get('/api/me')
@@ -775,64 +832,6 @@ export default function ServicosSolicitados() {
     setPaginaAtual(alvo);
   };
 
-  // Helpers
-  function renderDetalhes(s) {
-    const tipo = (s.servico_nome || "").toUpperCase();
-    let partes = [];
-
-    // Sempre inclui descrição do serviço
-    if (s.descricao_servico) {
-      partes.push(s.descricao_servico);
-    }
-
-    if (tipo.includes("ADMISS")) {
-      partes.push(`Admissão: ${s.admissao_data_ini || '-'} ${s.admissao_tipo || ''}`);
-      if (s.admissao_deslig_programado)
-        partes.push(`Deslig. Prog.: ${s.admissao_deslig_programado}`);
-      if (s.admissao_preliminar) {
-        partes.push(`Preliminar Enviada: ${s.admissao_preliminar}`);
-      }
-    }
-    else if (tipo.includes("RESCIS")) {
-      partes.push(
-        `Rescisão: ${s.rescisao_tipo_aviso || '-'} ` +
-        `${s.rescisao_data_ini || '-'} ` +
-        (s.rescisao_dias_aviso ? `Aviso ${s.rescisao_dias_aviso}` : '') +
-        (s.rescisao_tipo ? ` (${s.rescisao_tipo})` : '')
-      );
-    }
-    else if (tipo.includes("FÉRIAS") || tipo.includes("FERIAS")) {
-      const detalhesFerias = [
-        `Férias: ${s.ferias_data_ini || '-'}`,
-        s.ferias_qtd_dias ? `${s.ferias_qtd_dias} dias` : null,
-        s.ferias_qtd_dias_abono ? `${s.ferias_qtd_dias_abono} dias abono` : null,
-        s.ferias_abono ? `Abono: ${s.ferias_abono}` : null,
-      ].filter(Boolean).join(' | ');
-      if (detalhesFerias) partes.push(detalhesFerias);
-    }
-    else if (tipo.includes("AFAST")) {
-      partes.push(
-        `Afast.: ${s.afast_tipo || '-'} ` +
-        `${s.afast_ini || ''} ` +
-        (s.afast_dias ? `(${s.afast_dias} dias)` : '') +
-        (s.afast_pericia ? ` Perícia: ${s.afast_pericia}` : '')
-      );
-    }
-    else {
-      // fallback para outros tipos → usa só identificação
-      if (s.identificacao) partes.push(s.identificacao);
-    }
-
-    // Sistema da empresa
-    const cod = String(s.empresa ?? '');
-    const emp = empresaByCodigo.get(cod);
-    if (emp && emp.sistema) {
-      partes.push(`Sistema: ${emp.sistema}`);
-    }
-
-    return partes.filter(Boolean).join(" | ");
-  }
-
 
   const abrirModal = (solicitacao = null) => {
     setSolicitacaoSelecionada(solicitacao);
@@ -929,12 +928,6 @@ export default function ServicosSolicitados() {
       || (executor?.grupo ? grupoById.get(String(executor.grupo))?.nome : '');
 
     return renderResponsavelBadge(String(nomeExecutado).toUpperCase(), grupoExecutor || '');
-  };
-
-  const renderGrupo = (valorEmpresa) => {
-    const cod = String(valorEmpresa ?? '');
-    const emp = empresaByCodigo.get(cod);
-    return emp?.grupo || '-';
   };
 
   const handleFilterChange = (campo) => (e) => {
@@ -1075,6 +1068,7 @@ export default function ServicosSolicitados() {
               <option value="todos">Todos</option>
               <option value="aberto">Em aberto</option>
               <option value="concluido">Concluídos</option>
+              <option value="removido">Removidos</option>
             </select>
           </div>
 
