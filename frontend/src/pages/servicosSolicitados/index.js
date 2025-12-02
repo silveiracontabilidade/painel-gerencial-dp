@@ -967,7 +967,7 @@ export default function ServicosSolicitados() {
           <button onClick={() => abrirModal()} title="Novo Serviço">
             <Plus size={18} /> Novo
           </button>
-          {perfilUsuario === 'admin' && (
+          {['admin', 'coordenador'].includes(perfilUsuario) && (
             <button
               onClick={handleExcluirSelecionados}
               title="Excluir selecionados"

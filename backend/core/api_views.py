@@ -1314,6 +1314,7 @@ def _obter_detalhes_servicos(tipo, data_inicio, data_fim, grupo_param=None, resp
         abertos_qs = base_qs.filter(
             status__in=('PENDENTE', 'PAUSADO'),
             data_para_resposta__isnull=False,
+            data_conclusao__isnull=True,
         )
         if ativos_codigos:
             abertos_qs = abertos_qs.filter(empresa__in=list(ativos_codigos))
@@ -1968,10 +1969,13 @@ def dashboard_servicos(request):
     STATUS_ABERTOS = ('PENDENTE', 'PAUSADO')
 
     base_qs = ServicoSolicitado.objects.select_related('servico', 'responsavel')
+    base_abertos_qs = base_qs.filter(
+        status__in=STATUS_ABERTOS,
+        data_conclusao__isnull=True,
+    )
 
     atrasados = []
-    atrasados_qs = base_qs.filter(
-        status__in=STATUS_ABERTOS,
+    atrasados_qs = base_abertos_qs.filter(
         data_para_resposta__lt=hoje,
         data_para_resposta__isnull=False,
     ).order_by('data_para_resposta')
@@ -1996,11 +2000,10 @@ def dashboard_servicos(request):
             'data_resposta': data_resposta.isoformat() if data_resposta else None,
             'dias_em_atraso': dias_atraso,
             'grupo': empresa_info['grupo'],
-        })
+    })
 
     vencem_hoje = []
-    vencem_hoje_qs = base_qs.filter(
-        status__in=STATUS_ABERTOS,
+    vencem_hoje_qs = base_abertos_qs.filter(
         data_para_resposta=hoje,
     )
 
@@ -2074,9 +2077,8 @@ def dashboard_servicos(request):
     afastamentos_sem_retorno = []
     afastamentos_ultimo_fup_pendente = []
 
-    afastamentos_qs = base_qs.filter(
+    afastamentos_qs = base_abertos_qs.filter(
         (Q(afast_tipo__isnull=False) | Q(afast_ini__isnull=False)),
-        status__in=STATUS_ABERTOS,
     )
 
     for item in afastamentos_qs:
@@ -2149,11 +2151,7 @@ def dashboard_servicos(request):
         registrar_resumo(empresa_info, responsavel_label, 'fechados_periodo')
 
     if ativos_codigos:
-        abertos_qs = base_qs.filter(
-            status__in=STATUS_ABERTOS,
-            empresa__in=list(ativos_codigos),
-            data_para_resposta__isnull=False,
-        )
+        abertos_qs = base_abertos_qs.filter(empresa__in=list(ativos_codigos), data_para_resposta__isnull=False)
 
         for item in abertos_qs.values('empresa', 'data_para_resposta', 'responsavel_id'):
             empresa_codigo = item.get('empresa')
