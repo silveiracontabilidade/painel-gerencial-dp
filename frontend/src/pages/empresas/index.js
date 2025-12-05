@@ -157,8 +157,10 @@ const [filters, setFilters] = useState({
     status_do_cliente: '',
     inicio_contrato_inicio: '',
     inicio_contrato_fim: '',
+    inicio_contrato_vazio: false,
     termino_contrato_inicio: '',
     termino_contrato_fim: '',
+    termino_contrato_vazio: false,
     tributacao: '',
     sistema: '',
     grupo: '',
@@ -255,10 +257,22 @@ const [filters, setFilters] = useState({
       (!filters.matriz || normalize(emp.matriz).includes(normalize(filters.matriz))) &&
       (!filters.enviadctf || normalize(emp.enviadctf).includes(normalize(filters.enviadctf))) &&
       (!filters.data_pagto_salario_inicio || normalize(emp.data_pagto_salario) === normalize(filters.data_pagto_salario_inicio)) &&
-      (!filters.inicio_contrato_inicio || new Date(emp.inicio_contrato) >= new Date(filters.inicio_contrato_inicio)) &&
-      (!filters.inicio_contrato_fim || new Date(emp.inicio_contrato) <= new Date(filters.inicio_contrato_fim)) &&
-      (!filters.termino_contrato_inicio || new Date(emp.termino_contrato) >= new Date(filters.termino_contrato_inicio)) &&
-      (!filters.termino_contrato_fim || new Date(emp.termino_contrato) <= new Date(filters.termino_contrato_fim))
+      (
+        (!filters.inicio_contrato_vazio &&
+          (!filters.inicio_contrato_inicio || new Date(emp.inicio_contrato) >= new Date(filters.inicio_contrato_inicio)) &&
+          (!filters.inicio_contrato_fim || new Date(emp.inicio_contrato) <= new Date(filters.inicio_contrato_fim))
+        )
+        ||
+        (filters.inicio_contrato_vazio && (!emp.inicio_contrato || emp.inicio_contrato === ''))
+      ) &&
+      (
+        (!filters.termino_contrato_vazio &&
+          (!filters.termino_contrato_inicio || new Date(emp.termino_contrato) >= new Date(filters.termino_contrato_inicio)) &&
+          (!filters.termino_contrato_fim || new Date(emp.termino_contrato) <= new Date(filters.termino_contrato_fim))
+        )
+        ||
+        (filters.termino_contrato_vazio && (!emp.termino_contrato || emp.termino_contrato === ''))
+      )
     );
 
     // Aplica ordenação, se houver campo definido
@@ -385,6 +399,46 @@ const [filters, setFilters] = useState({
     };
   }, [empresas, grupoDerivado]);
 
+  const selectStylesCompact = {
+    control: (base) => ({ ...base, minHeight: 24, height: 24, fontSize: 10 }),
+    valueContainer: (base) => ({ ...base, padding: '0 4px' }),
+    indicatorsContainer: (base) => ({ ...base, padding: '0 2px' }),
+    option: (base) => ({ ...base, fontSize: 10, paddingTop: 4, paddingBottom: 4 }),
+    input: (base) => ({ ...base, fontSize: 10 }),
+    multiValue: (base) => ({ ...base, margin: 1 }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+  };
+
+  const statusClienteOptions = useMemo(
+    () => [
+      { value: 'ATIVO', label: 'Ativo' },
+      { value: 'INATIVO', label: 'Inativo' },
+      { value: 'SUSPENSO', label: 'Suspenso' },
+      { value: 'EM PROPOSTA', label: 'Em Proposta' },
+    ],
+    []
+  );
+
+  const sistemaOptions = useMemo(
+    () => options.sistema.map((o) => ({ value: o, label: o })),
+    [options.sistema]
+  );
+
+  const grupoOptions = useMemo(
+    () => options.grupo.map((o) => ({ value: o, label: o })),
+    [options.grupo]
+  );
+
+  // Usa lista completa de responsáveis (não só os filtrados) para manter as opções
+  const respOptions = useMemo(
+    () =>
+      (responsaveis || []).map((r) => {
+        const nome = r.nome || '';
+        return { value: nome, label: nome };
+      }),
+    [responsaveis]
+  );
+
   const classificacaoOptions = useMemo(
     () => ['Bronze', 'Diamante', 'Ouro', 'Prata'].sort(compararTexto),
     []
@@ -417,6 +471,7 @@ const [filters, setFilters] = useState({
       .sort((a, b) => compararTexto(a.descricao || '', b.descricao || ''));
   }, [periodosEntrega]);
 
+
 useEffect(() => {
   setLoading(true);
   api
@@ -444,6 +499,7 @@ useEffect(() => {
     setPage(1);
     setFilters(prev => ({ ...prev, [field]: e.target.value }));
   };
+
 
   // const totalPages = Math.ceil(count / pageSize);
   const totalPages = Math.ceil(empresasFiltradas.length / pageSize);
@@ -778,10 +834,30 @@ const salvarEmpresa = async (empresa) => {
               <th className="col-data">
                 <input type="date" value={filters.inicio_contrato_inicio} onChange={handleFilterChange('inicio_contrato_inicio')} className={filters.inicio_contrato_inicio ? 'filtro-ativo' : ''} />
                 <input type="date" value={filters.inicio_contrato_fim} onChange={handleFilterChange('inicio_contrato_fim')} className={filters.inicio_contrato_fim ? 'filtro-ativo' : ''} />
+                <label className="checkbox-inline">
+                  <input
+                    type="checkbox"
+                    checked={!!filters.inicio_contrato_vazio}
+                    onChange={(e) =>
+                      setFilters((prev) => ({ ...prev, inicio_contrato_vazio: e.target.checked, inicio_contrato_inicio: '', inicio_contrato_fim: '' }))
+                    }
+                  />
+                  vazios
+                </label>
               </th>
               <th className="col-data">
                 <input type="date" value={filters.termino_contrato_inicio} onChange={handleFilterChange('termino_contrato_inicio')} className={filters.termino_contrato_inicio ? 'filtro-ativo' : ''} />
                 <input type="date" value={filters.termino_contrato_fim} onChange={handleFilterChange('termino_contrato_fim')} className={filters.termino_contrato_fim ? 'filtro-ativo' : ''} />
+                <label className="checkbox-inline">
+                  <input
+                    type="checkbox"
+                    checked={!!filters.termino_contrato_vazio}
+                    onChange={(e) =>
+                      setFilters((prev) => ({ ...prev, termino_contrato_vazio: e.target.checked, termino_contrato_inicio: '', termino_contrato_fim: '' }))
+                    }
+                  />
+                  vazios
+                </label>
               </th>
               <th className="col-texto-medio">
                 <input type="text" value={filters.tributacao} onChange={handleFilterChange('tributacao')} className={filters.tributacao ? 'filtro-ativo' : ''} />
@@ -826,7 +902,7 @@ const salvarEmpresa = async (empresa) => {
                 </select>
               </th>
               <th className="col-texto-muito-curto">
-                <select value={filters.classificacao} onChange={handleFilterChange('classificacao')} className={filters.classificacao ? 'filtro-ativo' : ''}>
+                <select value={filters.categoria} onChange={handleFilterChange('categoria')} className={filters.categoria ? 'filtro-ativo' : ''}>
                   <option value="">Todos</option>
                   {classificacaoOptions.map((opcao) => (
                     <option key={opcao} value={opcao}>{opcao}</option>

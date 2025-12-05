@@ -1,6 +1,6 @@
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.viewsets import ReadOnlyModelViewSet
-from django_filters.rest_framework import DjangoFilterBackend, FilterSet, CharFilter, DateFilter
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet, CharFilter, DateFilter, BaseInFilter, BooleanFilter
 from rest_framework import viewsets, filters, pagination
 from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, permission_classes
@@ -21,10 +21,14 @@ from django.db.models import Q, Count, Value, Sum
 from django.db.models.functions import Coalesce, Upper, Trim
 from django.utils import timezone
 from django.utils.dateparse import parse_date
+from django.utils.timezone import localtime
+from django.utils import timezone as dj_timezone
 
 from .models import (
     GrupoGerencial,
     Responsavel,
+    Entregavel,
+    Feriado,
     PlanilhaGerencial,
     Servico,
     ServicoSolicitado, 
@@ -51,8 +55,49 @@ from .serializers import (
     UsuarioResponsavelSerializer,
     MotivoRescisaoSerializer,
     TipoAdmissaoSerializer,
+    EntregavelSerializer,
+    FeriadoSerializer,
     ChangePasswordSerializer
 )
+
+
+def _parse_competencia(param: str | None):
+    """Aceita YYYY-MM, YYYYMM, MMYYYY, MM-YYYY, MM/YYYY.
+    Retorna (ano, mes) inteiros; se inválido, usa mês atual.
+    """
+    hoje = date.today()
+    if not param:
+        return hoje.year, hoje.month
+
+    cleaned = re.sub(r'[^0-9]', '', param)
+    if len(cleaned) == 6:
+        # tenta YYYYMM (ex.: 202503) ou MMYYYY (ex.: 032025)
+        ano_candidato = int(cleaned[:4])
+        mes_candidato = int(cleaned[4:])
+        if 1 <= mes_candidato <= 12 and 1900 <= ano_candidato <= 3000:
+            return ano_candidato, mes_candidato
+        ano_candidato = int(cleaned[2:])
+        mes_candidato = int(cleaned[:2])
+        if 1 <= mes_candidato <= 12 and 1900 <= ano_candidato <= 3000:
+            return ano_candidato, mes_candidato
+    return hoje.year, hoje.month
+
+
+def _limites_competencia(ano: int, mes: int):
+    primeiro_dia = date(ano, mes, 1)
+    ultimo_dia = date(ano, mes, calendar.monthrange(ano, mes)[1])
+    return primeiro_dia, ultimo_dia
+
+
+def _aplicar_janela_competencia(qs, ano: int, mes: int):
+    """Mantém apenas empresas ativas na competência:
+    - término de contrato nulo ou >= primeiro dia da competência
+    - início de contrato nulo ou <= último dia da competência
+    """
+    primeiro_dia, ultimo_dia = _limites_competencia(ano, mes)
+    qs = qs.filter(Q(termino_contrato__isnull=True) | Q(termino_contrato__gte=primeiro_dia))
+    qs = qs.filter(Q(inicio_contrato__isnull=True) | Q(inicio_contrato__lte=ultimo_dia))
+    return qs
 
 # class UserViewSet(viewsets.ModelViewSet):
 #     queryset = User.objects.all()
@@ -68,6 +113,16 @@ class GrupoGerencialViewSet(viewsets.ModelViewSet):
 class ResponsavelViewSet(viewsets.ModelViewSet):
     queryset = Responsavel.objects.select_related('grupo').order_by('nome')
     serializer_class = ResponsavelSerializer
+
+
+class EntregavelViewSet(viewsets.ModelViewSet):
+    queryset = Entregavel.objects.all().order_by('nome')
+    serializer_class = EntregavelSerializer
+
+
+class FeriadoViewSet(viewsets.ModelViewSet):
+    queryset = Feriado.objects.all().order_by('data')
+    serializer_class = FeriadoSerializer
 
 
 class ServicoViewSet(viewsets.ModelViewSet):
@@ -115,6 +170,37 @@ class ServicoSolicitadoViewSet(viewsets.ModelViewSet):
             instance.removido_em = timezone.now()
             instance.removido_por = self._usuario_nome()
             instance.save(update_fields=['status', 'removido_em', 'removido_por'])
+
+    def _feriados_set(self):
+        if not hasattr(self, '_cache_feriados'):
+            self._cache_feriados = set(Feriado.objects.values_list('data', flat=True))
+        return self._cache_feriados
+
+    def _ajustar_para_dia_util(self, data_val):
+        if not data_val:
+            return None
+        feriados = self._feriados_set()
+        dia = data_val
+        while dia.weekday() >= 5 or dia in feriados:
+            dia = dia - timedelta(days=1)
+        return dia
+
+    def _ajustar_datas(self, validated_data):
+        for campo in ['data_vencimento', 'data_para_resposta']:
+            if campo in validated_data and validated_data.get(campo):
+                ajustada = self._ajustar_para_dia_util(validated_data[campo])
+                validated_data[campo] = ajustada
+        return validated_data
+
+    def perform_create(self, serializer):
+        validated = serializer.validated_data
+        self._ajustar_datas(validated)
+        return super().perform_create(serializer)
+
+    def perform_update(self, serializer):
+        validated = serializer.validated_data
+        self._ajustar_datas(validated)
+        return super().perform_update(serializer)
     serializer_class = ServicoSolicitadoSerializer
     pagination_class = ServicoSolicitadoPagination
 
@@ -124,26 +210,34 @@ class EmpresaPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 5_000_000
 
+class CharInFilter(BaseInFilter, CharFilter):
+    pass
+
+
 class PlanilhaGerencialFilter(FilterSet):
     cod_folha = CharFilter(lookup_expr='icontains')
     razao_social = CharFilter(lookup_expr='icontains')
     grupo_economico = CharFilter(lookup_expr='icontains')
     cnpj = CharFilter(lookup_expr='icontains')
-    status_do_cliente = CharFilter(lookup_expr='exact')
+    status_do_cliente = CharInFilter(lookup_expr='in')
     inicio_contrato_inicio = DateFilter(field_name='inicio_contrato', lookup_expr='gte')
     inicio_contrato_fim = DateFilter(field_name='inicio_contrato', lookup_expr='lte')
     termino_contrato_inicio = DateFilter(field_name='termino_contrato', lookup_expr='gte')
     termino_contrato_fim = DateFilter(field_name='termino_contrato', lookup_expr='lte')
     tributacao = CharFilter(lookup_expr='exact')
-    sistema = CharFilter(lookup_expr='exact')
-    grupo = CharFilter(lookup_expr='exact')
-    resp_dp = CharFilter(lookup_expr='exact')
+    sistema = CharInFilter(lookup_expr='in')
+    grupo = CharInFilter(lookup_expr='in')
+    resp_dp = CharInFilter(lookup_expr='in')
     ramal = CharFilter(lookup_expr='icontains')
-    data_pagto_salario_inicio = DateFilter(field_name='data_pagto_salario', lookup_expr='gte')
+    data_pagto_salario_inicio = CharInFilter(field_name='data_pagto_salario', lookup_expr='in')
     data_pagto_salario_fim = DateFilter(field_name='data_pagto_salario', lookup_expr='lte')
-    classificacao = CharFilter(lookup_expr='exact')
-    matriz = CharFilter(lookup_expr='exact')
-    enviadctf = CharFilter(lookup_expr='exact')
+    classificacao = CharInFilter(lookup_expr='in')
+    classificacao2 = CharInFilter(lookup_expr='in')
+    matriz = CharInFilter(field_name='matriz', lookup_expr='in')
+    enviadctf = CharInFilter(field_name='enviadctf', lookup_expr='in')
+
+    inicio_contrato_vazio = BooleanFilter(method='filtrar_inicio_vazio')
+    termino_contrato_vazio = BooleanFilter(method='filtrar_termino_vazio')
     
     #FILTROS AVANÇADOS
     sci_report = CharFilter(lookup_expr='icontains')
@@ -194,6 +288,23 @@ class PlanilhaGerencialFilter(FilterSet):
     venc_procuracao_fim = DateFilter(field_name='venc_procuracao', lookup_expr='lte')
     venc_fgts_digital_inicio = DateFilter(field_name='venc_fgts_digital', lookup_expr='gte')
     venc_fgts_digital_fim = DateFilter(field_name='venc_fgts_digital', lookup_expr='lte')
+
+    inicio_contrato_vazio = BooleanFilter(method='filtrar_inicio_vazio')
+    termino_contrato_vazio = BooleanFilter(method='filtrar_termino_vazio')
+
+    def filtrar_inicio_vazio(self, queryset, name, value):
+        if value is None:
+            return queryset
+        if value:
+            return queryset.filter(Q(inicio_contrato__isnull=True) | Q(inicio_contrato=''))
+        return queryset
+
+    def filtrar_termino_vazio(self, queryset, name, value):
+        if value is None:
+            return queryset
+        if value:
+            return queryset.filter(Q(termino_contrato__isnull=True) | Q(termino_contrato=''))
+        return queryset
     
 
     class Meta:
@@ -446,8 +557,55 @@ class AgendaBaseViewSet(viewsets.ModelViewSet):
                 return ultimo - timedelta(days=periodo_obj.dia)
             return date(ano, mes, clamp_day(ano, mes, periodo_obj.dia))
 
+        def _categoria_servico(servico_obj):
+            nome_norm = normalizar_texto(getattr(servico_obj, 'nome', ''))
+            categoria_norm = normalizar_texto(getattr(servico_obj, 'categoria', ''))
+            texto = f"{categoria_norm} {nome_norm}".strip()
+            if 'admis' in texto:
+                return 'admissao'
+            if 'feria' in texto:
+                return 'ferias'
+            if 'rescis' in texto:
+                return 'rescisao'
+            return None
+
+        def _periodo_por_valor(valor_raw, periodo_por_descricao):
+            if valor_raw is None:
+                return None
+            valor = str(valor_raw).strip()
+            if not valor:
+                return None
+            chave = normalizar_texto(valor)
+            return periodo_por_descricao.get(chave) or periodo_por_descricao.get(valor)
+
+        def calcular_vencimento_pessoal(servico_obj, empresa, periodo_por_descricao):
+            categoria = _categoria_servico(servico_obj)
+            if not categoria:
+                return None
+
+            campo_por_categoria = {
+                'admissao': 'prazo_admissao',
+                'ferias': 'prazo_ferias',
+                'rescisao': 'prazo_rescisao',
+            }
+            campo = campo_por_categoria.get(categoria)
+            if not campo:
+                return None
+
+            valor_periodo = getattr(empresa, campo, None)
+            periodo = _periodo_por_valor(valor_periodo, periodo_por_descricao)
+            if not periodo:
+                return None
+
+            return calcular_data_por_periodo(periodo, ano, mes)
+
         def calcular_datas_item(item, empresa, periodo_por_descricao):
             dia_base = item.dia or 1
+
+            venc_especifico = calcular_vencimento_pessoal(item.servico, empresa, periodo_por_descricao)
+            if venc_especifico:
+                return venc_especifico, 'empresa'
+
             if item.usa_data_agenda or not item.campo_periodo_empresa:
                 vencimento = date(ano, mes, clamp_day(ano, mes, dia_base))
                 return vencimento, 'agenda'
@@ -1181,6 +1339,136 @@ class TipoAdmissaoViewSet(viewsets.ModelViewSet):
     search_fields = ['descricao', 'mensagem']
     ordering_fields = ['id', 'descricao']
     ordering = ['descricao']
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def relatorio_dctfweb(request):
+    # Apuração: último mês fechado (mês anterior ao atual)
+    hoje = date.today()
+    ap_ano = hoje.year if hoje.month > 1 else hoje.year - 1
+    ap_mes = hoje.month - 1 if hoje.month > 1 else 12
+
+    primeiro_dia, ultimo_dia = _limites_competencia(ap_ano, ap_mes)
+    prev_ano = ap_ano if ap_mes > 1 else ap_ano - 1
+    prev_mes = ap_mes - 1 if ap_mes > 1 else 12
+    prev_primeiro_dia, _ = _limites_competencia(prev_ano, prev_mes)
+
+    qs = PlanilhaGerencial.objects.all()
+    qs = qs.annotate(
+        matriz_upper=Upper(Trim('matriz')),
+        enviadctf_upper=Upper(Trim('enviadctf')),
+    )
+
+    # Matriz (campo = SIM) + DCTF = SIM
+    qs = qs.filter(matriz_upper='SIM')
+    qs = qs.filter(enviadctf_upper='SIM')
+
+    # Empresas ativas: término no mínimo até mês anterior; entrada não posterior ao mês da apuração
+    qs = qs.filter(Q(termino_contrato__isnull=True) | Q(termino_contrato__gte=prev_primeiro_dia))
+    qs = qs.filter(Q(inicio_contrato__isnull=True) | Q(inicio_contrato__lte=ultimo_dia))
+
+    # Exclusões de classificação
+    termos_excluir = [
+        'DOMESTICA', 'DOMÉSTICA',
+        'FACULTATIVO',
+        'CARNE LEAO', 'CARNÊ LEÃO',
+        'BPO RH',
+        'BPO FINANCEIRO',
+    ]
+    for termo in termos_excluir:
+        qs = qs.exclude(classificacao__icontains=termo)
+
+    # Filtros opcionais
+    filtro_resp = (request.query_params.get('responsavel') or '').strip()
+    filtro_grupo = (request.query_params.get('grupo') or '').strip()
+    if filtro_resp:
+        qs = qs.filter(resp_dp__iexact=filtro_resp)
+    if filtro_grupo:
+        qs = qs.filter(grupo__iexact=filtro_grupo)
+
+    dados = list(
+        qs.order_by('razao_social').values(
+            'cod_folha',
+            'razao_social',
+            'cnpj',
+            'status_do_cliente',
+            'sistema',
+            'grupo',
+            'resp_dp',
+            'matriz',
+            'enviadctf',
+        )
+    )
+
+    return Response({
+        'competencia': f"{ap_mes:02d}/{ap_ano}",
+        'total': len(dados),
+        'resultado': dados,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def relatorio_fgts_digital(request):
+    # Apuração: último mês fechado (mês anterior ao atual)
+    hoje = date.today()
+    ap_ano = hoje.year if hoje.month > 1 else hoje.year - 1
+    ap_mes = hoje.month - 1 if hoje.month > 1 else 12
+
+    primeiro_dia, ultimo_dia = _limites_competencia(ap_ano, ap_mes)
+    prev_ano = ap_ano if ap_mes > 1 else ap_ano - 1
+    prev_mes = ap_mes - 1 if ap_mes > 1 else 12
+    prev_primeiro_dia, _ = _limites_competencia(prev_ano, prev_mes)
+
+    qs = PlanilhaGerencial.objects.all()
+    qs = qs.annotate(
+        matriz_upper=Upper(Trim('matriz')),
+    )
+
+    qs = qs.filter(matriz_upper='SIM')
+
+    qs = qs.filter(Q(termino_contrato__isnull=True) | Q(termino_contrato__gte=prev_primeiro_dia))
+    qs = qs.filter(Q(inicio_contrato__isnull=True) | Q(inicio_contrato__lte=ultimo_dia))
+
+    termos_excluir = [
+        'DOMESTICA', 'DOMÉSTICA',
+        'FACULTATIVO',
+        'CARNE LEAO', 'CARNÊ LEÃO',
+        'BPO RH',
+        'BPO FINANCEIRO',
+        'FATOR R',
+        'PRO LABORE', 'PROLABORE',
+        'SEM MOVIMENTO',
+    ]
+    for termo in termos_excluir:
+        qs = qs.exclude(classificacao__icontains=termo)
+
+    filtro_resp = (request.query_params.get('responsavel') or '').strip()
+    filtro_grupo = (request.query_params.get('grupo') or '').strip()
+    if filtro_resp:
+        qs = qs.filter(resp_dp__iexact=filtro_resp)
+    if filtro_grupo:
+        qs = qs.filter(grupo__iexact=filtro_grupo)
+
+    dados = list(
+        qs.order_by('razao_social').values(
+            'cod_folha',
+            'razao_social',
+            'cnpj',
+            'status_do_cliente',
+            'sistema',
+            'grupo',
+            'resp_dp',
+            'matriz',
+        )
+    )
+
+    return Response({
+        'competencia': f"{ap_mes:02d}/{ap_ano}",
+        'total': len(dados),
+        'resultado': dados,
+    })
 
 
 def _parse_periodo(request):

@@ -5,6 +5,8 @@ from .api_views import (
     ResponsavelViewSet,
     PlanilhaGerencialViewSet,
     ServicoViewSet,
+    EntregavelViewSet,
+    FeriadoViewSet,
     ServicoSolicitadoViewSet, 
     AgendaBaseViewSet, 
     SistemaViewSet,
@@ -20,7 +22,9 @@ from .api_views import (
     dashboard_empresas,
     dashboard_servicos,
     dashboard_servicos_detalhes,
-    dashboard_resumo
+    dashboard_resumo,
+    relatorio_dctfweb,
+    relatorio_fgts_digital
 )
 from django.urls import path, include
 from django.conf import settings
@@ -31,6 +35,8 @@ router.register(r'grupos', GrupoGerencialViewSet)
 router.register(r'responsaveis', ResponsavelViewSet)
 router.register(r'empresas', PlanilhaGerencialViewSet)
 router.register(r'servicos', ServicoViewSet)
+router.register(r'entregaveis', EntregavelViewSet)
+router.register(r'feriados', FeriadoViewSet)
 router.register(r'solicitacoes', ServicoSolicitadoViewSet)
 router.register(r'agenda-base', AgendaBaseViewSet)
 router.register(r'sistemas', SistemaViewSet)
@@ -50,6 +56,8 @@ urlpatterns = router.urls + [
     path('dashboard/servicos/', dashboard_servicos, name='dashboard-servicos'),
     path('dashboard/servicos/detalhes/', dashboard_servicos_detalhes, name='dashboard-servicos-detalhes'),
     path('dashboard/resumo/', dashboard_resumo, name='dashboard-resumo'),
+    path('relatorios/dctfweb/', relatorio_dctfweb, name='relatorio-dctfweb'),
+    path('relatorios/fgts-digital/', relatorio_fgts_digital, name='relatorio-fgts-digital'),
     ]
 
 
