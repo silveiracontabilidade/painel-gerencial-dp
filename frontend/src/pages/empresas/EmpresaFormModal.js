@@ -729,7 +729,6 @@ const handleChange = (campo) => (e) => {
           </div>
           <div className='linha'>
             {renderText('razao_social', 'RAZÃO SOCIAL', 'campo-medio')}
-            {renderText('apelido', 'APELIDO', 'campo-medio')}
           </div>
         </div> 
 
@@ -745,6 +744,7 @@ const handleChange = (campo) => (e) => {
                 {renderFlag('matriz', 'MATRIZ', empresa.matriz)}
                 {renderFlag('enviadctf', 'ENVIA DCTF', empresa.enviadctf)}
                 {renderSelect('visitacao', 'VISITAÇÃO', opcoes.visitacao, empresa.visitacao)}
+                {renderText('tempo_demandado', 'TEMPO DEMANDADO', 'campo-curto', 'text', null, "duration")}
                 {renderText('honorarios', 'HONORÁRIO', 'campo-curto','text',null,'decimal')}
                 
               </div>
@@ -773,8 +773,8 @@ const handleChange = (campo) => (e) => {
               <h4>DADOS CONTRATUAIS</h4>
               <div className="linha">
                 {renderText('demanda_folha', 'DEMANDA FOLHA', 'campo-curto', 'text', null, 'duration')}
-                {renderText('demanda_ad_13', 'DEMANDA AD. 13º', 'campo-curto', 'text', null, 'duration')}
                 {renderText('demanda_13', 'DEMANDA 13º', 'campo-curto', 'text', null, 'duration')}
+                {renderText('demanda_ad_13', 'DEMANDA AD. 13º', 'campo-curto', 'text', null, 'duration')}
                 {renderText('inicio_contrato', 'INÍCIO CONTRATO', 'campo-curto', 'text',null, 'date')}
                 {renderText('termino_contrato', 'TÉRMINO CONTRATO', 'campo-curto', 'text',null, 'date')}
                 {renderSelect('motivo_termino', 'MOTIVO TÉRMINO', opcoes.motivo_termino,'campo-longo', empresa.motivo_termino)}
@@ -932,7 +932,6 @@ const handleChange = (campo) => (e) => {
                 {renderText('pcd', 'PCD', 'campo-curto')}
                 {renderText('med_ocupa', 'MEDICINA OCUPACIONAL', 'campo-medio')}
                 {renderText('med_ocupa_proc_venc', 'VENCIMENTO PROCURAÇÃO MEDICINA OCUPACIONAL', 'campo-medio', 'text',null, 'date')}
-                {renderSelect('prazo_admissao', 'PRAZO ADMISSÃO', periodos.map(p => p.descricao.toUpperCase()), 'campo-curto', empresa.prazo_admissao)}
               </div>
               <br></br>
               <div className="linha">
@@ -946,11 +945,6 @@ const handleChange = (campo) => (e) => {
           <>
             <div className='bloco'>
               <h4>FÉRIAS / RESCISÃO</h4>
-              <div className="linha">
-                {renderSelect('prazo_ferias', 'PRAZO FÉRIAS', periodos.map(p => p.descricao.toUpperCase()), 'campo-curto', empresa.prazo_ferias)}
-                {renderSelect('prazo_rescisao', 'PRAZO RESCISÃO', periodos.map(p => p.descricao.toUpperCase()), 'campo-curto', empresa.prazo_rescisao)}
-              </div>
-              <br></br>
               <div className="linha">
                 {renderTextarea('obs_ferias', 'OBSERVAÇÕES FÉRIAS','campo-longo','textarea-gigante')}
                 {renderTextarea('obs_rescisao', 'OBSERVAÇÕES RESCISÃO','campo-longo','textarea-gigante')}

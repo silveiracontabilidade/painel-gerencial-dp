@@ -121,7 +121,7 @@ WSGI_APPLICATION = 'painel.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'automacoesdp_dev',
+        'NAME': 'automacoesdp_uat',
         'USER': 'denis',
         'PASSWORD': 'hJ3#xL9v!2Zq',
         'HOST': '10.0.0.80',

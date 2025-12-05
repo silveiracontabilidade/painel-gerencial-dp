@@ -3,8 +3,6 @@ from django.contrib.auth.models import User
 from .models import (
     GrupoGerencial,
     Responsavel,
-    Entregavel,
-    Feriado,
     PlanilhaGerencial,
     Servico,
     ServicoSolicitado, AgendaBase, AgendaRegra, Sistema, PeriodoEntrega, CCT, PG_PLR,
@@ -168,17 +166,6 @@ class ResponsavelSerializer(serializers.ModelSerializer):
         return instance
 
 
-class EntregavelSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Entregavel
-        fields = ['id', 'nome', 'descricao', 'periodo_entrega']
-
-
-class FeriadoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Feriado
-        fields = ['id', 'data', 'descricao', 'uf', 'municipio']
-        read_only_fields = ['id']
 
 
 # ---------------------- Empresa / Planilha ----------------------      
