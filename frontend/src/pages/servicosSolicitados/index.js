@@ -132,10 +132,11 @@ export default function ServicosSolicitados() {
   const [filters, setFilters] = useState({
     empresa: '',
     responsavelId: '',
+    executadoPorId: '',
     grupoId: '',
     status: 'aberto',
     prazo: 'todos',
-    servicoId: '',       // 👈 novo
+    servicoId: '',
     competencia: '',     // 👈 novo
     detalhes: '',        // 👈 novo filtro
     data_vencimento_inicio: '',
@@ -575,13 +576,13 @@ export default function ServicosSolicitados() {
         const concluido = !!s.data_conclusao;
 
         if (filters.prazo === "atrasados" && (!concluido && resposta < hoje)) {
-          // ok, fica
+          // ok
         } else if (filters.prazo === "atrasados") {
           return false;
         }
 
         if (filters.prazo === "no_prazo" && (!concluido && resposta >= hoje)) {
-          // ok, fica
+          // ok
         } else if (filters.prazo === "no_prazo") {
           return false;
         }
@@ -620,7 +621,6 @@ export default function ServicosSolicitados() {
 
       const executado = String(s.processo_realizado_por || '');
       const filtroExecutadoVal = String(filters.executadoPorId || '');
-
       if (filtroExecutadoVal) {
         if (executado !== filtroExecutadoVal) return false;
       }
@@ -880,13 +880,16 @@ export default function ServicosSolicitados() {
     const emp = empresaByCodigo.get(cod);
     if (!emp) return cod;
 
+    const apelido = (emp.apelido || '').trim();
+    const tituloEmpresa = apelido ? `${emp.razao_social} — ${apelido}` : emp.razao_social;
+
     return (
       <span
         onClick={() => abrirEmpresaModal(emp)}
         style={{ cursor: 'pointer', color: '#2B9FAE', fontWeight: 'bold' }}
         title="Clique para ver detalhes"
       >
-        {emp.cod_folha} — {emp.razao_social}
+        {emp.cod_folha} — {tituloEmpresa}
       </span>
     );
   };

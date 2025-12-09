@@ -39,6 +39,34 @@ class Responsavel(models.Model):
     def __str__(self):
         return self.nome
 
+
+class Entregavel(models.Model):
+    nome = models.CharField(max_length=255)
+    descricao = models.TextField(null=True, blank=True)
+    periodo_entrega = models.CharField(max_length=255, null=True, blank=True)
+
+    class Meta:
+        db_table = 'pg_entregaveis'
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.nome
+
+
+class Feriado(models.Model):
+    data = models.DateField(unique=True)
+    descricao = models.CharField(max_length=255)
+    uf = models.CharField(max_length=2, null=True, blank=True)
+    municipio = models.CharField(max_length=100, null=True, blank=True)
+
+    class Meta:
+        db_table = 'pg_feriados'
+        ordering = ['data']
+
+    def __str__(self):
+        return f"{self.data} - {self.descricao}"
+
+
 # EMPRESAS - PLANILHA GERENCIAL
 class PlanilhaGerencial(models.Model):
     cod_folha = models.CharField(max_length=10, db_column='Cod_folha', primary_key=True)
@@ -50,6 +78,7 @@ class PlanilhaGerencial(models.Model):
     cnpj = models.CharField(max_length=50, db_column='CNPJ', null=True, blank=True)
     cnpj_original = models.CharField(max_length=50, db_column='CNPJ_Original', null=True, blank=True)
     status_do_cliente = models.CharField(max_length=100, db_column='Status_do_Cliente', null=True, blank=True)
+    apelido = models.CharField(max_length=255, db_column='Apelido', null=True, blank=True)
     inicio_contrato = models.DateField(db_column='Inicio_Contrato', null=True, blank=True)
     termino_contrato = models.DateField(db_column='Termino_Contrato', null=True, blank=True)
     motivo_termino = models.CharField(max_length=255, db_column='Motivo_Termino', null=True, blank=True)
@@ -150,6 +179,9 @@ class PlanilhaGerencial(models.Model):
     aprendizes = models.TextField(db_column='APRENDIZES', null=True, blank=True)
     med_ocupa = models.TextField(db_column='MED_OCUPA', null=True, blank=True)
     med_ocupa_proc_venc = models.DateField(db_column='MED_OCUPA_PROC_VENC', null=True, blank=True)
+    prazo_admissao = models.CharField(max_length=50, db_column='PRAZO_ADMISSAO', null=True, blank=True)
+    prazo_ferias = models.CharField(max_length=50, db_column='PRAZO_FERIAS', null=True, blank=True)
+    prazo_rescisao = models.CharField(max_length=50, db_column='PRAZO_RESCISAO', null=True, blank=True)
 
     class Meta:
         managed = True

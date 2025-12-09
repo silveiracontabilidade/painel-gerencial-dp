@@ -144,14 +144,16 @@ const toBRSafe = (valor) => {
 };
 
 
-const getTipoServico = (nome) => {
+const getTipoServico = (nome, categoria) => {
   const n = normalize(nome);
-  if (n.includes('ADMIS')) return 'ADMISSAO';
-  if (n.includes('FERI')) return 'FERIAS';
-  if (n.includes('RESCIS')) return 'RESCISAO';
-  if (n.includes('AFAST')) return 'AFASTAMENTO';
-  if (n.includes('AVULSO')) return 'AVULSO';
-  if (n.includes('MULTA')) return 'MULTA';
+  const c = normalize(categoria);
+  const texto = `${n} ${c}`.trim();
+  if (texto.includes('ADMIS')) return 'ADMISSAO';
+  if (texto.includes('FERI')) return 'FERIAS';
+  if (texto.includes('RESCIS')) return 'RESCISAO';
+  if (texto.includes('AFAST')) return 'AFASTAMENTO';
+  if (texto.includes('AVULSO')) return 'AVULSO';
+  if (texto.includes('MULTA')) return 'MULTA';
   return null;
 };
 
@@ -428,7 +430,7 @@ export default function ServicoSolicitadoFormModal({ dados, fechar }) {
     () => servicos.find((s) => String(s.id) === String(form.servico)),
     [servicos, form.servico]
   );
-  const tipoServico = getTipoServico(servicoSelecionado?.nome);
+  const tipoServico = getTipoServico(servicoSelecionado?.nome, servicoSelecionado?.categoria);
   const podeExibirUltimoFup = useMemo(() => {
     if (tipoServico !== 'AFASTAMENTO') {
       return false;

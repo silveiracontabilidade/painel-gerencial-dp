@@ -15,6 +15,10 @@ import RequireAuth from './components/RequireAuth';
 import ServicosSolicitados from './pages/servicosSolicitados';
 import MotivosRescisao from './pages/motivosRescisao';
 import TiposAdmissao from './pages/tiposAdmissao';
+import Entregaveis from './pages/entregaveis';
+import RelatorioDCTFWEB from './pages/relatorios/dctfweb';
+import RelatorioFGTSDigital from './pages/relatorios/fgtsDigital';
+import Feriados from './pages/feriados';
 
 function App() {
   const isUat = (process.env.REACT_APP_ENV || '').toUpperCase() === 'UAT';
@@ -57,6 +61,10 @@ function App() {
             <Route path="servicos-solicitados" element={<ServicosSolicitados />} />
             <Route path="motivos-rescisao" element={<MotivosRescisao />} />
             <Route path="tipos-admissao" element={<TiposAdmissao />} />
+            <Route path="entregaveis" element={<Entregaveis />} />
+            <Route path="relatorios/dctfweb" element={<RelatorioDCTFWEB />} />
+            <Route path="relatorios/fgts-digital" element={<RelatorioFGTSDigital />} />
+            <Route path="feriados" element={<Feriados />} />
           </Route>
         </Route>
       </Routes>

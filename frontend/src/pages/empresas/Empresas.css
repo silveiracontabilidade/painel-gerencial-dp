@@ -96,10 +96,31 @@
   font-size: 10px;
 }
 
+.multi-select {
+  min-width: 0;
+  width: 100%;
+}
+.rs__menu {
+  width: max-content;
+  min-width: 140px;
+}
+.rs__menu-list {
+  min-width: inherit;
+}
+
 .col-data {
   width: 60px;
   min-width: 40px;
   max-width: 70px;
+}
+
+.checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  margin-top: 4px;
+  color: #000;
 }
 
 .col-texto-curto {
@@ -353,7 +374,7 @@
 /* DOMÉSTICA SEM DADOS */
 .empresas-table td.classificacao2.DOMÉSTICA-SEM-DADOS,
 .empresas-table td.classificacao2.DOMESTICA-SEM-DADOS {
-  background-color: #a6c9ec;
+  background-color: #cbe3ff; /* azul claro */
   color: #000000;
 }
 
@@ -378,8 +399,8 @@
 
 /* FATOR R + FUNCS */
 .empresas-table td.classificacao2.FATOR-R-+-FUNCS {
-  background-color: #ff5050;
-  color: #ffffff;
+  background-color: #7fd37f; /* verde claro */
+  color: #0f3b0f;
 }
 
 /* FOLHA COM DADOS */
@@ -396,7 +417,9 @@
 
 /* PRO LABORE */
 .empresas-table td.classificacao2.PROLABORE,
-.empresas-table td.classificacao2.PRO-LABORE {
+.empresas-table td.classificacao2.PRO-LABORE,
+.empresas-table td.classificacao2.PRÓLABORE,
+.empresas-table td.classificacao2.PRÓ-LABORE {
   background-color: #be5014;
   color: #ffffff;
 }
