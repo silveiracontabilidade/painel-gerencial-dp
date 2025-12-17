@@ -50,9 +50,14 @@ export default function RelatorioBase({
 }) {
   const [competencia, setCompetencia] = useState(() => {
     const hoje = new Date();
-    const ano = hoje.getFullYear();
-    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-    return `${ano}-${mes}`;
+    let ano = hoje.getFullYear();
+    let mes = hoje.getMonth(); // 0 = janeiro
+    if (mes === 0) {
+      ano -= 1;
+      mes = 12;
+    }
+    const mesFormatado = String(mes).padStart(2, '0');
+    return `${ano}-${mesFormatado}`;
   });
   const [filtroValores, setFiltroValores] = useState(() =>
     Object.fromEntries(filtros.map((f) => [f.chave, '']))

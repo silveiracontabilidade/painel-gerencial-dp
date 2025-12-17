@@ -49,7 +49,6 @@ export default function RelatorioDCTFWEB() {
       endpoint="/api/relatorios/dctfweb/"
       colunas={colunas}
       nomeArquivo="relatorio_dctfweb"
-      mostrarCompetencia={false}
       filtros={[
         { chave: 'responsavel', label: 'Responsável', opcoes: responsaveis },
         { chave: 'grupo', label: 'Grupo', opcoes: grupos },

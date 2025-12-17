@@ -1344,10 +1344,14 @@ class TipoAdmissaoViewSet(viewsets.ModelViewSet):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def relatorio_dctfweb(request):
-    # Apuração: último mês fechado (mês anterior ao atual)
-    hoje = date.today()
-    ap_ano = hoje.year if hoje.month > 1 else hoje.year - 1
-    ap_mes = hoje.month - 1 if hoje.month > 1 else 12
+    # Apuração: permite competência informada; padrão = mês anterior ao atual
+    comp_param = request.query_params.get('competencia')
+    if comp_param:
+        ap_ano, ap_mes = _parse_competencia(comp_param)
+    else:
+        hoje = date.today()
+        ap_ano = hoje.year if hoje.month > 1 else hoje.year - 1
+        ap_mes = hoje.month - 1 if hoje.month > 1 else 12
 
     primeiro_dia, ultimo_dia = _limites_competencia(ap_ano, ap_mes)
     prev_ano = ap_ano if ap_mes > 1 else ap_ano - 1
@@ -1411,10 +1415,14 @@ def relatorio_dctfweb(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def relatorio_fgts_digital(request):
-    # Apuração: último mês fechado (mês anterior ao atual)
-    hoje = date.today()
-    ap_ano = hoje.year if hoje.month > 1 else hoje.year - 1
-    ap_mes = hoje.month - 1 if hoje.month > 1 else 12
+    # Apuração: permite competência informada; padrão = mês anterior ao atual
+    comp_param = request.query_params.get('competencia')
+    if comp_param:
+        ap_ano, ap_mes = _parse_competencia(comp_param)
+    else:
+        hoje = date.today()
+        ap_ano = hoje.year if hoje.month > 1 else hoje.year - 1
+        ap_mes = hoje.month - 1 if hoje.month > 1 else 12
 
     primeiro_dia, ultimo_dia = _limites_competencia(ap_ano, ap_mes)
     prev_ano = ap_ano if ap_mes > 1 else ap_ano - 1

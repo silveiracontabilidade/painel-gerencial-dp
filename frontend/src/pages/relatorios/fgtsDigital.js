@@ -48,7 +48,6 @@ export default function RelatorioFGTSDigital() {
       endpoint="/api/relatorios/fgts-digital/"
       colunas={colunas}
       nomeArquivo="relatorio_fgts_digital"
-      mostrarCompetencia={false}
       filtros={[
         { chave: 'responsavel', label: 'Responsável', opcoes: responsaveis },
         { chave: 'grupo', label: 'Grupo', opcoes: grupos },
