@@ -241,8 +241,15 @@ class PlanilhaGerencialFilter(FilterSet):
     
     #FILTROS AVANÇADOS
     sci_report = CharFilter(lookup_expr='icontains')
+    cod_acessorias = CharFilter(lookup_expr='icontains')
     visitacao = CharFilter(lookup_expr='icontains')
     tempo_demandado = CharFilter(lookup_expr='icontains')
+    honorarios = CharFilter(lookup_expr='exact')
+    forma_comunica = CharFilter(lookup_expr='icontains')
+    demanda_folha = CharFilter(lookup_expr='icontains')
+    demanda_ad_13 = CharFilter(lookup_expr='icontains')
+    demanda_13 = CharFilter(lookup_expr='icontains')
+    motivo_termino = CharFilter(lookup_expr='icontains')
     
 
     serv_prest = CharFilter(lookup_expr='exact')

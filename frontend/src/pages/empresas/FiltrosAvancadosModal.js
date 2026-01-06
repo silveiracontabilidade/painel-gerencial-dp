@@ -25,8 +25,16 @@ export default function FiltrosAvancadosModal({ visivel, aoFechar, filters, setF
       titulo: "Gerencial",
       campos: [
         { campo: "sci_report", label: "SCI Report", tipo: "flag" },
+        { campo: "cod_acessorias", label: "Acessórias", tipo: "text" },
+        { campo: "opc_rec_patronal", label: "Patronal", tipo: "flag" },
+        { campo: "honorarios", label: "Honorário", tipo: "number" },
         { campo: "visitacao", label: "Visitação", tipo: "text" },
         { campo: "tempo_demandado", label: "Tempo Demandado", tipo: "text" },
+        { campo: "forma_comunica", label: "Forma de comunicação com o cliente", tipo: "text" },
+        { campo: "demanda_folha", label: "Demanda Folha", tipo: "text" },
+        { campo: "demanda_ad_13", label: "Demanda Ad. 13º", tipo: "text" },
+        { campo: "demanda_13", label: "Demanda 13º", tipo: "text" },
+        { campo: "motivo_termino", label: "Motivo Término", tipo: "text" },
       ],
     },
     {
@@ -41,7 +49,6 @@ export default function FiltrosAvancadosModal({ visivel, aoFechar, filters, setF
         { campo: "planilha_convenio", label: "Planilha Convênio", tipo: "flag" },
         { campo: "sst", label: "SST", tipo: "flag" },
         { campo: "apura_vt", label: "Apura VT", tipo: "flag" },
-        { campo: "opc_rec_patronal", label: "Opção Rec. Patronal", tipo: "text" },
       ],
     },
     {
