@@ -152,8 +152,10 @@ const getTipoServico = (nome, categoria) => {
   if (texto.includes('FERI')) return 'FERIAS';
   if (texto.includes('RESCIS')) return 'RESCISAO';
   if (texto.includes('AFAST')) return 'AFASTAMENTO';
-  if (texto.includes('AVULSO')) return 'AVULSO';
+  if (n.includes('MULTA')) return 'MULTA';
+  if (n.includes('AVULSO')) return 'AVULSO';
   if (texto.includes('MULTA')) return 'MULTA';
+  if (texto.includes('AVULSO')) return 'AVULSO';
   return null;
 };
 
