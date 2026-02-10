@@ -65,7 +65,8 @@ export default function ServicosSolicitados() {
       const cod = String(s.empresa ?? '');
       const emp = empresaByCodigo.get(cod);
       const empresaRazao = emp?.razao_social || '';
-      const responsavel = s.empresa ? (emp?.resp_dp || '') : (s.responsavel_nome || '');
+      const responsavelObj = s.responsavel ? respById.get(String(s.responsavel)) : null;
+      const responsavel = (responsavelObj?.nome || s.responsavel_nome || emp?.resp_dp || '');
       return {
         empresa: cod || '-',
         empresa_razao: empresaRazao,
@@ -682,11 +683,16 @@ export default function ServicosSolicitados() {
         return cod.toUpperCase();
       }
       case 'responsavel': {
+        const respObj = solicitacao.responsavel
+          ? respById.get(String(solicitacao.responsavel))
+          : null;
+        if (respObj?.nome) return String(respObj.nome).toUpperCase();
+        if (solicitacao.responsavel_nome) return String(solicitacao.responsavel_nome).toUpperCase();
         if (solicitacao.empresa) {
           const emp = empresaByCodigo.get(String(solicitacao.empresa));
-          if (emp) return String(emp.resp_dp ?? '').toUpperCase();
+          if (emp?.resp_dp) return String(emp.resp_dp).toUpperCase();
         }
-        return String(solicitacao.responsavel_nome ?? '').toUpperCase();
+        return '';
       }
       case 'servico_nome':
         return String(solicitacao.servico_nome ?? '').toUpperCase();
@@ -896,21 +902,25 @@ export default function ServicosSolicitados() {
 
 
   const renderResp = (solicitacao) => {
+    const responsavelId = solicitacao?.responsavel;
+    const responsavel = responsavelId ? respById.get(String(responsavelId)) : null;
+    const nomeResp = (responsavel?.nome || solicitacao?.responsavel_nome || '').toUpperCase();
+    const grupoNome = responsavel?.grupo ? grupoById.get(String(responsavel.grupo))?.nome : '';
+    if (nomeResp) {
+      return renderResponsavelBadge(nomeResp, grupoNome);
+    }
+
     const valorEmpresa = solicitacao?.empresa;
     if (valorEmpresa === null || valorEmpresa === undefined || valorEmpresa === '') {
-      const responsavelId = solicitacao?.responsavel;
-      const responsavel = responsavelId ? respById.get(String(responsavelId)) : null;
-      const nomeResp = (responsavel?.nome || solicitacao?.responsavel_nome || '-').toUpperCase();
-      const grupoNome = responsavel?.grupo ? grupoById.get(String(responsavel.grupo))?.nome : '';
-      return renderResponsavelBadge(nomeResp, grupoNome);
+      return '—';
     }
 
     const cod = String(valorEmpresa ?? '');
     const emp = empresaByCodigo.get(cod);
     if (!emp) return '-';
 
-    const nomeResp = (emp.resp_dp || '-').toUpperCase();
-    return renderResponsavelBadge(nomeResp, emp.grupo || '');
+    const nomeEmp = (emp.resp_dp || '-').toUpperCase();
+    return renderResponsavelBadge(nomeEmp, emp.grupo || '');
   };
 
   const renderExecutadoPor = (solicitacao) => {
