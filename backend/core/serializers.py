@@ -7,9 +7,17 @@ from .models import (
     Feriado,
     PlanilhaGerencial,
     Servico,
-    ServicoSolicitado, AgendaBase, AgendaRegra, Sistema, PeriodoEntrega, CCT, PG_PLR,
-    MotivoRescisao, TipoAdmissao
-    )
+    ServicoSolicitado,
+    AgendaBase,
+    AgendaRegra,
+    Sistema,
+    PeriodoEntrega,
+    CCT,
+    PG_PLR,
+    MotivoRescisao,
+    MotivoTermino,
+    TipoAdmissao,
+)
 import math
 from decimal import Decimal
 from rest_framework.fields import CharField
@@ -510,6 +518,12 @@ class UsuarioResponsavelSerializer(serializers.Serializer):
 class MotivoRescisaoSerializer(serializers.ModelSerializer):
     class Meta:
         model = MotivoRescisao
+        fields = ['id', 'descricao', 'mensagem']
+
+
+class MotivoTerminoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MotivoTermino
         fields = ['id', 'descricao', 'mensagem']
 
 

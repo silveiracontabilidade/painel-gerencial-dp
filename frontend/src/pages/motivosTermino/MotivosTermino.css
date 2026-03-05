@@ -1,0 +1,89 @@
+.filtro-nome {
+  width: 80%;
+}
+
+.motivos-container {
+  padding: 24px;
+  font-family: Arial, sans-serif;
+}
+
+.motivos-header {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  margin: 30px 0 16px 0;
+}
+
+.motivos-header h2 {
+  font-size: 20px;
+  color: #1a1f3a;
+  margin: 0;
+}
+
+.motivos-header button {
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  background-color: #1a1f3a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+} 
+
+.motivos-header button:hover {
+  background-color: #C3996B;
+}
+
+.motivos-container table {
+  width: 80%; /* mais larga que a de sistemas */
+  border-collapse: collapse;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.motivos-container th,
+.motivos-container td {
+  border: 1px solid #ddd;
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+.motivos-container th {
+  background-color: #1a1f3a;
+  color: #ddd;
+  height: 20px;
+}
+
+.motivos-container tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.motivos-container input[type="text"] {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* Ações no padrão sistemas */
+td.acoes {
+  width: 85px;
+  text-align: center;
+}
+
+td.acoes button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  margin: 0 2px;
+}
+
+td.acoes button:hover svg {
+  stroke: #C3996B;
+}

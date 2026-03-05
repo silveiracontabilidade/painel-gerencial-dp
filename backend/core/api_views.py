@@ -38,6 +38,7 @@ from .models import (
     Responsavel,
     Permissao,
     MotivoRescisao,
+    MotivoTermino,
     TipoAdmissao
 )
 from .serializers import (
@@ -54,6 +55,7 @@ from .serializers import (
     PGPLRSerializer,
     UsuarioResponsavelSerializer,
     MotivoRescisaoSerializer,
+    MotivoTerminoSerializer,
     TipoAdmissaoSerializer,
     EntregavelSerializer,
     FeriadoSerializer,
@@ -1333,6 +1335,15 @@ def minhas_permissoes(request):
 class MotivoRescisaoViewSet(viewsets.ModelViewSet):
     queryset = MotivoRescisao.objects.all()
     serializer_class = MotivoRescisaoSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['descricao', 'mensagem']
+    ordering_fields = ['id', 'descricao']
+    ordering = ['descricao']
+
+
+class MotivoTerminoViewSet(viewsets.ModelViewSet):
+    queryset = MotivoTermino.objects.all()
+    serializer_class = MotivoTerminoSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['descricao', 'mensagem']
     ordering_fields = ['id', 'descricao']

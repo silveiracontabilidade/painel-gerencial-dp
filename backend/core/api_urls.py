@@ -17,6 +17,7 @@ from .api_views import (
     me,
     minhas_permissoes, 
     MotivoRescisaoViewSet,
+    MotivoTerminoViewSet,
     TipoAdmissaoViewSet,
     ChangePasswordView,
     dashboard_empresas,
@@ -44,6 +45,7 @@ router.register(r'periodos-entrega', PeriodoEntregaViewSet)
 router.register(r'ccts', CCTViewSet)   
 router.register(r'pg-plr', PGPLRViewSet, basename='pg-plr')
 router.register(r'motivos-rescisao', MotivoRescisaoViewSet)
+router.register(r'motivos-termino', MotivoTerminoViewSet)
 router.register(r'tipos-admissao', TipoAdmissaoViewSet)
 router.register(r'usuarios-responsaveis', UsuarioResponsavelViewSet, basename='usuarios-responsaveis')
 

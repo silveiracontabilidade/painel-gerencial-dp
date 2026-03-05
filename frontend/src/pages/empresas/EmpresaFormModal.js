@@ -8,6 +8,7 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
   const [responsaveis, setResponsaveis] = useState([]);
   const [periodos, setPeriodos] = useState([]);
   const [sistemas, setSistemas] = useState([]);
+  const [motivosTermino, setMotivosTermino] = useState([]);
   const [ccts, setCcts] = useState([]);
   const [plrs, setPlrs] = useState([]);
   const [aba, setAba] = useState('GERENCIAL'); // 'GERENCIAL' | 'FOLHA'
@@ -140,15 +141,17 @@ export default function EmpresaFormModal({ visivel, aoFechar, aoSalvar, dados })
   //carregar todos os dados de tabelas auxiliares
   useEffect(() => {
     async function carregarDados() {
-      const [resResp, resPeriodos, resSistemas] = await Promise.all([
+      const [resResp, resPeriodos, resSistemas, resMotivosTermino] = await Promise.all([
         api.get('/api/responsaveis/'),
         api.get('/api/periodos-entrega/'),
-        api.get('/api/sistemas/')  
+        api.get('/api/sistemas/'),
+        api.get('/api/motivos-termino/')
       ]);
 
       setResponsaveis(resResp.data.results || resResp.data);
       setPeriodos(resPeriodos.data.results || resPeriodos.data);
       setSistemas(resSistemas.data.results || resSistemas.data);
+      setMotivosTermino(resMotivosTermino.data.results || resMotivosTermino.data);
     }
     carregarDados();
   }, []);
@@ -226,28 +229,12 @@ const handleChange = (campo) => (e) => {
     classificacao2: ['BPO FIN', 'BPO RH', 'CARNÊ LEÃO', 'CONSULTORIA', 'DOMÉSTICA SEM DADOS', 'DOMÉSTICA COM DADOS', 'FACULTATIVO', 'FATOR R', 'FATOR R + FUNCS', 'FOLHA COM DADOS', 'FOLHA SEM DADOS', 'PRÓ LABORE', 'TIME OUT', 'SEM MOVIMENTO'],
     sim_nao:['SIM', 'NÃO'],
     tipo_ponto:['CARTOGRÁFICO', 'FOLHA'],
-    motivo_termino:[
-        'ADESÃO AO REGIME MEI', 
-        'CANCELOU ENTRADA', 
-        'CLIENTE DESAPARECEU', 
-        'CONFLITO DE INTERESSES',
-        'DECIDIU PELA MOVIMENTAÇÃO DE LIVRO CAIXA',
-        'DESACORDO COMERCIAL',
-        'DESLIGAMENTO DE COLABORADOR',
-        'EM ENCERRAMENTO',
-        'ENCERROU',
-        'EXTINTA',
-        'FALECIMENTO EMPREGADOR',
-        'INADIMPLENTE',
-        'INCORPORAÇÃO',
-        'INSATISFAÇÃO COM ATENDIMENTO',
-        'INSOLVÊNCIA',
-        'INTERNALIZAÇÃO CONTÁBIL',
-        'PARCERIA COM OUTRO CONTADOR',
-        'REDUÇÃO DE CUSTOS',
-        'VENDA',
-      ]
+    motivo_termino: []
   };
+
+  const motivosTerminoOpcoes = motivosTermino
+    .map((m) => (m.descricao || '').toUpperCase())
+    .filter(Boolean);
 
   const camposRestritos = [
       "cod_folha",
@@ -777,7 +764,7 @@ const handleChange = (campo) => (e) => {
                 {renderText('demanda_13', 'DEMANDA 13º', 'campo-curto', 'text', null, 'duration')}
                 {renderText('inicio_contrato', 'INÍCIO CONTRATO', 'campo-curto', 'text',null, 'date')}
                 {renderText('termino_contrato', 'TÉRMINO CONTRATO', 'campo-curto', 'text',null, 'date')}
-                {renderSelect('motivo_termino', 'MOTIVO TÉRMINO', opcoes.motivo_termino,'campo-longo', empresa.motivo_termino)}
+                {renderSelect('motivo_termino', 'MOTIVO TÉRMINO', motivosTerminoOpcoes, 'campo-longo', empresa.motivo_termino)}
               </div>
             </div>
           </>

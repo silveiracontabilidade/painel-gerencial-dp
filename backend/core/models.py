@@ -502,6 +502,18 @@ class MotivoRescisao(models.Model):
         return self.descricao
 
 
+class MotivoTermino(models.Model):
+    descricao = models.CharField(max_length=255, unique=True)
+    mensagem = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'pg_motivos_termino'
+        ordering = ['descricao']
+
+    def __str__(self):
+        return self.descricao
+
+
 class TipoAdmissao(models.Model):
     descricao = models.CharField(max_length=255, unique=True)
     mensagem = models.TextField(null=True, blank=True)
