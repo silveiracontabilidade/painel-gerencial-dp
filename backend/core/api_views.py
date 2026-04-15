@@ -237,6 +237,10 @@ class PlanilhaGerencialFilter(FilterSet):
     classificacao2 = CharInFilter(lookup_expr='in')
     matriz = CharInFilter(field_name='matriz', lookup_expr='in')
     enviadctf = CharInFilter(field_name='enviadctf', lookup_expr='in')
+    rhnet = BooleanFilter(field_name='rhnet')
+    enviar_previa_folha = BooleanFilter(field_name='enviar_previa_folha')
+    enviar_previa_ferias = BooleanFilter(field_name='enviar_previa_ferias')
+    enviar_previa_rescisao = BooleanFilter(field_name='enviar_previa_rescisao')
 
     inicio_contrato_vazio = BooleanFilter(method='filtrar_inicio_vazio')
     termino_contrato_vazio = BooleanFilter(method='filtrar_termino_vazio')

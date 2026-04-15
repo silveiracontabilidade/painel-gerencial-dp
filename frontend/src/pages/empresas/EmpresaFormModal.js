@@ -475,9 +475,20 @@ const handleChange = (campo) => (e) => {
 
 
 
-  const renderFlag = (campo, label, valorAtual) => {
-    const normalizado = (valorAtual || '').toUpperCase();
+  const renderFlag = (campo, label, valorAtual, modo = 'simnao') => {
+    const normalizado =
+      typeof valorAtual === 'boolean'
+        ? valorAtual
+        : (valorAtual || '').toString().toUpperCase();
     const pode = podeEditar(aba, campo);
+    const valorBooleano =
+      typeof valorAtual === 'boolean'
+        ? valorAtual
+        : ['TRUE', '1', 'SIM', 'S', 'YES', 'Y'].includes(normalizado);
+    const marcado =
+      modo === 'boolean'
+        ? valorBooleano
+        : normalizado === 'SIM';
 
     return (
       <div className="campo campo-micro-flag" key={campo}>
@@ -485,14 +496,16 @@ const handleChange = (campo) => (e) => {
         <input
           type="checkbox"
           className="flag-checkbox"
-          checked={normalizado === 'SIM'}
+          checked={marcado}
           disabled={!pode}
           onChange={
             pode
               ? (e) =>
                   setEmpresa({
                     ...empresa,
-                    [campo]: e.target.checked ? 'SIM' : 'NÃO',
+                    [campo]: modo === 'boolean'
+                      ? e.target.checked
+                      : (e.target.checked ? 'SIM' : 'NÃO'),
                   })
               : undefined
           }
@@ -696,6 +709,7 @@ const handleChange = (campo) => (e) => {
             {renderText('cod_acessorias', 'ACESSÓRIAS', 'campo-micro-micro','text',null,'numeric')}
             {renderSelect('status_do_cliente', 'STATUS DO CLIENTE', opcoes.status_do_cliente, "campo-micro", empresa.status_do_cliente)}
             {renderFlag('sci_report', 'SCI REPORT', empresa.sci_report)}
+            {renderFlag('rhnet', 'RHNET', empresa.rhnet, 'boolean')}
             {renderFlag('opc_rec_patronal', 'PATRONAL', empresa.opc_rec_patronal)}
             {renderSelect(
                   'classificacao',
@@ -703,7 +717,7 @@ const handleChange = (campo) => (e) => {
                     CATEGORIA
                   </span>,
                   opcoes.classificacao,
-                  'campo-medio',
+                  'campo-categoria',
                   empresa.classificacao
                 )}
             {renderText(
@@ -787,11 +801,14 @@ const handleChange = (campo) => (e) => {
                 {renderFlag('serv_prest', 'PRESTADOS',  empresa.serv_prest)}
                 {renderFlag('deson', 'DESONERAÇÃO', empresa.deson)}
                 {renderFlag('secconci', 'SECONCI',  empresa.secconci)}
+                {renderFlag('enviar_previa_folha', 'PRÉVIA FOLHA', empresa.enviar_previa_folha, 'boolean')}
                 {renderFlag('planilha_folha', 'PLAN. FOLHA',  empresa.planilha_folha)}
                 {renderFlag('planilha_convenio', 'PLAN. CONVÊNIO',  empresa.planilha_convenio)}
                 {renderFlag('apura_vt', 'APURA VT', empresa.apura_vt)}
                 {renderFlag('fecha_ponto', 'FECHA PONTO', empresa.fecha_ponto)}
-                {renderTextarea('obs_folha', 'OBS. FOLHA', 'campo-longo','textarea-gigante')}
+              </div>
+              <div className="linha">
+                {renderTextarea('obs_folha', 'OBS. FOLHA', 'campo-full','textarea-gigante-menor')}
               </div>
             </div>
           </>
@@ -933,9 +950,15 @@ const handleChange = (campo) => (e) => {
           <>
             <div className='bloco'>
               <h4>FÉRIAS / RESCISÃO</h4>
-              <div className="linha">
-                {renderSelect('prazo_ferias', 'PRAZO FÉRIAS', periodos.map(p => p.descricao.toUpperCase()), 'campo-curto', empresa.prazo_ferias)}
-                {renderSelect('prazo_rescisao', 'PRAZO RESCISÃO', periodos.map(p => p.descricao.toUpperCase()), 'campo-curto', empresa.prazo_rescisao)}
+              <div className="linha linha-prazo-flag">
+                <div className="campo-prazo-flag">
+                  {renderSelect('prazo_ferias', 'PRAZO FÉRIAS', periodos.map(p => p.descricao.toUpperCase()), 'campo-prazo-duplo', empresa.prazo_ferias)}
+                  {renderFlag('enviar_previa_ferias', 'PRÉVIA FÉRIAS', empresa.enviar_previa_ferias, 'boolean')}
+                </div>
+                <div className="campo-prazo-flag">
+                  {renderSelect('prazo_rescisao', 'PRAZO RESCISÃO', periodos.map(p => p.descricao.toUpperCase()), 'campo-prazo-duplo', empresa.prazo_rescisao)}
+                  {renderFlag('enviar_previa_rescisao', 'PRÉVIA RESCISÃO', empresa.enviar_previa_rescisao, 'boolean')}
+                </div>
               </div>
               <br></br>
               <div className="linha">

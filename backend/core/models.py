@@ -98,6 +98,10 @@ class PlanilhaGerencial(models.Model):
     demanda_13 = models.CharField(max_length=100, db_column='DEMANDA_13', null=True, blank=True)
     demanda_ad_13 = models.CharField(max_length=100, db_column='DEMANDA_AD_13', null=True, blank=True)
     enviadctf = models.CharField(max_length=100, db_column='EnviaDCTF', null=True, blank=True)
+    rhnet = models.BooleanField(default=False, db_column='RHNet')
+    enviar_previa_folha = models.BooleanField(default=False, db_column='EnviarPreviaFolha')
+    enviar_previa_ferias = models.BooleanField(default=False, db_column='EnviarPreviaFerias')
+    enviar_previa_rescisao = models.BooleanField(default=False, db_column='EnviarPreviaRescisão')
     classificacao2 = models.CharField(max_length=100, db_column='Classificacao2', null=True, blank=True)
     cod_folha_520 = models.CharField(max_length=100, db_column='cod_folha_520', null=True, blank=True)
 
