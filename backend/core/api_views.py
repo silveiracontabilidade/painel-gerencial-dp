@@ -342,6 +342,52 @@ class PlanilhaGerencialViewSet(viewsets.ModelViewSet):
     
     lookup_field = 'cod_folha'
 
+    @staticmethod
+    def _somente_digitos(valor):
+        return ''.join(ch for ch in str(valor or '') if ch.isdigit())
+
+    def _usuario_admin(self, request):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        try:
+            responsavel = Responsavel.objects.get(usuario=request.user.username)
+        except Responsavel.DoesNotExist:
+            return False
+        return (responsavel.perfil or '').lower() == 'admin'
+
+    def _tentou_alterar_cnpj(self, instance, data):
+        if 'cnpj_original' in data:
+            novo = self._somente_digitos(data.get('cnpj_original'))
+            atual = self._somente_digitos(instance.cnpj_original)
+            if novo != atual:
+                return True
+
+        if 'cnpj' in data:
+            novo = self._somente_digitos(data.get('cnpj'))
+            atual = self._somente_digitos(instance.cnpj)
+            if novo != atual:
+                return True
+
+        return False
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not self._usuario_admin(request) and self._tentou_alterar_cnpj(instance, request.data):
+            return Response(
+                {'detail': 'Somente admin pode editar o CNPJ da empresa.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not self._usuario_admin(request) and self._tentou_alterar_cnpj(instance, request.data):
+            return Response(
+                {'detail': 'Somente admin pode editar o CNPJ da empresa.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().partial_update(request, *args, **kwargs)
+
 
 class AgendaBaseViewSet(viewsets.ModelViewSet):
     queryset = AgendaBase.objects.select_related('servico').prefetch_related('regras').all()

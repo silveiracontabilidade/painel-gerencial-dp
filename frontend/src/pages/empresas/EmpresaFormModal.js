@@ -248,6 +248,8 @@ const handleChange = (campo) => (e) => {
       "razao_social"
     ];
 
+  const editandoEmpresaExistente = Boolean(dados?.cod_folha);
+
   const abasDisponiveis = [
       { id: 'GERENCIAL', label: 'Gerencial' },
       { id: 'FOLHA', label: 'Folha' }, 
@@ -452,6 +454,9 @@ const handleChange = (campo) => (e) => {
   const podeEditar = (aba, campo) => {
     if (campo === 'forma_comunica') {
       return true;
+    }
+    if (campo === 'cnpj_original' && editandoEmpresaExistente) {
+      return perfilUsuario === 'admin';
     }
     // 🔒 Se for especialista, nunca pode editar os campos restritos
     if (
@@ -725,7 +730,7 @@ const handleChange = (campo) => (e) => {
               'CNPJ',
               'campo-medio',
               'text',
-              empresa.cnpj_formatado || empresa.cnpj_original || ''
+              empresa.cnpj_original || empresa.cnpj_formatado || ''
             )}
           </div>
           <div className='linha'>
