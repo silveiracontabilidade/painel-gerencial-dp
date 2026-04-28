@@ -5,3 +5,4 @@ djangorestframework==3.16.0
 djangorestframework-simplejwt==5.5.1
 mysqlclient==2.2.7
 pandas==2.2.3
+fdb==2.0.4

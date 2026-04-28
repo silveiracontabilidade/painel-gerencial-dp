@@ -12,6 +12,7 @@ from rest_framework import status
 from rest_framework.decorators import action
 from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
+import os
 import calendar
 import unicodedata
 import json
@@ -62,6 +63,27 @@ from .serializers import (
     ChangePasswordSerializer
 )
 
+try:
+    import fdb  # type: ignore
+except ImportError as exc:
+    fdb = None  # type: ignore
+    _fdb_import_error = exc
+else:
+    _fdb_import_error = None
+
+
+FIREBIRD_HOST = os.environ.get('FB_HOST', 'srvsci.silveira.local')
+FIREBIRD_PORT = int(os.environ.get('FB_PORT', '3050'))
+FIREBIRD_DATABASE = os.environ.get('FB_DATABASE', 'E:/SCI/banco/VSCI.SDB')
+FIREBIRD_USER = os.environ.get('FB_USER', 'INTEGRACOES')
+FIREBIRD_PASSWORD = os.environ.get('FB_PASSWORD', '%I*I3ul8')
+FIREBIRD_DSN = os.environ.get('FB_DSN')
+FOLHA_SILVEIRA_EMPRESAS = (
+    15501, 27001, 29301, 63401,
+    216101, 263001, 300301,
+    311601, 311701, 311801, 311901
+)
+
 
 def _parse_competencia(param: str | None):
     """Aceita YYYY-MM, YYYYMM, MMYYYY, MM-YYYY, MM/YYYY.
@@ -100,6 +122,56 @@ def _aplicar_janela_competencia(qs, ano: int, mes: int):
     qs = qs.filter(Q(termino_contrato__isnull=True) | Q(termino_contrato__gte=primeiro_dia))
     qs = qs.filter(Q(inicio_contrato__isnull=True) | Q(inicio_contrato__lte=ultimo_dia))
     return qs
+
+
+def _usuario_admin(request):
+    if not request.user or not request.user.is_authenticated:
+        return False
+    try:
+        responsavel = Responsavel.objects.get(usuario=request.user.username)
+    except Responsavel.DoesNotExist:
+        return False
+    return (responsavel.perfil or '').lower() == 'admin'
+
+
+def _conecta_unico():
+    if fdb is None:
+        detalhe = (
+            "Biblioteca 'fdb' indisponível. Instale com 'pip install fdb' "
+            "e garanta que libfbclient.so esteja presente."
+        )
+        if _fdb_import_error:
+            detalhe += f' Detalhes: {_fdb_import_error}'
+        raise RuntimeError(detalhe)
+
+    try:
+        if FIREBIRD_DSN:
+            dsn = FIREBIRD_DSN
+        else:
+            database_path = FIREBIRD_DATABASE.replace('/', '\\')
+            dsn = f'{FIREBIRD_HOST}/{FIREBIRD_PORT}:{database_path}'
+        return fdb.connect(
+            dsn=dsn,
+            user=FIREBIRD_USER,
+            password=FIREBIRD_PASSWORD,
+            charset='UTF8',
+        )
+    except Exception as exc:
+        raise RuntimeError(f'Erro ao conectar ao banco do SCI: {exc}') from exc
+
+
+def _cursor_rows_to_dicts(cursor):
+    colunas = [col[0].lower() for col in cursor.description]
+    dados = []
+    for row in cursor.fetchall():
+        registro = {}
+        for idx, chave in enumerate(colunas):
+            valor = row[idx]
+            if isinstance(valor, Decimal):
+                valor = float(valor)
+            registro[chave] = valor
+        dados.append(registro)
+    return dados
 
 # class UserViewSet(viewsets.ModelViewSet):
 #     queryset = User.objects.all()
@@ -1545,6 +1617,373 @@ def relatorio_fgts_digital(request):
         'total': len(dados),
         'resultado': dados,
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def relatorio_salario_liquido(request):
+    if not _usuario_admin(request):
+        return Response(
+            {'detail': 'Somente admin pode acessar este relatório.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    comp_param = request.query_params.get('competencia')
+    if comp_param:
+        ap_ano, ap_mes = _parse_competencia(comp_param)
+    else:
+        hoje = date.today()
+        ap_ano = hoje.year if hoje.month > 1 else hoje.year - 1
+        ap_mes = hoje.month - 1 if hoje.month > 1 else 12
+
+    competencia_ref = int(f'{ap_ano}{ap_mes:02d}')
+    empresas_sql = ', '.join(str(emp) for emp in FOLHA_SILVEIRA_EMPRESAS)
+
+    sql = """
+WITH VERBAS_ATUAIS AS (
+    SELECT
+        v1.bdcodver,
+        v1.bdinssver,
+        v1.BDTIPOCODVER,
+        v1.BDBASEGPSVER,
+        v1.BDDESCREDVER
+    FROM vw_tverbas v1
+    JOIN (
+        SELECT
+            bdcodver,
+            MAX(bdrefver) AS max_bdrefver
+        FROM vw_tverbas
+        GROUP BY bdcodver
+    ) v2
+        ON v1.bdcodver = v2.bdcodver
+       AND v1.bdrefver = v2.max_bdrefver
+),
+
+VERBAS_SALARIO AS (
+    SELECT
+        vuftv.BDCODEMP,
+        vuftv.BDCODCOL,
+        CASE v.BDTIPOCODVER
+            WHEN 1 THEN vuftv.BDVALV * -1
+            WHEN 0 THEN vuftv.BDVALV
+        END AS VALORAJUSTADO
+    FROM VW_VRHF_FN_FC_13_C13_VERBAS vuftv
+    JOIN VERBAS_ATUAIS v
+      ON v.bdcodver = vuftv.bdcodver
+    WHERE vuftv.BDREF = ?
+      AND v.BDTIPOCODVER IN (0, 1)
+),
+
+SALARIO_LIQUIDO AS (
+    SELECT
+        vs.BDCODEMP,
+        vs.BDCODCOL,
+        SUM(vs.VALORAJUSTADO) AS SAL_LIQ
+    FROM VERBAS_SALARIO vs
+    GROUP BY
+        vs.BDCODEMP,
+        vs.BDCODCOL
+),
+
+VERBAS_ESPECIFICAS AS (
+    SELECT
+        BDCODEMP,
+        BDCODCOL,
+        SUM(CASE WHEN BDCODVER = 953 THEN BDVALV ELSE 0 END) AS VERBA_953,
+        SUM(CASE WHEN BDCODVER = 10005 THEN BDVALV ELSE 0 END) AS VERBA_10005,
+        SUM(CASE WHEN BDCODVER IN (521, 152) THEN BDVALV ELSE 0 END) AS VERBA_521_152
+    FROM VW_VRHF_FN_FC_13_C13_VERBAS
+    WHERE BDREF = ?
+      AND BDCODVER IN (953, 10005, 521, 152)
+    GROUP BY
+        BDCODEMP,
+        BDCODCOL
+),
+
+CentroCustoAtual AS (
+    SELECT
+        cc.BDCODEMP,
+        cc.BDCODCOL,
+        cc.BDCODTPCC,
+        pc.BDNOMCTA
+    FROM VRHF_EMP_TPREPFN cc
+    INNER JOIN (
+        SELECT
+            BDCODEMP,
+            BDCODCOL,
+            MAX(BDREFENTRADA) AS mxref
+        FROM VRHF_EMP_TPREPFN
+        GROUP BY BDCODEMP, BDCODCOL
+    ) mx
+        ON cc.BDCODEMP = mx.BDCODEMP
+       AND cc.BDCODCOL = mx.BDCODCOL
+       AND cc.BDREFENTRADA = mx.mxref
+    INNER JOIN CENTROS_TPCC pc
+        ON cc.BDCODCENTRO = pc.BDCODCENTRO
+       AND cc.BDCODTPCC = pc.BDCODTPCC
+),
+
+ATIVOS AS (
+    SELECT
+        BDCODEMP,
+        BDCODCOL
+    FROM sp_somente_ativos(CURRENT_DATE, CURRENT_DATE, NULL)
+)
+
+SELECT
+    a.BDCODEMP,
+    a.BDCODCOL AS CODIGO_FUNCIONARIO,
+    a.BDNOMCOL AS NOME_FUNCIONARIO,
+    cc.BDCODTPCC AS CODIGO_CENTRO_CUSTO,
+    cc.BDNOMCTA AS NOME_CENTRO_CUSTO,
+
+    REPLACE(
+        CAST(CAST(COALESCE(sl.SAL_LIQ, 0) AS DECIMAL(18,2)) AS VARCHAR(30)),
+        '.', ','
+    ) AS SALARIO_LIQUIDO,
+
+    REPLACE(
+        CAST(CAST(COALESCE(ve.VERBA_953, 0) AS DECIMAL(18,2)) AS VARCHAR(30)),
+        '.', ','
+    ) AS VALOR_VERBA_953,
+
+    REPLACE(
+        CAST(CAST(COALESCE(ve.VERBA_10005, 0) AS DECIMAL(18,2)) AS VARCHAR(30)),
+        '.', ','
+    ) AS VALOR_VERBA_10005,
+
+    REPLACE(
+        CAST(CAST(COALESCE(ve.VERBA_521_152, 0) AS DECIMAL(18,2)) AS VARCHAR(30)),
+        '.', ','
+    ) AS VALOR_VERBAS_521_152
+
+FROM VW_COLABORADORES_REF_ATUAL a
+
+INNER JOIN ATIVOS atv
+    ON atv.BDCODEMP = a.BDCODEMP
+   AND atv.BDCODCOL = a.BDCODCOL
+
+LEFT JOIN SALARIO_LIQUIDO sl
+    ON sl.BDCODEMP = a.BDCODEMP
+   AND sl.BDCODCOL = a.BDCODCOL
+
+LEFT JOIN VERBAS_ESPECIFICAS ve
+    ON ve.BDCODEMP = a.BDCODEMP
+   AND ve.BDCODCOL = a.BDCODCOL
+
+LEFT JOIN CentroCustoAtual cc
+    ON a.BDCODEMP = cc.BDCODEMP
+   AND a.BDCODCOL = cc.BDCODCOL
+
+WHERE a.BDCODEMP IN (
+    """ + empresas_sql + """
+)
+
+ORDER BY
+    a.BDCODEMP,
+    a.BDCODCOL
+"""
+
+    conexao_unico = None
+    cursor = None
+    try:
+        conexao_unico = _conecta_unico()
+        cursor = conexao_unico.cursor()
+        cursor.execute(sql, (competencia_ref, competencia_ref))
+        dados = _cursor_rows_to_dicts(cursor)
+
+        return Response({
+            'competencia': f"{ap_mes:02d}/{ap_ano}",
+            'total': len(dados),
+            'resultado': dados,
+        })
+    except Exception as exc:
+        return Response(
+            {'detail': f'Erro ao gerar relatório Salário Líquido: {exc}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if conexao_unico is not None:
+            conexao_unico.close()
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def relatorio_folha_silveira_totais(request):
+    if not _usuario_admin(request):
+        return Response(
+            {'detail': 'Somente admin pode acessar este relatório.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    comp_param = request.query_params.get('competencia')
+    if comp_param:
+        ap_ano, ap_mes = _parse_competencia(comp_param)
+    else:
+        hoje = date.today()
+        ap_ano = hoje.year if hoje.month > 1 else hoje.year - 1
+        ap_mes = hoje.month - 1 if hoje.month > 1 else 12
+
+    competencia_ref = int(f'{ap_ano}{ap_mes:02d}')
+    empresas_sql = ', '.join(str(emp) for emp in FOLHA_SILVEIRA_EMPRESAS)
+
+    sql = """
+WITH VERBAS_ATUAIS AS (
+    SELECT
+        v1.BDCODVER,
+        v1.BDTIPOCODVER,
+        v1.BDDESCREDVER
+    FROM VW_TVERBAS v1
+    JOIN (
+        SELECT
+            BDCODVER,
+            MAX(BDREFVER) AS MAX_BDREFVER
+        FROM VW_TVERBAS
+        GROUP BY BDCODVER
+    ) v2
+        ON v1.BDCODVER = v2.BDCODVER
+       AND v1.BDREFVER = v2.MAX_BDREFVER
+),
+
+ATIVOS AS (
+    SELECT
+        BDCODEMP,
+        BDCODCOL
+    FROM SP_SOMENTE_ATIVOS(CURRENT_DATE, CURRENT_DATE, NULL)
+),
+
+BASE AS (
+    SELECT
+        v.BDCODEMP,
+        v.BDCODCOL,
+        v.BDCODVER,
+        CAST(COALESCE(v.BDVALV, 0) AS DECIMAL(18,2)) AS BDVALV,
+        va.BDTIPOCODVER,
+        va.BDDESCREDVER
+    FROM VW_VRHF_FN_FC_13_C13_VERBAS v
+    JOIN ATIVOS a
+      ON a.BDCODEMP = v.BDCODEMP
+     AND a.BDCODCOL = v.BDCODCOL
+    LEFT JOIN VERBAS_ATUAIS va
+      ON va.BDCODVER = v.BDCODVER
+    WHERE v.BDREF = ?
+),
+
+EMPRESAS AS (
+    SELECT
+        tr.BDCODEMP,
+        tr.BDNOMEMP AS NOME_EMPRESA
+    FROM TEMPRESAS_REF tr
+    JOIN (
+        SELECT
+            BDCODEMP,
+            MAX(BDREFEMP) AS MXREF
+        FROM TEMPRESAS_REF
+        GROUP BY BDCODEMP
+    ) mx
+      ON mx.BDCODEMP = tr.BDCODEMP
+     AND mx.MXREF    = tr.BDREFEMP
+    WHERE tr.BDCODEMP IN (
+        """ + empresas_sql + """
+    )
+),
+
+AGG AS (
+    SELECT
+        b.BDCODEMP,
+
+        CAST(
+            SUM(CASE WHEN b.BDCODVER IN (91005, 91006, 91025, 91205) THEN b.BDVALV ELSE 0 END)
+          - SUM(CASE
+                    WHEN COALESCE(UPPER(b.BDDESCREDVER), '') CONTAINING 'MATERN'
+                      OR COALESCE(UPPER(b.BDDESCREDVER), '') CONTAINING 'FAMIL'
+                    THEN b.BDVALV
+                    ELSE 0
+                END)
+            AS DECIMAL(18,2)
+        ) AS INSS_TOTAL,
+
+        CAST(SUM(CASE WHEN b.BDCODVER IN (91505, 91705) THEN b.BDVALV ELSE 0 END) AS DECIMAL(18,2)) AS IRRF_TOTAL,
+        CAST(SUM(CASE WHEN b.BDCODVER = 7305 THEN b.BDVALV ELSE 0 END) AS DECIMAL(18,2)) AS CONSIGNADO_CREDITO_TRAB,
+        CAST(SUM(CASE WHEN b.BDCODVER = 441  THEN b.BDVALV ELSE 0 END) AS DECIMAL(18,2)) AS CONTRIB_SIND_ASSIST,
+        CAST(SUM(CASE WHEN b.BDCODVER = 852  THEN b.BDVALV ELSE 0 END) AS DECIMAL(18,2)) AS CONVENIO_FARMACIA,
+        CAST(SUM(CASE WHEN b.BDTIPOCODVER = 0 THEN b.BDVALV ELSE 0 END) * 0.08 AS DECIMAL(18,2)) AS FGTS_ORG_8_SALARIO_BRUTO,
+        CAST(SUM(CASE WHEN b.BDCODVER IN (3206, 3207, 3202) THEN b.BDVALV ELSE 0 END) AS DECIMAL(18,2)) AS UNIMED,
+        CAST(SUM(CASE WHEN b.BDCODVER IN (3204, 3211)       THEN b.BDVALV ELSE 0 END) AS DECIMAL(18,2)) AS UNIODONTO,
+
+        CAST(
+            SUM(CASE WHEN b.BDCODVER = 835  THEN b.BDVALV ELSE 0 END)
+          - SUM(CASE WHEN b.BDCODVER = 1524 THEN b.BDVALV ELSE 0 END)
+            AS DECIMAL(18,2)
+        ) AS VALE_REFEICAO_SWILE,
+
+        CAST(SUM(CASE WHEN b.BDCODVER = 363  THEN b.BDVALV ELSE 0 END) AS DECIMAL(18,2)) AS SEGURO_VIDA_GRUPO,
+
+        CAST(
+            SUM(CASE WHEN b.BDCODVER = 804 THEN b.BDVALV ELSE 0 END)
+          - SUM(CASE WHEN b.BDCODVER IN (809, 819, 875) THEN b.BDVALV ELSE 0 END)
+            AS DECIMAL(18,2)
+        ) AS TRANSPORTE,
+
+        CAST(SUM(CASE WHEN b.BDCODVER = 329  THEN b.BDVALV ELSE 0 END) AS DECIMAL(18,2)) AS AUXILIO_ESTUDO_CAPACITACAO_GRAD,
+        CAST(SUM(CASE WHEN b.BDCODVER = 373  THEN b.BDVALV ELSE 0 END) AS DECIMAL(18,2)) AS AUXILIO_HOME_OFFICE,
+        CAST(SUM(CASE WHEN b.BDCODVER = 1004 THEN b.BDVALV ELSE 0 END) AS DECIMAL(18,2)) AS AUXILIO_CRECHE
+
+    FROM BASE b
+    WHERE b.BDCODEMP IN (
+        """ + empresas_sql + """
+    )
+    GROUP BY b.BDCODEMP
+)
+
+SELECT
+    e.BDCODEMP,
+    e.NOME_EMPRESA,
+    COALESCE(a.INSS_TOTAL, 0)                         AS INSS_TOTAL,
+    COALESCE(a.IRRF_TOTAL, 0)                         AS IRRF_TOTAL,
+    COALESCE(a.CONSIGNADO_CREDITO_TRAB, 0)            AS CONSIGNADO_CREDITO_TRAB,
+    COALESCE(a.CONTRIB_SIND_ASSIST, 0)                AS CONTRIB_SIND_ASSIST,
+    COALESCE(a.CONVENIO_FARMACIA, 0)                  AS CONVENIO_FARMACIA,
+    COALESCE(a.FGTS_ORG_8_SALARIO_BRUTO, 0)           AS FGTS_ORG_8_SALARIO_BRUTO,
+    COALESCE(a.UNIMED, 0)                             AS UNIMED,
+    COALESCE(a.UNIODONTO, 0)                          AS UNIODONTO,
+    COALESCE(a.VALE_REFEICAO_SWILE, 0)                AS VALE_REFEICAO_SWILE,
+    COALESCE(a.SEGURO_VIDA_GRUPO, 0)                  AS SEGURO_VIDA_GRUPO,
+    COALESCE(a.TRANSPORTE, 0)                         AS TRANSPORTE,
+    COALESCE(a.AUXILIO_ESTUDO_CAPACITACAO_GRAD, 0)    AS AUXILIO_ESTUDO_CAPACITACAO_GRAD,
+    COALESCE(a.AUXILIO_HOME_OFFICE, 0)                AS AUXILIO_HOME_OFFICE,
+    COALESCE(a.AUXILIO_CRECHE, 0)                     AS AUXILIO_CRECHE
+FROM EMPRESAS e
+LEFT JOIN AGG a
+  ON a.BDCODEMP = e.BDCODEMP
+ORDER BY e.BDCODEMP
+"""
+
+    conexao_unico = None
+    cursor = None
+    try:
+        conexao_unico = _conecta_unico()
+        cursor = conexao_unico.cursor()
+        cursor.execute(sql, (competencia_ref,))
+        dados = _cursor_rows_to_dicts(cursor)
+
+        return Response({
+            'competencia': f"{ap_mes:02d}/{ap_ano}",
+            'total': len(dados),
+            'resultado': dados,
+        })
+    except Exception as exc:
+        return Response(
+            {'detail': f'Erro ao gerar relatório Folha Silveira (Totais): {exc}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if conexao_unico is not None:
+            conexao_unico.close()
 
 
 def _parse_periodo(request):

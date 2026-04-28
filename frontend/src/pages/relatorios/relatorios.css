@@ -128,3 +128,25 @@
   text-align: center;
   color: #4c5675;
 }
+
+.relatorio-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.relatorio-tab {
+  border: 1px solid #c8cde4;
+  background: #f7f9ff;
+  color: #2f3550;
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.relatorio-tab.ativo {
+  background: #1a1f3a;
+  color: #fff;
+  border-color: #1a1f3a;
+}

@@ -25,7 +25,9 @@ from .api_views import (
     dashboard_servicos_detalhes,
     dashboard_resumo,
     relatorio_dctfweb,
-    relatorio_fgts_digital
+    relatorio_fgts_digital,
+    relatorio_salario_liquido,
+    relatorio_folha_silveira_totais
 )
 from django.urls import path, include
 from django.conf import settings
@@ -60,6 +62,8 @@ urlpatterns = router.urls + [
     path('dashboard/resumo/', dashboard_resumo, name='dashboard-resumo'),
     path('relatorios/dctfweb/', relatorio_dctfweb, name='relatorio-dctfweb'),
     path('relatorios/fgts-digital/', relatorio_fgts_digital, name='relatorio-fgts-digital'),
+    path('relatorios/salario-liquido/', relatorio_salario_liquido, name='relatorio-salario-liquido'),
+    path('relatorios/folha-silveira/totais/', relatorio_folha_silveira_totais, name='relatorio-folha-silveira-totais'),
     ]
 
 

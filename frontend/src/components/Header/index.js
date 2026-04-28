@@ -11,6 +11,7 @@ import ChangePasswordModal from './ChangePasswordModal';
 const Header = () => {
   const [menuAberto, setMenuAberto] = useState(null);
   const [nomePessoa, setNomePessoa] = useState('');
+  const [perfilUsuario, setPerfilUsuario] = useState('');
   const [modalSenhaAberto, setModalSenhaAberto] = useState(false);
   const [entregaveisVisivel, setEntregaveisVisivel] = useState(false);
   const [entregaveis, setEntregaveis] = useState([]);
@@ -23,8 +24,9 @@ const Header = () => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const res = await api.get(`/api/me`);
-        setNomePessoa(res.data.nome || '');              
+        const res = await api.get('/api/me/');
+        setNomePessoa(res.data.nome || '');
+        setPerfilUsuario((res.data.perfil || '').toLowerCase());
       } catch (err) {
         console.error('Erro ao buscar nome do usuário:', err);
       }
@@ -149,6 +151,9 @@ const Header = () => {
                 <ul className="submenu">
                   <li><NavLink to="/relatorios/dctfweb">DCTFWEB</NavLink></li>
                   <li><NavLink to="/relatorios/fgts-digital">FGTS Digital</NavLink></li>
+                  {perfilUsuario === 'admin' && (
+                    <li><NavLink to="/relatorios/salario-liquido">Folha Silveira</NavLink></li>
+                  )}
                 </ul>
               )}
             </li>

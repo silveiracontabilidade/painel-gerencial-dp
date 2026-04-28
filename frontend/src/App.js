@@ -19,6 +19,7 @@ import TiposAdmissao from './pages/tiposAdmissao';
 import Entregaveis from './pages/entregaveis';
 import RelatorioDCTFWEB from './pages/relatorios/dctfweb';
 import RelatorioFGTSDigital from './pages/relatorios/fgtsDigital';
+import RelatorioFolhaSilveira from './pages/relatorios/salarioLiquido';
 import Feriados from './pages/feriados';
 
 function App() {
@@ -66,6 +67,7 @@ function App() {
             <Route path="entregaveis" element={<Entregaveis />} />
             <Route path="relatorios/dctfweb" element={<RelatorioDCTFWEB />} />
             <Route path="relatorios/fgts-digital" element={<RelatorioFGTSDigital />} />
+            <Route path="relatorios/salario-liquido" element={<RelatorioFolhaSilveira />} />
             <Route path="feriados" element={<Feriados />} />
           </Route>
         </Route>
